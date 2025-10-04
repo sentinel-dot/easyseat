@@ -1,0 +1,60 @@
+// API Response types
+export interface ApiResponse<T> {
+    success: boolean;
+    message?: string;
+    data?: T;
+    error?: string;
+}
+
+export interface Venue {
+    id: number;
+    name: string;
+    type: 'restaurant' | 'hair_salon' | 'beauty_salon' | 'massage' | 'other';
+    email: string;
+    phone?: string;
+    address?: string;
+    city?: string;
+    postal_code?: string;
+    country: string;
+    description?: string;
+    website_url?: string;
+    booking_advance_days: number;
+    cancellation_hours: number;
+    require_phone: boolean;
+    require_deposit: boolean;
+    deposit_amount?: number;
+    is_active: boolean;
+    created_at: Date;
+    updated_at: Date;
+}
+
+export interface StaffMember {
+  id: number;
+  business_id: number;
+  name: string;
+  email?: string;
+  phone?: string;
+  description?: string;
+  is_active: boolean;
+  created_at: Date;
+  updated_at: Date;
+}
+
+export interface Service {
+  id: number;
+  business_id: number;
+  name: string;
+  description?: string;
+  duration_minutes: number;
+  price?: number;
+  capacity: number;
+  requires_staff: boolean;
+  is_active: boolean;
+  created_at: Date;
+  updated_at: Date;
+}
+
+export interface VenueWithStaff extends Venue {
+  staff_members: StaffMember[];
+  services: Service[];
+}
