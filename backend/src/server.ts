@@ -2,12 +2,15 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 
+import { createLogger } from './config/utils/logger';
+
 import venue_routes from './routes/venues';
 
 dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT;
+const logger = createLogger('SERVER');
 
 app.use(cors({
     origin: process.env.FRONTEND_URL,
@@ -18,7 +21,7 @@ app.use(express.urlencoded({ extended: true }));
 
 // Basic Route
 app.get('/', (req: express.Request, res: express.Response) => {
-    console.log('Received GET /');
+    logger.info('Received Request: GET /');
     res.json({
         message: 'easyseat backend api',
         version: '1.0.0'
@@ -26,7 +29,7 @@ app.get('/', (req: express.Request, res: express.Response) => {
 });
 
 app.get('/health', (req: express.Request, res: express.Response) => {
-    console.log('Received GET /health');
+    logger.info('Received Request: GET /health');
     res.json({
         status: 'HEALTHY',
         timestamp: new Date().toISOString(),
@@ -36,28 +39,8 @@ app.get('/health', (req: express.Request, res: express.Response) => {
 });
 
 
-
-
-
-
-
-
 // Venue routes
 app.use('/venues', venue_routes);
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 // 404 - Handler
@@ -66,22 +49,27 @@ app.use((req: express.Request, res: express.Response) => {
         success: false,
         message: `Route ${req.originalUrl} not found`
     });
-    console.log(`Route ${req.originalUrl} not found`);
+    logger.warn(`Route ${req.originalUrl} not found`)
 });
 
 const startServer = async() => {
-    console.log('Starting server...');
+    logger.separator();
+    logger.separator();
+    logger.separator();
+    logger.info('Starting server...')
     try {
         app.listen(PORT, () => {
-            console.log(`🚀 Server running on http://localhost:${PORT}`);
-            console.log(`🌍 Environment: ${process.env.NODE_ENV}`);
-            console.log(`🔗 CORS enabled for: ${process.env.FRONTEND_URL}`);
-            console.log('\n📚 Available endpoints:');
-            console.log(`   GET  / - Info check`);
-            console.log(`   GET  /health - Healthcheck`);
+            logger.info(`🚀 Server running on http://localhost:${PORT}`);
+            logger.info(`🌍 Environment: ${process.env.NODE_ENV}`);
+            logger.info(`🔗 CORS enabled for: ${process.env.FRONTEND_URL}\n`);
+            logger.info('📚 Available endpoints:');
+            logger.info(`   GET  / - Info check`);
+            logger.info(`   GET  /health - Healthcheck`);
+            logger.info(`   GET  /venues - All venues`);
+            logger.info(`   GET  /venues/:id - Venue by id`);
         });
     } catch (error) {
-        console.error('Failed to start server:', error);
+        logger.error('Failed to start server:', error);
         process.exit();
     }
 };

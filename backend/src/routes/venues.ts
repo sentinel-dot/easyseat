@@ -2,12 +2,12 @@ import express from 'express';
 import mariadb from 'mariadb';
 import dotenv from 'dotenv';
 
-import { createLogger } from '../utils/logger';
+import { createLogger } from '../config/utils/logger';
 
-import { Venue, VenueWithStaff, Service, StaffMember, ApiResponse } from '../utils/types';
+import { Venue, VenueWithStaff, Service, StaffMember, ApiResponse } from '../config/utils/types';
 
 const router = express.Router();
-const logger = createLogger('VenuesRoute');
+const logger = createLogger('venues_route');
 
 dotenv.config({ path: '.env' });
 
@@ -24,8 +24,9 @@ const pool = mariadb.createPool({
 
 // GET /venues - Liste aller Venues
 router.get('/', async (req, res) => 
-    {
-    logger.request('GET', '/venues');
+{
+    logger.separator();
+    logger.info('Received Request: GET /venues');
     
     let conn;
     try 
@@ -50,7 +51,7 @@ router.get('/', async (req, res) =>
             data: all_venues_typed
         } as ApiResponse<Venue[]>);
 
-        logger.response('GET', '/venues', 200, {
+        logger.info('Success response sent', {
             venuesCount: all_venues_typed.length
         });
     } 
@@ -63,7 +64,7 @@ router.get('/', async (req, res) =>
             error: process.env.NODE_ENV === 'development' ? String(error) : undefined
         } as ApiResponse<void>);
 
-        logger.response('GET', '/venues', 500);
+        logger.info('Failed response sent');
     }
     finally
     {
@@ -73,18 +74,20 @@ router.get('/', async (req, res) =>
             logger.debug('Database connection released');
         }
     }
+    logger.separator();
 });
 
 // GET /venues/:id - Ein spezifisches Venue
 router.get('/:id', async(req, res) => 
 {
+    logger.separator();
     const id = parseInt(req.params.id);
-    logger.request('GET', `/venues/${req.params.id}`, { venueId: id });
+    logger.info(`Received Request: GET /venues/${id}`);
 
     if (isNaN(id) || id <= 0)
     {
         logger.warn('Invalid venue ID provided', { providedId: req.params.id });
-        logger.response('GET', `/venues/${req.params.id}`, 400);
+        logger.info('Warning response sent');
         return res.status(400).json({
             success: false,
             message: 'Invalid venue ID'
@@ -95,7 +98,7 @@ router.get('/:id', async(req, res) =>
     try 
     {
         conn = await pool.getConnection();
-        logger.debug('Database connection established', { venueId: id });
+        logger.debug('Database connection established');
 
         const venue_by_id = await conn.query(`
             SELECT id, name, type, email, phone, address, city, postal_code, country,
@@ -111,7 +114,7 @@ router.get('/:id', async(req, res) =>
         if (venue_by_id.length === 0)
         {
             logger.warn('Venue not found', { venueId: id });
-            logger.response('GET', `/venues/${id}`, 404);
+            logger.info('Warning response sent');
 
             return res.status(404).json({
                 success: false,
@@ -153,7 +156,7 @@ router.get('/:id', async(req, res) =>
             staff_members: staff_members as StaffMember[]
         };
 
-        logger.response('GET', `/venues/${id}`, 200, {
+        logger.info('Success response sent', {
             venueId: id,
             servicesCount: services.length,
             staffCount: staff_members.length
@@ -168,7 +171,7 @@ router.get('/:id', async(req, res) =>
     } 
     catch (error) 
     {
-        logger.error('Failed to retrieve venue details', error, { venueId: id });
+        logger.error(`Failed to retrieve venue details for ID ${id} with error:`, error);
 
         res.status(500).json({
             success: false,
@@ -176,14 +179,15 @@ router.get('/:id', async(req, res) =>
             error: process.env.NODE_ENV === 'development' ? String(error) : undefined
         } as ApiResponse<void>);
 
-        logger.response('GET', `/venues/${id}`, 500);
+        logger.info('Failed response sent');
     }
     finally
     {
         if (conn) 
         {
             conn.release();
-            logger.debug('Database connection released', { venueId: id });
+            logger.debug('Database connection released');
+            logger.separator();
         }
     }
 });
