@@ -34,7 +34,7 @@ router.get('/', async (req, res) =>
         conn = await pool.getConnection();
         logger.debug('Database connection established');
 
-        const all_venues = await conn.query(`
+        const [all_venues] = await conn.query(`
             SELECT id, name, type, email, phone, address, city, postal_code, country,
                    description, website_url, booking_advance_days, cancellation_hours,
                    require_phone, require_deposit, deposit_amount, created_at, updated_at
@@ -100,7 +100,7 @@ router.get('/:id', async(req, res) =>
         conn = await pool.getConnection();
         logger.debug('Database connection established');
 
-        const venue_by_id = await conn.query(`
+        const [venue_by_id] = await conn.query(`
             SELECT id, name, type, email, phone, address, city, postal_code, country,
                    description, website_url, booking_advance_days, cancellation_hours,
                    require_phone, require_deposit, deposit_amount, created_at, updated_at
@@ -128,7 +128,7 @@ router.get('/:id', async(req, res) =>
 
 
         // Services abrufen
-        const services = await conn.query(`
+        const [services] = await conn.query(`
             SELECT id, business_id, name, description, duration_minutes, price,
                    capacity, requires_staff, created_at, updated_at
             FROM services
@@ -139,7 +139,7 @@ router.get('/:id', async(req, res) =>
         );
 
         // Staff-Mitglieder abrufen
-        const staff_members = await conn.query(`
+        const [staff_members] = await conn.query(`
             SELECT id, business_id, name, email, phone, 
                    description, created_at, updated_at
             FROM staff_members
@@ -194,4 +194,3 @@ router.get('/:id', async(req, res) =>
 
 
 export default router;
-
