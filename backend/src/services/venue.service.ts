@@ -29,8 +29,7 @@ export class VenueService
      * Holt alle aktiven Venues
      */
     static async getAllVenues(): Promise<Venue[]>
-    {
-        logger.separator();
+    {   
         logger.info('Fetching all venues...');
 
         let conn;
@@ -39,28 +38,22 @@ export class VenueService
             conn = await pool.getConnection();
             logger.debug('Database connection established');
 
-            const [venues] = await conn.query(`
+            const venues = await conn.query(`
                 SELECT id, name, type, email, phone, address, city, postal_code, country,
-                       description, website_url, booking_advance_days, cancellation_hours,
-                       require_phone, require_deposit, deposit_amount, created_at, updated_at
+                    description, website_url, booking_advance_days, cancellation_hours,
+                    require_phone, require_deposit, deposit_amount, created_at, updated_at
                 FROM venues
                 WHERE is_active = true
                 ORDER BY name ASC`
-            );
-
-            const venuesTyped = venues as Venue[];
-
-            logger.info('Venues fetched successfully', {
-                count: venuesTyped.length
-            });
-            logger.separator();
-
-            return venuesTyped;
+            ) as Venue[];
+        
+            logger.info(`Venues fetched successfully`);
+        
+            return venues;
         } 
         catch (error) 
         {
             logger.error('Error fetching venues', error);
-            logger.separator();
             throw error;
         }
         finally
@@ -69,7 +62,6 @@ export class VenueService
             {
                 conn.release();
                 logger.debug('Database connection released');
-                logger.separator();
             }
         }
     }
@@ -79,8 +71,7 @@ export class VenueService
      */
     static async getVenueById(venueId: number): Promise<VenueWithStaff | null>
     {
-        logger.separator();
-        logger.info('Fetching venue by ID', { venue_id: venueId });
+        logger.info(`Fetching venue by ID`);
 
         let conn;
         try 
@@ -89,7 +80,7 @@ export class VenueService
             logger.debug('Database connection established');
 
             // Venue abrufen
-            const [venues] = await conn.query(`
+            const venues = await conn.query(`
                 SELECT id, name, type, email, phone, address, city, postal_code, country,
                        description, website_url, booking_advance_days, cancellation_hours,
                        require_phone, require_deposit, deposit_amount, created_at, updated_at
@@ -98,22 +89,22 @@ export class VenueService
                 AND is_active = true
                 LIMIT 1`,
                 [venueId]
-            );
+            ) as Venue[];
 
             if (venues.length === 0)
             {
-                logger.warn('Venue not found', { venue_id: venueId });
+                logger.warn(`Venue not found`);
                 return null;
             }
 
-            const venue = venues[0] as Venue;
+            const venue = venues[0];
             logger.debug('Venue found', { 
                 venue_id: venueId, 
                 venue_name: venue.name 
             });
 
             // Services abrufen
-            const [services] = await conn.query(`
+            const services = await conn.query(`
                 SELECT id, venue_id, name, description, duration_minutes, price,
                        capacity, requires_staff, created_at, updated_at
                 FROM services
@@ -121,10 +112,10 @@ export class VenueService
                 AND is_active = true
                 ORDER BY name ASC`,
                 [venueId]
-            );
+            ) as Service[];
 
             // Staff-Mitglieder abrufen
-            const [staffMembers] = await conn.query(`
+            const staffMembers = await conn.query(`
                 SELECT id, venue_id, name, email, phone, 
                        description, created_at, updated_at
                 FROM staff_members
@@ -132,28 +123,23 @@ export class VenueService
                 AND is_active = true
                 ORDER BY name ASC`,
                 [venueId]
-            );
+            ) as StaffMember[];
 
             // Venue mit Services und Staff kombinieren
             const venueWithDetails: VenueWithStaff = {
                 ...venue,
-                services: services as Service[],
-                staff_members: staffMembers as StaffMember[]
+                services: services,
+                staff_members: staffMembers
             };
 
-            logger.info('Venue details fetched successfully', {
-                venue_id: venueId,
-                services_count: services.length,
-                staff_count: staffMembers.length
-            });
-            logger.separator();
+            logger.info('Venue details fetched successfully');
 
             return venueWithDetails;
         } 
         catch (error) 
         {
             logger.error('Error fetching venue by ID', error);
-            logger.separator();
+            
             throw error;
         }
         finally
@@ -162,7 +148,6 @@ export class VenueService
             {
                 conn.release();
                 logger.debug('Database connection released');
-                logger.separator();
             }
         }
     }
@@ -179,14 +164,14 @@ export class VenueService
         {
             conn = await pool.getConnection();
 
-            const [venues] = await conn.query(`
+            const venues = await conn.query(`
                 SELECT id
                 FROM venues
                 WHERE id = ?
                 AND is_active = true
                 LIMIT 1`,
                 [venueId]
-            );
+            ) as { id: number }[];
 
             const exists = venues.length > 0;
 

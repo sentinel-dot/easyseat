@@ -11,7 +11,7 @@ dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT;
-const logger = createLogger('backend_server');
+const logger = createLogger('backend.server');
 
 app.use(cors({
     origin: process.env.FRONTEND_URL,
@@ -20,23 +20,28 @@ app.use(cors({
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+
 // Basic Route
-app.get('/', (req: express.Request, res: express.Response) => {
-    logger.info('Received Request: GET /');
+app.get('/', (req, res) => {
+    logger.separator();
+    logger.info('Received Request - GET /');
     res.json({
         message: 'easyseat backend api',
         version: '1.0.0'
     });
+    logger.separator();
 });
 
-app.get('/health', (req: express.Request, res: express.Response) => {
-    logger.info('Received Request: GET /health');
+app.get('/health', (req, res) => {
+    logger.separator();
+    logger.info('Received Request - GET /health');
     res.json({
         status: 'HEALTHY',
         timestamp: new Date().toISOString(),
         uptime: process.uptime(),
         environment: process.env.NODE_ENV
     });
+    logger.separator();
 });
 
 
@@ -48,7 +53,8 @@ app.use('/availability', availabilityRoutes)
 
 
 // 404 - Handler
-app.use((req: express.Request, res: express.Response) => {
+app.use((req, res) => 
+{
     res.status(404).json({
         success: false,
         message: `Route ${req.originalUrl} not found`
@@ -83,7 +89,7 @@ const startServer = async() => {
             logger.info('   POST   /availability/validate - Validate booking request');
             logger.info('   GET    /availability/service/:serviceId - Service details');
             logger.info('   GET    /availability/staff/:staffId/can-perform/:serviceId - Check staff capability');
-            logger.info('');
+            logger.separator();
         });
     } catch (error) {
         logger.error('Failed to start server:', error);

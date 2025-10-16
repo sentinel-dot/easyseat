@@ -48,7 +48,7 @@ class Logger {
     }
   }
 
-  separator(char: string = '=', length: number = 80, label?: string): void {
+  separator(char: string = '-', length: number = 135, label?: string): void {
     const line = char.repeat(length);
     if (label) {
       const padding = Math.floor((length - label.length - 2) / 2);

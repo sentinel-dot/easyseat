@@ -19,10 +19,9 @@ const logger = createLogger('availability.routes');
 router.get('/slots', async (req, res) =>     
 {
     logger.separator();
-    logger.info('Received Request - GET /availability/slots');
     try {
         const { venueId, serviceId, date} = req.query; 
-        logger.info('GET /availability/slots', {
+        logger.info('Received Request - GET /availability/slots', {
             venue_id: venueId,
             service_id: serviceId,
             date: date
@@ -63,14 +62,13 @@ router.get('/slots', async (req, res) =>
  * Hole Verfügbarkeit für eine komplette Woche
  * Query params: venueId, serviceId, startDate(YYYY-MM-DD)
  */
-router.get('week', async (req, res) => 
+router.get('/week', async (req, res) => 
 {
     logger.separator();
-    logger.info('Received Request - GET /availability/week');
     try 
     {
         const { venueId, serviceId, startDate } = req.query;
-        logger.info('GET /availability/week', {
+        logger.info('Received Request - GET /availability/week', {
             venue_id: venueId,
             service_id: serviceId,
             start_date: startDate
@@ -90,7 +88,7 @@ router.get('week', async (req, res) =>
             startDate as string
         );
 
-        console.info('Fetched week availabiltiy: ', weekAvailability);
+        logger.info('Fetched week availabiltiy: ', weekAvailability);
         logger.separator();
         res.json(weekAvailability);
     } 
@@ -112,7 +110,6 @@ router.get('week', async (req, res) =>
 router.post('/check', async (req, res) => 
 {
     logger.separator();
-    logger.info('Received Request - POST /availability/check');
     try 
     {
         const {
@@ -126,7 +123,7 @@ router.post('/check', async (req, res) =>
             excludeBookingId
         } = req.body;
 
-        logger.info('Checking slot availability...', {
+        logger.info('Received Request - POST /availability/check', {
             venue_id: venueId,
             service_id: serviceId,
             staff_member_id: staffMemberId,
@@ -157,7 +154,7 @@ router.post('/check', async (req, res) =>
             excludeBookingId ? Number(excludeBookingId) : undefined
         );
 
-        console.info('Time slot available: ', result);
+        logger.info('Time slot is available');
         logger.separator();
         
         res.json(result);

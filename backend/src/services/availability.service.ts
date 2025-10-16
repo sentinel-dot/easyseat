@@ -6,8 +6,10 @@ import { createLogger } from '../config/utils/logger';
 import {
     TimeSlot,
     DayAvailability,
-    Service
+    Service,
+    StaffMember
 } from '../config/utils/types';
+import { connect } from 'http2';
 
 const logger = createLogger('availability.service');
 
@@ -136,16 +138,7 @@ export class AvailabilityService
         excludeBookingId?: number       // Optional: Buchung die ignoriert werden soll (für Updates)
     ): Promise<{ available: boolean; reason?: string }> 
     {
-        logger.info('Validating isTimeSlotAvailable...', {
-            venue_id: venueId,
-            service_id: serviceId,
-            staff_member_id: staffMemberId,
-            date: date,
-            start_time: startTime,
-            end_time: endTime,
-            party_size: partySize,
-            exclude_booking_id: excludeBookingId
-        })
+        logger.info('Validating slot availability...');
 
         let conn;
         try 
@@ -153,14 +146,14 @@ export class AvailabilityService
             conn = await pool.getConnection();
             logger.debug('Database connection established');
 
-            const [services] = await conn.query(`
+            const services = await conn.query(`
                 SELECT duration_minutes, requires_staff, capacity
                 FROM services
                 WHERE id = ?
                 AND venue_id = ?
                 AND is_active = true`,
                 [serviceId, venueId]
-            );
+            ) as Pick<Service, 'duration_minutes' | 'requires_staff' | 'capacity'>[];
 
 
             // Prüfe, ob Service existiert
@@ -175,7 +168,7 @@ export class AvailabilityService
 
 
             // Castet ersten Eintrag zu Service-Typ und nimmt nur die drei Werte
-            const service = services[0] as Pick<Service, 'duration_minutes' | 'requires_staff' | 'capacity'>; 
+            const service = services[0];
 
 
             // Prüfe, pb die Gruppengröße die Kapazität überschreitet
@@ -199,14 +192,14 @@ export class AvailabilityService
             // Wenn Staff benötigt wird, holen wir uns die 
             if (service.requires_staff && staffMemberId)
             {
-                const [staffRules] = await conn.query(`
+                const staffRules = await conn.query(`
                     SELECT start_time, end_time
                     FROM availability_rules
                     WHERE staff_member_id = ?
                     AND day_of_week = ?
                     AND is_active = true`,
                     [staffMemberId, dayOfWeek]
-                );
+                ) as { start_time: string; end_time: string }[];;
 
 
                 // Prüfe, ob Mitarbeiter an diesem Tag arbeitet
@@ -238,14 +231,14 @@ export class AvailabilityService
             } else {
 
                 // Für Services ohne spezifischen Mitarbeiter: Prüfe Geschäftszeiten
-                const [venueRules] = await conn.query(`
+                const venueRules = await conn.query(`
                     SELECT start_time, end_time
                     FROM availability_rules
                     WHERE venue_id = ?
                     AND day_of_week = ?
                     AND is_active = true`,
                     [venueId, dayOfWeek]
-                );
+                ) as { start_time: string; end_time: string }[];;
 
 
                 // Prüfe, ob Geschäft an dem Tag offen ist
@@ -356,7 +349,10 @@ export class AvailabilityService
             }
 
 
-            const [existingBookings] = await conn.query(conflictQuery, conflictParams);
+            const existingBookings = await conn.query(
+                conflictQuery, 
+                conflictParams
+            ) as { id: number; start_time: string; end_time: string; party_size: number; status: string }[];;
 
             // Prüfe, ob für den Zeitraum bereits eine Buchung existiert
             for (const booking of existingBookings)
@@ -394,6 +390,14 @@ export class AvailabilityService
                 reason: 'Error checking availability'
             };
         }
+        finally
+        {
+            if (conn) 
+            {
+                conn.release();
+                logger.debug('Database connection released');
+            }
+        }
     }
 
 
@@ -407,29 +411,26 @@ export class AvailabilityService
         date: string                // Datum im Format YYYY-MM-DD
     ): Promise<DayAvailability>
     {
-        logger.info('Getting available slots...', {
-            venue_id: venueId,
-            service_id: serviceId,
-            date: date
-        });
+        logger.info('Getting available slots...');
 
+        let conn;
         try
         {
             const requestedDate = new Date(date);
             const dayOfWeek = requestedDate.getDay();
 
-            let conn = await pool.getConnection();
+            conn = await pool.getConnection();
             logger.debug('Database connection established');
 
             // Eigentlich noch mit buffer_after_minutes nach requires_staff, ABER MVP
-            const [services] = await conn.query(`
+            const services = await conn.query(`
                 SELECT id, duration_minutes, requires_staff, capacity
                 FROM services
                 WHERE id = ?
                 AND venue_id = ?
                 AND is_active = true`,
                 [serviceId, venueId]
-            );
+            ) as Service[];
 
             if (services.length === 0)
             {
@@ -438,7 +439,7 @@ export class AvailabilityService
             }
 
 
-            const service = services[0] as Service;
+            const service = services[0]
             //                  Typ: Array   Wert: leeres Array
             let availableSlots: TimeSlot[] = [];
 
@@ -446,7 +447,7 @@ export class AvailabilityService
             if (service.requires_staff)
             {
                 // Hole alle Mitarbeiter, die diesen Service anbieten können
-                const [staffMembers] = await conn.query(`
+                const staffMembers = await conn.query(`
                     SELECT sm.id as staff_id, sm.name as staff_name
                     FROM staff_services ss
                     JOIN staff_members sm 
@@ -454,7 +455,7 @@ export class AvailabilityService
                     WHERE ss.service_id = ?
                     AND sm.is_active = true`,
                     [serviceId]
-                );
+                ) as { staff_id: number; staff_name: string }[];
 
                 // Generiere Slots für jeden verfügbaren Mitarbeiter
                 for (const staffMember of staffMembers)
@@ -462,14 +463,14 @@ export class AvailabilityService
                     const staffId = staffMember.staff_id;
 
                     // Hole Availibility Rules des Mitarbeiters für diesen Tag
-                    const [staffRules] = await conn.query(`
+                    const staffRules = await conn.query(`
                         SELECT start_time, end_time
                         FROM availability_rules
                         WHERE staff_member_id = ?
                         AND day_of_week = ?
                         AND is_active = true`,
                         [staffId, dayOfWeek]
-                    );
+                    ) as { start_time: string; end_time: string }[];;
 
                     // Generiere Zeitslots für jede Availability Rule
                     for(const rule of staffRules)
@@ -495,14 +496,14 @@ export class AvailabilityService
             else 
             {
                 // Geschäftslevel-Service (z.B. Restaurant-Tische)
-                const [venueRules] = await conn.query(`
+                const venueRules = await conn.query(`
                     SELECT start_time, end_time
                     FROM availability_rules
                     WHERE venue_id = ?
                     AND day_of_week = ?
                     AND is_active = true`,
                     [venueId, dayOfWeek]
-                );
+                ) as { start_time: string; end_time: string }[];;
 
                 // Generiere Zeitslots für jede Geschäfts-Availability-Rule
                 for (const rule of venueRules)
@@ -570,15 +571,15 @@ export class AvailabilityService
 
 
             // Hole existierende Buchungen
-            const [existingBookings] = await conn.query(`
+            const existingBookings = await conn.query(`
                 SELECT start_time, end_time, staff_member_id, party_size
                 FROM bookings
                 WHERE venue_id = ?
                 AND service_id = ?
-                AND bookings_date = ?
+                AND booking_date = ?
                 AND status IN ('confirmed', 'pending')`,
                 [venueId, serviceId, date]
-            );
+            ) as { start_time: string; end_time: string; staff_member_id: number | null; party_size: number }[];;
 
             // Markiere konfliktbehaften Slots als nicht verfügbar
             availableSlots = availableSlots.map(slot => {
@@ -647,15 +648,22 @@ export class AvailabilityService
                 )
             );
 
-            logger.info('Available slots fetched successfully', {
-                total_slots: uniqueSlots.length,
-                available_slots: uniqueSlots.filter(s => s.available).length,
-                unavailable_slots: uniqueSlots.filter(s => !s.available).length
-            });
+            const available_slots = uniqueSlots.filter(s => s.available).length;
+            const total_slots = uniqueSlots.length;
+
+            logger.info(`${available_slots}/${total_slots} Available slots fetched successfully`);
+
+            /*
+                logger.debug(`${available_slots}/${total_slots} Available slots fetched successfully`, {
+                    total_slots: uniqueSlots.length,
+                    available_slots: uniqueSlots.filter(s => s.available).length,
+                    unavailable_slots: uniqueSlots.filter(s => !s.available).length
+                });
+            */
 
             // Return Day-Availability
             return {
-                date: requestedDate,
+                date: date,
                 day_of_week: dayOfWeek,
                 time_slots: uniqueSlots
             };
@@ -665,6 +673,14 @@ export class AvailabilityService
             logger.error('Error fetching available slots', error);
             throw error;
         }
+        finally
+        {
+            if (conn)
+            {
+                conn.release();
+                logger.debug('Database connection released');
+            }
+        }
     }
 
 
@@ -673,26 +689,26 @@ export class AvailabilityService
      */
     static async isValidVenue(venueId: number): Promise<boolean>
     {
-        logger.debug('Validating venue...', { venue_id: venueId });
+        logger.debug('Validating venue...');
         let conn = await pool.getConnection();
 
-        const [venues] = await conn.query(`
+        const venues = await conn.query(`
             SELECT id
             FROM venues
             WHERE id = ?
             AND is_active = true`,
             [venueId]
-        );
+        ) as { id: number }[];;
 
         const isValid = venues.length > 0;
 
         if (!isValid)
         {
-            logger.warn('Invalid or inactive venue', { venue_id: venueId });
+            logger.warn('Invalid or inactive venue');
         }
         else
         {
-            logger.debug('Venue is valid', { venue_id: venueId });
+            logger.debug('Venue is valid');
         }
 
         return isValid;
@@ -712,7 +728,7 @@ export class AvailabilityService
         let conn = await pool.getConnection();
 
         // Eigentlich noch buffer_before_minutes & buffer_after_minutes nach requires_staff, ABER MVP
-        const [services] = await conn.query(`
+        const services = await conn.query(`
             SELECT id, venue_id, name, description, duration_minutes, 
                 price, capacity, requires_staff, is_active
             FROM services
@@ -720,9 +736,9 @@ export class AvailabilityService
             AND venue_id = ?
             AND is_active = true`,
             [serviceId, venueId]
-        );
+        ) as Service[];
 
-        const service = services.length > 0 ? services[0] as Service : null;
+        const service = services.length > 0 ? services[0] : null;
 
         if (!service) 
         {
@@ -758,7 +774,7 @@ export class AvailabilityService
 
         // Suche Verknüpfung zwischen Mitarbeiter und Service
         // Gibt nur ein Ergebnis zurück, wenn der Mitarbeiter aktiv ist und den Service anbietet
-        const [staffServices] = await conn.query(`
+        const staffServices = await conn.query(`
             SELECT ss.id
             FROM staff_services ss
             JOIN staff_members sm
@@ -767,7 +783,7 @@ export class AvailabilityService
             AND ss.service_id = ?
             AND sm.is_active = true`,
             [staffMemberId, serviceId]
-        );
+        ) as { id: number }[];;
 
         const canPerform = staffServices.length > 0;
 
@@ -800,11 +816,7 @@ export class AvailabilityService
         startDate: string           // Startdatum der Woche
     ): Promise<DayAvailability[]>
     {
-        logger.info('Fetching week availability', {
-            venue_id: venueId,
-            service_id: serviceId,
-            start_date: startDate
-        });
+        logger.info('Fetching week availability');
 
         try
         {
@@ -849,7 +861,7 @@ export class AvailabilityService
 
                     // Füge leeren Tag bei Fehler hinzu
                     weekAvailability.push({
-                        date: currentDate,
+                        date: dateString,
                         day_of_week: currentDate.getDay(),
                         time_slots: []
                     });

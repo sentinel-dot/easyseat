@@ -75,7 +75,7 @@ export interface TimeSlot {
 }
 
 export interface DayAvailability {
-  date: Date;
+  date: string;
   day_of_week: number;
   time_slots: TimeSlot[];
 }
