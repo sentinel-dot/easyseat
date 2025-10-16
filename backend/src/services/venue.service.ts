@@ -1,0 +1,213 @@
+import dotenv from 'dotenv';
+import mariadb from 'mariadb';
+
+import { createLogger } from '../config/utils/logger';
+import { 
+    Venue, 
+    VenueWithStaff, 
+    Service, 
+    StaffMember 
+} from '../config/utils/types';
+
+const logger = createLogger('venue.service');
+
+dotenv.config({ path: '.env' });
+
+const mariadbSocket = '/run/mysqld/mysqld.sock';
+
+const pool = mariadb.createPool({
+    socketPath: mariadbSocket,
+    user: process.env.DB_USER,
+    password: process.env.DB_PASSWORD,
+    database: process.env.DB_NAME,
+    connectionLimit: 10,
+});
+
+export class VenueService 
+{
+    /**
+     * Holt alle aktiven Venues
+     */
+    static async getAllVenues(): Promise<Venue[]>
+    {
+        logger.separator();
+        logger.info('Fetching all venues...');
+
+        let conn;
+        try 
+        {
+            conn = await pool.getConnection();
+            logger.debug('Database connection established');
+
+            const [venues] = await conn.query(`
+                SELECT id, name, type, email, phone, address, city, postal_code, country,
+                       description, website_url, booking_advance_days, cancellation_hours,
+                       require_phone, require_deposit, deposit_amount, created_at, updated_at
+                FROM venues
+                WHERE is_active = true
+                ORDER BY name ASC`
+            );
+
+            const venuesTyped = venues as Venue[];
+
+            logger.info('Venues fetched successfully', {
+                count: venuesTyped.length
+            });
+            logger.separator();
+
+            return venuesTyped;
+        } 
+        catch (error) 
+        {
+            logger.error('Error fetching venues', error);
+            logger.separator();
+            throw error;
+        }
+        finally
+        {
+            if (conn)
+            {
+                conn.release();
+                logger.debug('Database connection released');
+                logger.separator();
+            }
+        }
+    }
+
+    /**
+     * Holt ein spezifisches Venue mit Services und Staff
+     */
+    static async getVenueById(venueId: number): Promise<VenueWithStaff | null>
+    {
+        logger.separator();
+        logger.info('Fetching venue by ID', { venue_id: venueId });
+
+        let conn;
+        try 
+        {
+            conn = await pool.getConnection();
+            logger.debug('Database connection established');
+
+            // Venue abrufen
+            const [venues] = await conn.query(`
+                SELECT id, name, type, email, phone, address, city, postal_code, country,
+                       description, website_url, booking_advance_days, cancellation_hours,
+                       require_phone, require_deposit, deposit_amount, created_at, updated_at
+                FROM venues
+                WHERE id = ?
+                AND is_active = true
+                LIMIT 1`,
+                [venueId]
+            );
+
+            if (venues.length === 0)
+            {
+                logger.warn('Venue not found', { venue_id: venueId });
+                return null;
+            }
+
+            const venue = venues[0] as Venue;
+            logger.debug('Venue found', { 
+                venue_id: venueId, 
+                venue_name: venue.name 
+            });
+
+            // Services abrufen
+            const [services] = await conn.query(`
+                SELECT id, venue_id, name, description, duration_minutes, price,
+                       capacity, requires_staff, created_at, updated_at
+                FROM services
+                WHERE venue_id = ?
+                AND is_active = true
+                ORDER BY name ASC`,
+                [venueId]
+            );
+
+            // Staff-Mitglieder abrufen
+            const [staffMembers] = await conn.query(`
+                SELECT id, venue_id, name, email, phone, 
+                       description, created_at, updated_at
+                FROM staff_members
+                WHERE venue_id = ?
+                AND is_active = true
+                ORDER BY name ASC`,
+                [venueId]
+            );
+
+            // Venue mit Services und Staff kombinieren
+            const venueWithDetails: VenueWithStaff = {
+                ...venue,
+                services: services as Service[],
+                staff_members: staffMembers as StaffMember[]
+            };
+
+            logger.info('Venue details fetched successfully', {
+                venue_id: venueId,
+                services_count: services.length,
+                staff_count: staffMembers.length
+            });
+            logger.separator();
+
+            return venueWithDetails;
+        } 
+        catch (error) 
+        {
+            logger.error('Error fetching venue by ID', error);
+            logger.separator();
+            throw error;
+        }
+        finally
+        {
+            if (conn)
+            {
+                conn.release();
+                logger.debug('Database connection released');
+                logger.separator();
+            }
+        }
+    }
+
+    /**
+     * Prüft ob Venue existiert und aktiv ist
+     */
+    static async venueExists(venueId: number): Promise<boolean>
+    {
+        logger.debug('Checking if venue exists', { venue_id: venueId });
+
+        let conn;
+        try 
+        {
+            conn = await pool.getConnection();
+
+            const [venues] = await conn.query(`
+                SELECT id
+                FROM venues
+                WHERE id = ?
+                AND is_active = true
+                LIMIT 1`,
+                [venueId]
+            );
+
+            const exists = venues.length > 0;
+
+            if (!exists) 
+            {
+                logger.warn('Venue does not exist or is inactive', { venue_id: venueId });
+            }
+
+            return exists;
+        } 
+        catch (error) 
+        {
+            logger.error('Error checking venue existence', error);
+            throw error;
+        }
+        finally
+        {
+            if (conn)
+            {
+                conn.release();
+            }
+        }
+    }
+}

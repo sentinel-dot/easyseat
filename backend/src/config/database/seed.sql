@@ -13,12 +13,12 @@ DELETE FROM staff_services;
 DELETE FROM services;
 DELETE FROM staff_members;
 
-DELETE FROM business;
+DELETE FROM venues;
 
 
 -- Reset auto increment counters
 
-ALTER TABLE business AUTO_INCREMENT = 1;
+ALTER TABLE venues AUTO_INCREMENT = 1;
 
 ALTER TABLE staff_members AUTO_INCREMENT = 1;
 ALTER TABLE services AUTO_INCREMENT = 1;
@@ -29,26 +29,26 @@ ALTER TABLE bookings AUTO_INCREMENT = 1;
 
 
 
--- Insert business
-INSERT INTO business (name, type, email, phone, address, city, postal_code, description, created_at, updated_at) VALUES
+-- Insert venues
+INSERT INTO venues (name, type, email, phone, address, city, postal_code, description, created_at, updated_at) VALUES
 ('Bella Vista Restaurant', 'restaurant', 'bella@vista.com', '+49 30 12345678', 'Hauptstraße 123', 'Berlin', '10115', 'Authentische italienische Küche im Herzen Berlins', NOW(), NOW()),
 ('Salon Schmidt', 'hair_salon', 'info@salon-schmidt.com', '+49 30 87654321', 'Friedrichstraße 456', 'Berlin', '10117', 'Moderner Friseursalon mit erfahrenen Stylisten', NOW(), NOW());
 
 
 
 -- Insert restaurant services (tables)
-INSERT INTO services (business_id, name, description, duration_minutes, price, capacity, requires_staff, created_at, updated_at) VALUES
+INSERT INTO services (venue_id, name, description, duration_minutes, price, capacity, requires_staff, created_at, updated_at) VALUES
 (1, 'Tisch für 2 Personen', 'Gemütlicher Tisch für zwei Personen', 120, 0.00, 2, FALSE, NOW(), NOW()),
 (1, 'Tisch für 4 Personen', 'Perfekt für kleine Gruppen', 120, 0.00, 4, FALSE, NOW(), NOW()),
 (1, 'Großer Tisch (6-8 Personen)', 'Ideal für Familienfeiern', 150, 0.00, 8, FALSE, NOW(), NOW());
 
 -- Insert staff members for hair salon
-INSERT INTO staff_members (business_id, name, email, description, created_at, updated_at) VALUES
+INSERT INTO staff_members (venue_id, name, email, description, created_at, updated_at) VALUES
 (2, 'Anna Schmidt', 'anna@salon-schmidt.com', 'Spezialistin für Damenhaarschnitte und Colorationen', NOW(), NOW()),
 (2, 'Klaus Meyer', 'klaus@salon-schmidt.com', 'Experte für Herrenschnitte und Bärte', NOW(), NOW());
 
 -- Insert hair salon services
-INSERT INTO services (business_id, name, description, duration_minutes, price, capacity, requires_staff, created_at, updated_at) VALUES
+INSERT INTO services (venue_id, name, description, duration_minutes, price, capacity, requires_staff, created_at, updated_at) VALUES
 (2, 'Herrenhaarschnitt', 'Klassischer Herrenhaarschnitt mit Styling', 45, 35.00, 1, TRUE, NOW(), NOW()),
 (2, 'Damenhaarschnitt', 'Schnitt und Styling für Damen', 90, 55.00, 1, TRUE, NOW(), NOW()),
 (2, 'Coloration', 'Professionelle Haarfärbung', 180, 95.00, 1, TRUE, NOW(), NOW());
@@ -63,7 +63,7 @@ INSERT INTO staff_services (staff_member_id, service_id, created_at) VALUES
 (2, 4, NOW());
 
 -- Insert availability rules for restaurant (Mo-So)
-INSERT INTO availability_rules (business_id, day_of_week, start_time, end_time, created_at) VALUES
+INSERT INTO availability_rules (venue_id, day_of_week, start_time, end_time, created_at) VALUES
 -- Montag nur Abend
 (1, 1, '17:00', '22:00', NOW()),
 -- Dienstag bis Sonntag ganztags
@@ -92,7 +92,7 @@ INSERT INTO availability_rules (staff_member_id, day_of_week, start_time, end_ti
 -- Insert test bookings for tomorrow
 -- Note: In a real application, you would calculate tomorrow's date dynamically
 -- For this seed, we'll use a specific future date
-INSERT INTO bookings (business_id, service_id, staff_member_id, customer_name, customer_email, customer_phone, booking_date, start_time, end_time, party_size, status, special_requests, total_amount, created_at, updated_at) VALUES
+INSERT INTO bookings (venue_id, service_id, staff_member_id, customer_name, customer_email, customer_phone, booking_date, start_time, end_time, party_size, status, special_requests, total_amount, created_at, updated_at) VALUES
 -- Restaurant booking
 (1, 2, NULL, 'Familie Müller', 'mueller@example.com', '+49 170 1234567', DATE_ADD(CURDATE(), INTERVAL 1 DAY), '19:00', '21:00', 4, 'confirmed', 'Vegetarische Optionen gewünscht', NULL, NOW(), NOW()),
 -- Hair salon booking

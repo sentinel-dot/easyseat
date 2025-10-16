@@ -1,4 +1,4 @@
-// API Response types
+
 export interface ApiResponse<T> {
     success: boolean;
     message?: string;
@@ -6,6 +6,38 @@ export interface ApiResponse<T> {
     error?: string;
 }
 
+
+// Service Types
+export interface Service {
+  id: number;
+  business_id: number;
+  name: string;
+  description?: string;
+  duration_minutes: number;
+  price?: number;
+  capacity: number;
+  requires_staff: boolean;
+  is_active: boolean;
+  created_at: Date;
+  updated_at: Date;
+}
+
+
+// Staff-Member Types
+export interface StaffMember {
+  id: number;
+  business_id: number;
+  name: string;
+  email?: string;
+  phone?: string;
+  description?: string;
+  is_active: boolean;
+  created_at: Date;
+  updated_at: Date;
+}
+
+
+// Venue Types
 export interface Venue {
     id: number;
     name: string;
@@ -28,33 +60,22 @@ export interface Venue {
     updated_at: Date;
 }
 
-export interface StaffMember {
-  id: number;
-  business_id: number;
-  name: string;
-  email?: string;
-  phone?: string;
-  description?: string;
-  is_active: boolean;
-  created_at: Date;
-  updated_at: Date;
-}
-
-export interface Service {
-  id: number;
-  business_id: number;
-  name: string;
-  description?: string;
-  duration_minutes: number;
-  price?: number;
-  capacity: number;
-  requires_staff: boolean;
-  is_active: boolean;
-  created_at: Date;
-  updated_at: Date;
-}
-
 export interface VenueWithStaff extends Venue {
   staff_members: StaffMember[];
   services: Service[];
+}
+
+
+// Availability Types
+export interface TimeSlot {
+  start_time: string;
+  end_time: string;
+  available: boolean;
+  staff_member_id?: number;
+}
+
+export interface DayAvailability {
+  date: Date;
+  day_of_week: number;
+  time_slots: TimeSlot[];
 }
