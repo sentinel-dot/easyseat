@@ -1,5 +1,5 @@
 -- MySQL Seed Data for OpenTable Clone
-USE bookdb;
+USE easyseatdb;
 
 -- Disable foreign key checks temporarily for easier insertion
 SET FOREIGN_KEY_CHECKS = 0;
