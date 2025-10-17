@@ -16,3 +16,7 @@ Create Database on Ubuntu
 7. FLUSH PRIVILEGES;
 8. das schema einspielen
 9. das seed einspielen
+
+Jest mit Supertest für automatisierte Unit- und Integrationstests
+cd backend
+npm install -D jest @types/jest ts-jest supertest @types/supertest

@@ -710,28 +710,46 @@ export class AvailabilityService
     static async isValidVenue(venueId: number): Promise<boolean>
     {
         logger.debug('Validating venue ...');
-        let conn = await pool.getConnection();
+        let conn;
 
-        const venues = await conn.query(`
-            SELECT id
-            FROM venues
-            WHERE id = ?
-            AND is_active = true`,
-            [venueId]
-        ) as { id: number }[];;
-
-        const isValid = venues.length > 0;
-
-        if (!isValid)
+        try 
         {
-            logger.warn('Invalid or inactive venue');
-        }
-        else
-        {
-            logger.debug('Venue is valid');
-        }
+            conn = await pool.getConnection();
+            
+            const venues = await conn.query(`
+                SELECT id
+                FROM venues
+                WHERE id = ?
+                AND is_active = true`,
+                [venueId]
+            ) as { id: number }[];;
 
-        return isValid;
+            const isValid = venues.length > 0;
+
+            if (!isValid)
+            {
+                logger.warn('Invalid or inactive venue');
+            }
+            else
+            {
+                logger.debug('Venue is valid');
+            }
+
+            return isValid;
+        } 
+        catch (error) 
+        {
+            logger.error('Error validating venue', error);
+            throw error;
+        }
+        finally
+        {
+            if (conn)
+            {
+                conn.release();
+                logger.debug('Database connection released');
+            }
+        }
     }
 
 
@@ -742,32 +760,49 @@ export class AvailabilityService
     {
         logger.debug('Fetching service details...');
         
-        let conn = await pool.getConnection();
-
-        // Eigentlich noch buffer_before_minutes & buffer_after_minutes nach requires_staff, ABER MVP
-        const services = await conn.query(`
-            SELECT id, venue_id, name, description, duration_minutes, 
-                price, capacity, requires_staff, is_active
-            FROM services
-            WHERE id = ?
-            AND venue_id = ?
-            AND is_active = true`,
-            [serviceId, venueId]
-        ) as Service[];
-
-        const service = services.length > 0 ? services[0] : null;
-
-        if (!service) 
+        let conn;
+        try 
         {
-            logger.warn('Service not found or inactive');
-        } 
-        else 
-        {
-            logger.debug(`Service details fetched`, service);
+            conn = await pool.getConnection();
+
+            // Eigentlich noch buffer_before_minutes & buffer_after_minutes nach requires_staff, ABER MVP
+            const services = await conn.query(`
+                SELECT id, venue_id, name, description, duration_minutes, 
+                    price, capacity, requires_staff, is_active
+                FROM services
+                WHERE id = ?
+                AND venue_id = ?
+                AND is_active = true`,
+                [serviceId, venueId]
+            ) as Service[];
+
+            const service = services.length > 0 ? services[0] : null;
+
+            if (!service) 
+            {
+                logger.warn('Service not found or inactive');
+            } 
+            else 
+            {
+                logger.debug(`Service details fetched`, service);
+            }
+
+            // Return Service OR null
+            return service;
         }
-
-        // Return Service OR null
-        return service;
+        catch (error)
+        {
+            logger.error('Error fetching service details', error);
+            throw error;
+        }
+        finally
+        {
+            if (conn)
+            {
+                conn.release();
+                logger.debug('Database connection released');
+            }
+        }
     }
 
 
@@ -781,34 +816,51 @@ export class AvailabilityService
             service_id: serviceId
         });
 
-        let conn = await pool.getConnection();
-
-        // Suche Verknüpfung zwischen Mitarbeiter und Service
-        // Gibt nur ein Ergebnis zurück, wenn der Mitarbeiter aktiv ist und den Service anbietet
-        const staffServices = await conn.query(`
-            SELECT ss.id
-            FROM staff_services ss
-            JOIN staff_members sm
-            ON ss.staff_member_id = sm.id
-            WHERE ss.staff_member_id = ?
-            AND ss.service_id = ?
-            AND sm.is_active = true`,
-            [staffMemberId, serviceId]
-        ) as { id: number }[];
-
-        const canPerform = staffServices.length > 0;
-
-        if (!canPerform) 
+        let conn;
+        try
         {
-            logger.warn(`Staff member cannot perform service`);
-        } 
-        else 
-        {
-            logger.debug(`Staff member can perform service`);
+            conn = await pool.getConnection();
+
+            // Suche Verknüpfung zwischen Mitarbeiter und Service
+            // Gibt nur ein Ergebnis zurück, wenn der Mitarbeiter aktiv ist und den Service anbietet
+            const staffServices = await conn.query(`
+                SELECT ss.id
+                FROM staff_services ss
+                JOIN staff_members sm
+                ON ss.staff_member_id = sm.id
+                WHERE ss.staff_member_id = ?
+                AND ss.service_id = ?
+                AND sm.is_active = true`,
+                [staffMemberId, serviceId]
+            ) as { id: number }[];
+
+            const canPerform = staffServices.length > 0;
+
+            if (!canPerform) 
+            {
+                logger.warn(`Staff member cannot perform service`);
+            } 
+            else 
+            {
+                logger.debug(`Staff member can perform service`);
+            }
+
+            // Return true, wenn Mitarbeiter diesen Service anbietet
+            return canPerform;
         }
-
-        // Return true, wenn Mitarbeiter diesen Service anbietet
-        return canPerform;
+        catch (error)
+        {
+            logger.error('Error checking staff service', error);
+            throw error;
+        }
+        finally
+        {
+            if (conn)
+            {
+                conn.release();
+                logger.debug('Database connection released');
+            }
+        }
     }
 
 
