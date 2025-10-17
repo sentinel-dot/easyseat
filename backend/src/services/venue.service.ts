@@ -47,7 +47,7 @@ export class VenueService
                 ORDER BY name ASC`
             ) as Venue[];
         
-            logger.info(`Venues fetched successfully`);
+            logger.info(`${venues.length} Venues fetched successfully`);
         
             return venues;
         } 
@@ -71,7 +71,7 @@ export class VenueService
      */
     static async getVenueById(venueId: number): Promise<VenueWithStaff | null>
     {
-        logger.info(`Fetching venue by ID`);
+        logger.info(`Fetching venue by ID ${venueId}`);
 
         let conn;
         try 
@@ -98,10 +98,7 @@ export class VenueService
             }
 
             const venue = venues[0];
-            logger.debug('Venue found', { 
-                venue_id: venueId, 
-                venue_name: venue.name 
-            });
+            //logger.debug('Venue found');
 
             // Services abrufen
             const services = await conn.query(`
@@ -132,14 +129,13 @@ export class VenueService
                 staff_members: staffMembers
             };
 
-            logger.info('Venue details fetched successfully');
+            logger.info('Venue details fetched successfully', venueWithDetails);
 
             return venueWithDetails;
         } 
         catch (error) 
         {
             logger.error('Error fetching venue by ID', error);
-            
             throw error;
         }
         finally
@@ -152,12 +148,15 @@ export class VenueService
         }
     }
 
+
+
+
     /**
      * Prüft ob Venue existiert und aktiv ist
      */
     static async venueExists(venueId: number): Promise<boolean>
     {
-        logger.debug('Checking if venue exists', { venue_id: venueId });
+        logger.debug(`Checking if venue [${venueId}] exists...`);
 
         let conn;
         try 
@@ -177,7 +176,7 @@ export class VenueService
 
             if (!exists) 
             {
-                logger.warn('Venue does not exist or is inactive', { venue_id: venueId });
+                logger.warn('Venue does not exist or is inactive');
             }
 
             return exists;

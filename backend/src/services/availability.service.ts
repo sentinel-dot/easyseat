@@ -9,7 +9,7 @@ import {
     Service,
     StaffMember
 } from '../config/utils/types';
-import { connect } from 'http2';
+
 
 const logger = createLogger('availability.service');
 
@@ -138,7 +138,16 @@ export class AvailabilityService
         excludeBookingId?: number       // Optional: Buchung die ignoriert werden soll (für Updates)
     ): Promise<{ available: boolean; reason?: string }> 
     {
-        logger.info('Validating slot availability...');
+        logger.info('Validating slot availability...',{
+            venue_id: venueId,
+            service_id: serviceId,
+            staff_member_id: staffMemberId,
+            date: date,
+            start_time: startTime,
+            end_time: endTime,
+            party_size: partySize,
+            exclude_booking_id: excludeBookingId
+        });
 
         let conn;
         try 
@@ -160,6 +169,7 @@ export class AvailabilityService
             if (services.length === 0)
             {
                 logger.warn('Service not found or inactive');
+
                 return {
                     available: false,
                     reason: 'Service not found or inactive'
@@ -175,6 +185,7 @@ export class AvailabilityService
             if (partySize > service.capacity)
             {
                 logger.warn(`Party size exceeds capacity (max: ${service.capacity})`);
+
                 return {
                     available: false,
                     reason: `Party size exceeds capacity (max: ${service.capacity})`
@@ -206,6 +217,7 @@ export class AvailabilityService
                 if (staffRules.length === 0)
                 {
                     logger.warn('Staff not available on this day');
+
                     return {
                         available: false,
                         reason: 'Staff not available on this day'
@@ -223,6 +235,7 @@ export class AvailabilityService
                 if (!isWithinStaffHours)
                 {
                     logger.warn('Requested time is outside staff working hours');
+
                     return {
                         available: false,
                         reason: 'Requested time is outside staff working hours'
@@ -245,6 +258,7 @@ export class AvailabilityService
                 if (venueRules.length === 0)
                 {
                     logger.warn('Venue closed on this day');
+
                     return {
                         available: false,
                         reason: 'Venue closed on this day'
@@ -263,6 +277,7 @@ export class AvailabilityService
                 if (!isWithinVenueHours)
                 {
                     logger.warn('Requested time is outside venue working hours');
+
                     return {
                         available: false,
                         reason: 'Requested time is outside venue working hours'
@@ -368,6 +383,7 @@ export class AvailabilityService
 
                     // Slot bereits gebucht
                     logger.warn('Time slot already booked');
+
                     return {
                         available: false,
                         reason: 'Time slot already booked'
@@ -377,6 +393,7 @@ export class AvailabilityService
 
             // Alles ok - Slot verfügbarValidating isTimeSlotAvailable...
             logger.info('Time slot availability check passed');
+
             return {
                 available: true
             };
@@ -411,7 +428,11 @@ export class AvailabilityService
         date: string                // Datum im Format YYYY-MM-DD
     ): Promise<DayAvailability>
     {
-        logger.info('Getting available slots...');
+        logger.info('Getting available slots...', {
+            venue_id: venueId,
+            service_id: serviceId,
+            date: date
+        });
 
         let conn;
         try
@@ -651,15 +672,15 @@ export class AvailabilityService
             const available_slots = uniqueSlots.filter(s => s.available).length;
             const total_slots = uniqueSlots.length;
 
-            logger.info(`${available_slots}/${total_slots} Available slots fetched successfully`);
 
-            /*
-                logger.debug(`${available_slots}/${total_slots} Available slots fetched successfully`, {
+            /*  
+                logger.info(`${available_slots}/${total_slots} Available slots fetched successfully`, {
                     total_slots: uniqueSlots.length,
                     available_slots: uniqueSlots.filter(s => s.available).length,
                     unavailable_slots: uniqueSlots.filter(s => !s.available).length
                 });
             */
+           logger.info(`${available_slots} Available (${total_slots} total) slots fetched successfully`);
 
             // Return Day-Availability
             return {
@@ -689,7 +710,7 @@ export class AvailabilityService
      */
     static async isValidVenue(venueId: number): Promise<boolean>
     {
-        logger.debug('Validating venue...');
+        logger.debug('Validating venue ...');
         let conn = await pool.getConnection();
 
         const venues = await conn.query(`
@@ -720,10 +741,7 @@ export class AvailabilityService
      */
     static async getServiceDetails(serviceId: number, venueId: number): Promise<Service | null>
     {
-        logger.debug('Fetching service details', {
-            service_id: serviceId,
-            venue_id: venueId
-        });
+        logger.debug('Fetching service details...');
         
         let conn = await pool.getConnection();
 
@@ -742,17 +760,11 @@ export class AvailabilityService
 
         if (!service) 
         {
-            logger.warn('Service not found or inactive', {
-                service_id: serviceId,
-                venue_id: venueId
-            });
+            logger.warn('Service not found or inactive');
         } 
         else 
         {
-            logger.debug('Service details fetched', {
-                service_id: serviceId,
-                service_name: service.name
-            });
+            logger.debug(`Service details fetched`, service);
         }
 
         // Return Service OR null
@@ -765,7 +777,7 @@ export class AvailabilityService
      */
     static async canStaffPerformService(staffMemberId: number, serviceId: number): Promise<boolean>
     {
-        logger.debug('Checking if staff can perform service', {
+        logger.debug('Checking if staff can perform service...', {
             staff_member_id: staffMemberId,
             service_id: serviceId
         });
@@ -783,23 +795,17 @@ export class AvailabilityService
             AND ss.service_id = ?
             AND sm.is_active = true`,
             [staffMemberId, serviceId]
-        ) as { id: number }[];;
+        ) as { id: number }[];
 
         const canPerform = staffServices.length > 0;
 
         if (!canPerform) 
         {
-            logger.warn('Staff member cannot perform service', {
-                staff_member_id: staffMemberId,
-                service_id: serviceId
-            });
+            logger.warn(`Staff member cannot perform service`);
         } 
         else 
         {
-            logger.debug('Staff member can perform service', {
-                staff_member_id: staffMemberId,
-                service_id: serviceId
-            });
+            logger.debug(`Staff member can perform service`);
         }
 
         // Return true, wenn Mitarbeiter diesen Service anbietet
@@ -816,7 +822,11 @@ export class AvailabilityService
         startDate: string           // Startdatum der Woche
     ): Promise<DayAvailability[]>
     {
-        logger.info('Fetching week availability');
+        logger.info('Fetching week availability...', {
+            venue_id: venueId,
+            service_id: serviceId,
+            start_date: startDate
+        });
 
         try
         {
@@ -898,7 +908,7 @@ export class AvailabilityService
         excludeBookingId?: number       // Optional: zu ignorierende Buchungs-ID
     ): Promise<{ valid: boolean; errors: string[] }>
     {
-        logger.info('Validating Booking-Request...', {
+        logger.info('Validating booking request...', {
             venue_id: venueId,
             service_id: serviceId,
             staff_member_id: staffMemberId,
@@ -923,7 +933,7 @@ export class AvailabilityService
             }
 
             // Prüfe, ob Endzeit nach Startzeit liegt
-            if (this.timeStringToMinutes(endTime) <= this.timeStringToMinutes(endTime))
+            if (this.timeStringToMinutes(endTime) <= this.timeStringToMinutes(startTime))
             {
                 logger.warn('End time must be after start time');
                 errors.push('End time must be after start time');
@@ -946,6 +956,7 @@ export class AvailabilityService
             {
                 logger.warn('Service not found or inactive', errors);
                 errors.push('Service not found or inactive');
+
                 return {
                     valid: false,
                     errors
@@ -1000,15 +1011,16 @@ export class AvailabilityService
             logger.error('Error validating booking request', error);
             errors.push('Error validating booking request');
         }
+        
 
         // Log Ergebnis bevor Return
         if (errors.length === 0)
         {
-            logger.info('Booking-Request validation passed')
+            logger.info('Booking request validation passed')
         }
         else
         {
-            logger.warn('Booking-Request validation failed', {
+            logger.warn('Booking request validation failed', {
                 error_count: errors.length,
                 errors: errors
             });

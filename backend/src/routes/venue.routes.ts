@@ -19,9 +19,6 @@ router.get('/', async (req, res) =>
     {
         const venues = await VenueService.getAllVenues();
 
-        logger.info(`${venues.length} venue${venues.length !== 1 ? 's' : ''} found`);
-        logger.separator();
-
         res.json({
             success: true,
             message: `${venues.length} venue${venues.length !== 1 ? 's' : ''} found`,
@@ -29,15 +26,17 @@ router.get('/', async (req, res) =>
         } as ApiResponse<Venue[]>);
     } 
     catch (error) 
-    {
-        logger.error('Failed to retrieve venues', error);
-        logger.separator();
-        
+    {     
         res.status(500).json({
             success: false,
             message: 'Failed to retrieve venues',
             error: process.env.NODE_ENV === 'development' ? String(error) : undefined
         } as ApiResponse<void>);
+    }
+    finally
+    {
+        logger.info('Response sent');
+        logger.separator();
     }
 });
 
@@ -48,14 +47,16 @@ router.get('/', async (req, res) =>
 router.get('/:id', async (req, res) => 
 {
     logger.separator();
+    logger.info(`Received request - GET /venues/id`);
+
     const id = parseInt(req.params.id);
-    logger.info(`Received request - GET /venues/${id}`);
 
     // Validierung
     if (isNaN(id) || id <= 0)
     {
         logger.warn('Invalid venue ID provided', { provided_id: req.params.id });
-        
+        logger.separator();
+
         return res.status(400).json({
             success: false,
             message: 'Invalid venue ID'
@@ -68,20 +69,11 @@ router.get('/:id', async (req, res) =>
 
         if (!venue)
         {
-            logger.warn('Venue not found', { venue_id: id });
-
             return res.status(404).json({
                 success: false,
                 message: 'Venue not found'
             } as ApiResponse<void>);
         }
-
-        logger.info('Venue details retrieved successfully', {
-            venue_id: id,
-            services_count: venue.services.length,
-            staff_count: venue.staff_members.length
-        });
-        logger.separator();
 
         res.json({
             success: true,
@@ -101,6 +93,7 @@ router.get('/:id', async (req, res) =>
     }
     finally
     {
+        logger.info('Response sent');
         logger.separator();
     }
 });
