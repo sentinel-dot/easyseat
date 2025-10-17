@@ -6,8 +6,7 @@ import { createLogger } from '../config/utils/logger';
 import {
     TimeSlot,
     DayAvailability,
-    Service,
-    StaffMember
+    Service
 } from '../config/utils/types';
 
 

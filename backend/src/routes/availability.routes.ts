@@ -1,6 +1,7 @@
 import express, { Request, Response } from 'express';
 import { AvailabilityService } from '../services/availability.service';
 import { createLogger } from '../config/utils/logger';
+import { ApiResponse, DayAvailability, Service } from '../config/utils/types';
 
 
 const router = express.Router();
@@ -29,8 +30,9 @@ router.get('/slots', async (req, res) =>
         logger.separator();
 
         return res.status(400).json({
-            error: 'Missing one or more required parameters: venueId, serviceId, date'
-        });
+            success: false,
+            message: 'Missing one or more required parameters: venueId, serviceId, date'
+        } as ApiResponse<void>);
     }
 
     try {
@@ -41,12 +43,20 @@ router.get('/slots', async (req, res) =>
             date as string
         );
 
-        res.json(dayAvailability);
+        res.json({
+            success: true,
+            message: 'Available slots retrieved successfully',
+            data: dayAvailability
+        } as ApiResponse<DayAvailability>);
     } 
     catch (error) 
     {
         logger.error('Error fetching slots', error);
-        res.status(500).json({ error: 'Failed to fetch available slots' });
+        res.status(500).json({
+            success: false,
+            message: 'Failed to fetch available slots',
+            error: process.env.NODE_ENV === 'development' ? String(error) : undefined
+        } as ApiResponse<void>);
     }
     finally
     {
@@ -76,8 +86,9 @@ router.get('/week', async (req, res) =>
         logger.separator();
 
         return res.status(400).json({
-            error: 'Missing one or more required params: venueId, serviceId, startDate'
-        });
+            success: false,
+            message: 'Missing one or more required params: venueId, serviceId, startDate'
+        } as ApiResponse<void>);
     }
 
     try 
@@ -88,12 +99,20 @@ router.get('/week', async (req, res) =>
             startDate as string
         );
 
-        res.json(weekAvailability);
+        res.json({
+            success: true,
+            message: 'Week availability retrieved successfully',
+            data: weekAvailability
+        } as ApiResponse<DayAvailability[]>);
     } 
     catch (error) 
     {
         logger.error('Error fetching week availability', error);
-        res.status(500).json({ error: 'Failed to fetch week availability'} );      
+        res.status(500).json({
+            success: false,
+            message: 'Failed to fetch week availability',
+            error: process.env.NODE_ENV === 'development' ? String(error) : undefined
+        } as ApiResponse<void>);      
     }
     finally
     {
@@ -134,8 +153,9 @@ router.post('/check', async (req, res) =>
         logger.separator();
 
         return res.status(400).json({
-            error: 'Missing one or more required fields'
-        });
+            success: false,
+            message: 'Missing one or more required fields'
+        } as ApiResponse<void>);
     }
 
     try 
@@ -151,14 +171,20 @@ router.post('/check', async (req, res) =>
             excludeBookingId ? Number(excludeBookingId) : undefined
         );
         
-        res.json(result);
+        res.json({
+            success: true,
+            message: result.available ? 'Time slot is available' : 'Time slot is not available',
+            data: result
+        } as ApiResponse<{ available: boolean; reason?: string}>);
     } 
     catch (error) 
     {
         logger.error('Error checking slot availability', error);
         res.status(500).json({
-            error: 'Failed to check slot availability'
-        });
+            success: false,
+            message: 'Failed to check slot availability',
+            error: process.env.NODE_ENV === 'development' ? String(error) : undefined
+        } as ApiResponse<void>);
     }
     finally
     {
@@ -207,8 +233,9 @@ router.post('/validate', async (req, res) =>
         logger.separator();
         
         return res.status(400).json({
-            error: 'Missing one or more required fiels: venueId, serviceId, bookingDate, startTime, endTime, partySize'
-        });
+            success: false,
+            message: 'Missing one or more required fiels: venueId, serviceId, bookingDate, startTime, endTime, partySize'
+        } as ApiResponse<void>);
     }
 
     try 
@@ -227,24 +254,28 @@ router.post('/validate', async (req, res) =>
         if (validation.valid)
         {
             res.json({
-                valid: true,
-                message: 'Booking request is valid'
-            });
+                success: true,
+                message: 'Booking request is valid',
+                data: validation
+            } as ApiResponse<{ valid: boolean; errors?: string[] }>);
         }
         else
         {
             res.status(400).json({
-                valid: false,
-                errors: validation.errors
-            });
+                success: false,
+                message: 'Booking request validation failed',
+                data: validation
+            } as ApiResponse<{ valid: boolean; errors?: string[] }>);
         }
     } 
     catch (error) 
     {
         logger.error('Error validating booking request');
         res.status(500).json({
-            error: 'Failed to validate booking'
-        });
+            success: false, 
+            message: 'Failed to validate booking',
+            error: process.env.NODE_ENV === 'development' ? String(error) : undefined
+        } as ApiResponse<void>);
     }
     finally
     {
@@ -275,8 +306,9 @@ router.get('/service/:serviceId', async (req: Request<{ serviceId: string }>, re
         logger.separator();
         
         return res.status(400).json({
-            error: 'Missing required param: venueId'
-        });
+            success: false,
+            message: 'Missing required param: venueId'
+        } as ApiResponse<void>);
     }
 
     try 
@@ -289,19 +321,25 @@ router.get('/service/:serviceId', async (req: Request<{ serviceId: string }>, re
         if (!service)
         {
             return res.status(404).json({
-                error: 'Service not found'
-            });
+                success: false,
+                message: 'Service not found'
+            } as ApiResponse<void>);
         }
 
-        res.json(service);
+        res.json({
+            success: true,
+            message: 'Service details retrieved successfully',
+            data: service
+        } as ApiResponse<Service>);
     } 
     catch (error) 
     {
         logger.error('Error fetching service details', error);
-        res.status(500).json({ 
-                error: 'Failed to fetch service details'
-            } 
-        );
+        res.status(500).json({
+            success: false,
+            message: 'Failed to fetch service details',
+            error: process.env.NODE_ENV === 'development' ? String(error) : undefined
+        } as ApiResponse<void>);
     }
     finally
     {
@@ -331,14 +369,22 @@ router.get('/staff/:staffId/can-perform/:serviceId', async (req, res) =>
             Number(serviceId)
         );
 
-        res.json({ canPerform });
+        res.json({
+            success: true,
+            message: canPerform
+                ? 'Staff member can perform this service'
+                : 'Staff member cannot perform this service',
+            data: { canPerform }
+        } as ApiResponse<{ canPerform: boolean }>);
     } 
     catch (error) 
     {
         logger.error('Error checking staff service availability', error);
         res.status(500).json({
-            error: 'Failed to check staff capability'
-        });
+            success: false,
+            message: 'Failed to check staff capability',
+            error: process.env.NODE_ENV === 'development' ? String(error) : undefined
+        } as ApiResponse<void>);
     }
     finally
     {
