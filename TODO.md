@@ -1,0 +1,1 @@
+- Sobald SMTP ready ist, bei booking.service.ts unter confirmBooking eine Mail senden
