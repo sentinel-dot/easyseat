@@ -3,6 +3,7 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 
 import { createLogger } from './config/utils/logger';
+import { testConnection, setupGracefulShutdown } from './config/database';
 
 import venueRoutes from './routes/venue.routes';
 import availabilityRoutes from './routes/availability.routes'
@@ -62,12 +63,36 @@ app.use((req, res) =>
     logger.warn(`Route ${req.originalUrl} not found`)
 });
 
+// Error Handler (MUSS nach allen anderen Routes kommen)
+app.use((err: Error, req: express.Request, res: express.Response, next: express.NextFunction) => {
+    logger.error('Unhandled error', err);
+    
+    res.status(500).json({
+        success: false,
+        message: 'Internal server error',
+        error: process.env.NODE_ENV === 'development' ? err.message : undefined
+    });
+});
+
 const startServer = async() => {
     logger.separator();
     logger.separator();
     logger.separator();
     logger.info('Starting server...')
-    try {
+    try 
+    {
+        // Teste Datenbankverbindung VOR dem Start
+        const dbConnected = await testConnection();
+        
+        if (!dbConnected) {
+            logger.error('Failed to connect to database. Exiting...');
+            process.exit(1);
+        }
+
+        // Setup Graceful Shutdown Handler
+        setupGracefulShutdown();
+
+
         app.listen(PORT, () => {
             logger.info(`🚀 Backend-Server running on http://localhost:${PORT}`);
             logger.info(`🌍 Environment: ${process.env.NODE_ENV}`);
