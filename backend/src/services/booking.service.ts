@@ -17,10 +17,6 @@ import {
     CreateBookingData,
     UpdateBookingData
  } from "../config/utils/types";
-import { only } from "node:test";
-import { log } from "console";
-import { start } from "repl";
-import { finalization } from "process";
 
  const logger = createLogger('booking.service');
 
