@@ -327,7 +327,7 @@ import {
                 query += ' AND b.booking_date >= CURDATE()';
             }
 
-            query += ' ORDER BY b.booking_date DESC, b.start_time DESC'
+            query += ' ORDER BY b.booking_date DESC, b.start_time DESC';
 
             const bookings = await conn.query(query, params) as Booking[];
 
@@ -398,7 +398,7 @@ import {
             if (isTimeChange)
             {
                 // Nutze die neuen Werte oder behalte die alten
-                const dateToCheck = updateData.booking_date || currentBooking.bokoing_date;
+                const dateToCheck = updateData.booking_date || currentBooking.booking_date;
                 const startTimeToCheck = updateData.start_time || currentBooking.start_time;
                 const endTimeToCheck = updateData.end_time || currentBooking.end_time;
                 const partySizeToCheck = updateData.party_size || currentBooking.party_size;
@@ -547,17 +547,74 @@ import {
      */
     static async cancelBooking(
         bookingId: number,
-        reason?: string
+        reason?: string,
+        bypassPolicy: boolean = false  // Für Admin-Stornierungen
     ): Promise<Booking>
     {
-        logger.info(`Cancelling booking ${bookingId}...`, { reason });
+        logger.info(`Cancelling booking ${bookingId}...`, { reason, bypassPolicy });
 
-        // Nutze die updateBooking Methode für Stornierung
-        return this.updateBooking(bookingId, {
-            status: 'cancelled',
-            cancellation_reason: reason
-        });
+        let conn;
+        try 
+        {
+            conn = await getConnection();
+            
+            // SCHRITT 1: Hole Buchung mit Venue-Daten
+            const bookings = await conn.query(`
+                SELECT 
+                    b.*,
+                    v.cancellation_hours
+                FROM bookings b
+                JOIN venues v ON b.venue_id = v.id
+                WHERE b.id = ?
+            `, [bookingId]) as Array<Booking & { cancellation_hours: number }>;
+
+            if (bookings.length === 0) {
+                throw new Error('Booking not found');
+            }
+
+            const booking = bookings[0];
+
+            // SCHRITT 2: Prüfe Stornierungsfrist (außer bei Admin-Bypass)
+            if (!bypassPolicy) 
+            {
+                const bookingDateTime = new Date(`${booking.booking_date}T${booking.start_time}`);
+                const now = new Date();
+                const hoursUntilBooking = (bookingDateTime.getTime() - now.getTime()) / (1000 * 60 * 60);
+
+                if (hoursUntilBooking < booking.cancellation_hours) 
+                {
+                    logger.warn('Cancellation too late', {
+                        hoursUntilBooking,
+                        required: booking.cancellation_hours
+                    });
+                    throw new Error(
+                        `Cancellation must be made at least ${booking.cancellation_hours} hours in advance. ` +
+                        `Only ${Math.round(hoursUntilBooking)} hours remaining.`
+                    );
+                }
+            }
+
+            // SCHRITT 3: Storniere
+            conn.release();  // Release alte Connection
+            return this.updateBooking(bookingId, {
+                status: 'cancelled',
+                cancellation_reason: reason
+            });
+        } 
+        catch (error) 
+        {
+            logger.error('Error cancelling booking', error);
+            throw error;
+        }
+        finally
+        {
+            if (conn)
+            {
+                conn.release();
+            }
+        }
     }
+
 
 
 

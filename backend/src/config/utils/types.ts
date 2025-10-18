@@ -96,12 +96,12 @@ export interface Booking
   customer_name: string;
   customer_email: string;
   customer_phone?: string | null;
-  bokoing_date: string;                         // Format: YYYY-MM-DD
+  booking_date: string;                         // Format: YYYY-MM-DD
   start_time: string;                           // Format: HH:MM
   end_time: string;                             // Format: HH:MM
   party_size: number;                           // Anzahl Personen
   special_requests?: string | null;             // Besondere Wünsche des Kunden
-  status: 'pending' | 'confirmed' | 'cancelled' | 'completed' | 'so_show';
+  status: 'pending' | 'confirmed' | 'cancelled' | 'completed' | 'no_show';
   total_amount?: number | null;                 // Gesamtpreis
   deposit_paid?: number | null;                 // Anzahlung
   payment_status?: string | null;
