@@ -12,7 +12,10 @@
     "test:verbose": "jest --verbose",
     "test:venues": "jest venue.routes.test.ts",
     "test:availability": "jest availability.routes.test.ts",
-    "test:debug": "jest debug.availability.test.ts --verbose"
+    "test:debug": "jest debug.availability.test.ts --verbose",
+    "test:smoke": "jest smoke.test.ts",
+    "test:e2e": "jest e2e.booking.test.ts",
+    "test:quick": "jest smoke.test.ts --verbose"
   },
   "keywords": [],
   "author": "",
