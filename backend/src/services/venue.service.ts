@@ -1,5 +1,4 @@
 import dotenv from 'dotenv';
-import mariadb from 'mariadb';
 
 import { createLogger } from '../config/utils/logger';
 import { 
@@ -8,20 +7,11 @@ import {
     Service, 
     StaffMember 
 } from '../config/utils/types';
+import { getConnection } from '../config/database';
 
 const logger = createLogger('venue.service');
 
 dotenv.config({ path: '.env' });
-
-const mariadbSocket = '/run/mysqld/mysqld.sock';
-
-const pool = mariadb.createPool({
-    socketPath: mariadbSocket,
-    user: process.env.DB_USER,
-    password: process.env.DB_PASSWORD,
-    database: process.env.DB_NAME,
-    connectionLimit: 10,
-});
 
 export class VenueService 
 {
@@ -35,7 +25,7 @@ export class VenueService
         let conn;
         try 
         {
-            conn = await pool.getConnection();
+            conn = await getConnection();
             logger.debug('Database connection established');
 
             const venues = await conn.query(`
@@ -76,7 +66,7 @@ export class VenueService
         let conn;
         try 
         {
-            conn = await pool.getConnection();
+            conn = await getConnection();
             logger.debug('Database connection established');
 
             // Venue abrufen
@@ -161,7 +151,7 @@ export class VenueService
         let conn;
         try 
         {
-            conn = await pool.getConnection();
+            conn = await getConnection();
 
             const venues = await conn.query(`
                 SELECT id

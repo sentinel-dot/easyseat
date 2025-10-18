@@ -1,7 +1,7 @@
 import dotenv from 'dotenv';
-import mariadb from 'mariadb';
 
 import { createLogger } from '../config/utils/logger';
+import { getConnection } from '../config/database';
 
 import {
     TimeSlot,
@@ -13,17 +13,6 @@ import {
 const logger = createLogger('availability.service');
 
 dotenv.config({ path: '.env' });
-
-const mariadbSocket = '/run/mysqld/mysqld.sock';
-
-// const pool = createDatabaseConnection();
-const pool = mariadb.createPool({
-    socketPath: mariadbSocket,
-    user: process.env.DB_USER,
-    password: process.env.DB_PASSWORD,
-    database: process.env.DB_NAME,
-    connectionLimit: 10,
-});
 
 
 export class AvailabilityService 
@@ -151,7 +140,7 @@ export class AvailabilityService
         let conn;
         try 
         {
-            conn = await pool.getConnection();
+            conn = await getConnection();
             logger.debug('Database connection established');
 
             const services = await conn.query(`
@@ -439,7 +428,7 @@ export class AvailabilityService
             const requestedDate = new Date(date);
             const dayOfWeek = requestedDate.getDay();
 
-            conn = await pool.getConnection();
+            conn = await getConnection();
             logger.debug('Database connection established');
 
             // Eigentlich noch mit buffer_after_minutes nach requires_staff, ABER MVP
@@ -714,7 +703,7 @@ export class AvailabilityService
 
         try 
         {
-            conn = await pool.getConnection();
+            conn = await getConnection();
             
             const venues = await conn.query(`
                 SELECT id
@@ -763,7 +752,7 @@ export class AvailabilityService
         let conn;
         try 
         {
-            conn = await pool.getConnection();
+            conn = await getConnection();
 
             // Eigentlich noch buffer_before_minutes & buffer_after_minutes nach requires_staff, ABER MVP
             const services = await conn.query(`
@@ -819,7 +808,7 @@ export class AvailabilityService
         let conn;
         try
         {
-            conn = await pool.getConnection();
+            conn = await getConnection();
 
             // Suche Verknüpfung zwischen Mitarbeiter und Service
             // Gibt nur ein Ergebnis zurück, wenn der Mitarbeiter aktiv ist und den Service anbietet
