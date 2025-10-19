@@ -2,7 +2,7 @@
 
 -- Create database
 CREATE DATABASE IF NOT EXISTS easyseatdb;
-USE easyseatdbdb;
+USE easyseatdb;
 
 
 

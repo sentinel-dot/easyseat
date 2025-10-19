@@ -222,7 +222,7 @@ import { error } from "console";
                 FROM bookings b
                 LEFT JOIN services s ON b.service_id = s.id
                 LEFT JOIN staff_members sm ON b.staff_member_id = sm.id
-                WHERE b.venueId = ?
+                WHERE b.venue_id = ?
             `;
 
             // params ist ein array von entweder strings oder number
@@ -388,7 +388,7 @@ import { error } from "console";
                 throw new Error('Booking not found');
             }
 
-            //SCHRITT 2: Verfifiziere Email (Sicherheitsmaßnahme)
+            //SCHRITT 2: Verifiziere Email (Sicherheitsmaßnahme)
             if (currentBooking.customer_email !== customerEmail)
             {
                 logger.warn('Email verification failed for booking update');
