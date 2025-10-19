@@ -17,6 +17,7 @@ import {
     CreateBookingData,
     UpdateBookingData
  } from "../config/utils/types";
+import { error } from "console";
 
  const logger = createLogger('booking.service');
 
@@ -357,158 +358,153 @@ import {
      * AKTUALISIERE BUCHUNG
      * 
      * Erlaubt das Ändern von Buchungsdetails (Datum, Zeit, Personenzahl, etc.)
-     * Bei Zeitänderungen wird automatisch die Verfügbarkeit geprüft
+     * Prüft bei Änderung von Datum/Zeit die Verfügbarkeit neu
+     * Setzt reminder_sent_at zurück, wenn Datum/Zeit geändert wird
      * 
      * @param bookingId - ID der zu aktualisierenden Buchung
-     * @param updateData - Objekt mit den zu ändernden Feldern
+     * @param updates - Objekt mit den zu ändernden Feldern
+     * @param customerEmail - Email zur Verifizierung (Sicherheit)
+     * 
      * @returns Die aktualisierte Buchung
      */
     static async updateBooking(
         bookingId: number,
-        updateData: UpdateBookingData
+        updates: UpdateBookingData,
+        customerEmail: string
     ): Promise<Booking>
     {
-        logger.info(`Updating booking ${bookingId}...`, { updateData });
+        logger.info(`Updating booking ${bookingId}...`, { updates });
 
         let conn;
         try 
         {
             conn = await getConnection();
             
-            // SCHRITT 1: Hole die aktuelle Buchung
+            // SCHRITT 1: Hole aktuelle Buchung
             const currentBooking = await this.getBookingById(bookingId);
 
             if (!currentBooking)
             {
-                logger.warn('Booking not found');
-                throw new Error(`Booking not found: ${bookingId}`);
+                throw new Error('Booking not found');
             }
 
-
-            // SCHRITT 2: Prüfe ob Datum/Zeit geändert werden
-            // Falls ja, validiere die neue Verfügbarkeit
-            // Wenn eins davon true ist, ist timeChange
-            const isTimeChange = 
-                updateData.booking_date ||
-                updateData.start_time ||
-                updateData.end_time ||
-                updateData.party_size ||
-                updateData.staff_member_id;
-
-            if (isTimeChange)
+            //SCHRITT 2: Verfifiziere Email (Sicherheitsmaßnahme)
+            if (currentBooking.customer_email !== customerEmail)
             {
-                // Nutze die neuen Werte oder behalte die alten
-                const dateToCheck = updateData.booking_date || currentBooking.booking_date;
-                const startTimeToCheck = updateData.start_time || currentBooking.start_time;
-                const endTimeToCheck = updateData.end_time || currentBooking.end_time;
-                const partySizeToCheck = updateData.party_size || currentBooking.party_size;
-                const staffIdToCheck = updateData.staff_member_id ?? currentBooking.staff_member_id;    // Nimmt rechts NUR wenn links null oder undefined ist
+                logger.warn('Email verification failed for booking update');
+                throw new Error('Unauthorized: Email does not match booking');
+            }
 
+            // SCHRITT 3: Prüfe, ob Buchung geändert werden kann
+            if (currentBooking.status === 'cancelled' || currentBooking.status === 'completed')
+            {
+                logger.warn(`Cannot update booking with status: ${currentBooking.status}`);
+                throw new Error(`Cannot update booking with status: ${currentBooking.status}`);
+            }
 
-                // Validiere die neue Zeit (excludeBookingId sorgt dafür, dass die
-                // aktuelle Buchung nicht als Konflikt gewertet wird)
+            // SCHRITT 4: Wenn Datum/Zeit/Mitarbeiter geändert wird -> Verfügbarkeit prüfen
+            // Wenn etwas von diesen Parametern da ist -> hat sich was geändert (Was wenn genau das gleiche eingegeben wird? - wird vlt abgefangen von excludebookingid)
+            const dateTimeChanged = 
+                updates.booking_date ||
+                updates.start_time ||
+                updates.end_time ||
+                updates.staff_member_id !== undefined;
+
+            if (dateTimeChanged)
+            {
+                logger.info('Date/time/staff changed - validating availability...');    // Wenn genau das gleiche geändert wurde - stimmt das dann?...
+
                 const validation = await AvailabilityService.validateBookingRequest(
                     currentBooking.venue_id,
                     currentBooking.service_id,
-                    staffIdToCheck || null,
-                    dateToCheck,
-                    startTimeToCheck,
-                    endTimeToCheck,
-                    partySizeToCheck,
-                    bookingId       // Diese Buchung ignorieren
+                    updates.staff_member_id !== undefined
+                        ? updates.staff_member_id
+                        : (currentBooking.staff_member_id ?? null),                     // In currentBooking MUSS NICHT staff_member_id enthalten sein (dann wäre es undefined, aber validateBookingRequest akzeptiert kein undefined)
+                    updates.booking_date ?? currentBooking.booking_date,                // Wenn links was drin ist, nimm das, ansonsten rechts
+                    updates.start_time ?? currentBooking.start_time,
+                    updates.end_time ?? currentBooking.end_time,
+                    updates.party_size ?? currentBooking.party_size,
+                    bookingId
                 );
 
                 if (!validation.valid)
                 {
-                    logger.warn('Update validation failed', {
-                        errors: validation.errors
-                    });
-                    throw new Error(`Update not possible: ${validation.errors?.join(', ')}`);
+                    logger.warn('Availability validation failed', { errors: validation.errors });
+                    throw new Error(`Update not possible: ${validation.errors.join(', ')}`);
                 }
             }
 
-            // SCHRITT 3: Baue die UPDATE Query dynamisch
-            // Nur die übergebenen Felder werden aktualisiert
+            // SCHRITT 5: Baue UPDATE Query dynamisch
             const updateFields: string[] = [];
-            const updateValues: (string | number | null)[] = [];
+            const updateValues: (string | number)[] = [];
 
-            // Für jedes Feld in uodateData, füge es zur Query hinzu
-            if (updateData.booking_date !== undefined)
+            // Für jedes Feld in updates, füge zum Query hinzu
+            if (updates.booking_date !== undefined) 
             {
                 updateFields.push('booking_date = ?');
-                updateValues.push(updateData.booking_date);
+                updateValues.push(updates.booking_date);
             }
 
-            if (updateData.start_time !== undefined)
+            if (updates.start_time !== undefined) 
             {
                 updateFields.push('start_time = ?');
-                updateValues.push(updateData.start_time);
+                updateValues.push(updates.start_time);
             }
-
-            if (updateData.end_time !== undefined)
+            
+            if (updates.end_time !== undefined) 
             {
                 updateFields.push('end_time = ?');
-                updateValues.push(updateData.end_time);
+                updateValues.push(updates.end_time);
             }
-
-            if (updateData.party_size !== undefined)
-            {
-                updateFields.push('party_size = ?');
-                updateValues.push(updateData.party_size);
-            }
-
-            if (updateData.staff_member_id !== undefined)
+            
+            if (updates.staff_member_id !== undefined) 
             {
                 updateFields.push('staff_member_id = ?');
-                updateValues.push(updateData.staff_member_id || null);
+                updateValues.push(updates.staff_member_id);
             }
-
-            if (updateData.special_requests !== undefined)
+            
+            if (updates.party_size !== undefined) 
+            {
+                updateFields.push('party_size = ?');
+                updateValues.push(updates.party_size);
+            }
+            
+            if (updates.special_requests !== undefined) 
             {
                 updateFields.push('special_requests = ?');
-                updateValues.push(updateData.special_requests);
+                updateValues.push(updates.special_requests);
             }
 
-            if (updateData.status !== undefined)
+
+            // WICHTIG: Wenn Datum/Zeit geändert -> Reminder zurücksetzen
+            if (dateTimeChanged)
             {
-                updateFields.push('status = ?');
-                updateValues.push(updateData.status);
-
-                // Wenn Status auf 'cancelled' gesetzt wird, setze cancelled_at
-                if (updateData.status === 'cancelled')
-                {
-                    updateFields.push('cancelled_at = NOW()');
-
-                    if (updateData.cancellation_reason)
-                    {
-                        updateFields.push('cancellation_reason = ?');
-                        updateValues.push(updateData.cancellation_reason);
-                    }
-                }
+                updateFields.push('reminder_sent_at = NULL');
+                logger.info('Resetting reminder_sent_at due to date/time change');
             }
 
-            // Mindestens ein Feld muss aktualisiert werden
+            // Falls keine Änderungen
             if (updateFields.length === 0)
             {
-                throw new Error('No fields to update');
+                logger.info('No changes detected');
+                return currentBooking;
             }
 
-            // SCHRITT 4: Führe das Update aus
-            // ... ist der Spread-Operator - er "packt das Array aus": 
-            // [...updateValues, bookingId] wird zu ['2025-01-20', 4, 123].
-            //
-            // Ohne ... hätten wir ein Array im Array: [updateValues, bookingId] 
-            // würde [['2025-01-20', 4], 123] ergeben - SQL würde crashen!
+
+            // SCHRITT 6: Führe Update aus
+            updateValues.push(bookingId);       // Für WHERE clause
+
             await conn.query(`
                 UPDATE bookings
-                SET ${updateFields.join(', ')}, updated_at = NOW()
+                SET ${updateFields.join(', ')}
                 WHERE id = ?`,
-                [...updateValues, bookingId]                        
+                updateValues                    // Ist schon ein Array, daher kein [updateValues]
             );
 
-            logger.info(`Booking ${bookingId} updated successfully`);
+            logger.info('Booking updated successfully');
 
-            // SCHRITT 5: Hole die aktualisierte Buchung
+
+            // SCHRITT 7: Hole aktualisierte Buchung
             const updatedBooking = await this.getBookingById(bookingId);
 
             if (!updatedBooking)
@@ -540,52 +536,79 @@ import {
      * STORNIERE BUCHUNG
      * 
      * Setzt den Status auf 'cancelled' und speichert Zeitpunkt + Grund
+     * Benötigt Email-Verifizierung für Sicherheit
      * 
      * @param bookingId - ID der zu stornierenden Buchung
+     * @param customerEmail - Email zur Verifizierung
      * @param reason - Optional: Grund für die Stornierung
+     * @param bypassPolicy - Optional: Für Admin-Stornierungen (ignoriert Stornierungsfrist)
      * @returns Die stornierte Buchung
      */
     static async cancelBooking(
         bookingId: number,
+        customerEmail: string,
         reason?: string,
         bypassPolicy: boolean = false  // Für Admin-Stornierungen
     ): Promise<Booking>
     {
-        logger.info(`Cancelling booking ${bookingId}...`, { reason, bypassPolicy });
+        logger.info(`Cancelling booking ${bookingId}...` ,{ reason, bypassPolicy });
 
         let conn;
         try 
         {
             conn = await getConnection();
             
-            // SCHRITT 1: Hole Buchung mit Venue-Daten
+            // SCHRITT 1: Hole Buchung MIT Venue-Daten (für cancellation_hours)
             const bookings = await conn.query(`
-                SELECT 
-                    b.*,
-                    v.cancellation_hours
+                SELECT b.*, v.cancellation_hours
                 FROM bookings b
                 JOIN venues v ON b.venue_id = v.id
-                WHERE b.id = ?
-            `, [bookingId]) as Array<Booking & { cancellation_hours: number }>;
+                WHERE b.id = ?`,
+                [bookingId]
+            ) as Array<Booking & { cancellation_hours: number }>;
 
-            if (bookings.length === 0) {
+            if (bookings.length === 0)
+            {
+                logger.warn('Booking bot found');
                 throw new Error('Booking not found');
             }
 
             const booking = bookings[0];
 
-            // SCHRITT 2: Prüfe Stornierungsfrist (außer bei Admin-Bypass)
-            if (!bypassPolicy) 
+            // SCHRITT 2: Verifiziere Email (Sicherheitsmaßnahme)
+            if (booking.customer_email !== customerEmail)
+            {
+                logger.warn('Email verification failed for cancellation');
+                throw new Error('Unauthorized: Email does not match booking');
+            }
+
+
+            // SCHRITT 3: Prüfe ob Stornierung möglich ist
+            if (booking.status === 'cancelled')
+            {
+                logger.warn('Booking already cancelled');
+                throw new Error('Booking is already cancelled');
+            }
+
+            if (booking.status === 'completed')
+            {
+                logger.warn('Cannot cancel completed booking');
+                throw new Error('Cannot cancel completed booking');
+            }
+
+
+            // SCHRITT 4: Prüfe Stornierungsfrist (außer bei Admin-Bypass)
+            if (!bypassPolicy)
             {
                 const bookingDateTime = new Date(`${booking.booking_date}T${booking.start_time}`);
                 const now = new Date();
                 const hoursUntilBooking = (bookingDateTime.getTime() - now.getTime()) / (1000 * 60 * 60);
 
-                if (hoursUntilBooking < booking.cancellation_hours) 
+                if (hoursUntilBooking < booking.cancellation_hours)
                 {
                     logger.warn('Cancellation too late', {
-                        hoursUntilBooking,
-                        required: booking.cancellation_hours
+                        hoursUntilBooking: Math.round(hoursUntilBooking),
+                        require: booking.cancellation_hours
                     });
                     throw new Error(
                         `Cancellation must be made at least ${booking.cancellation_hours} hours in advance. ` +
@@ -594,16 +617,37 @@ import {
                 }
             }
 
-            // SCHRITT 3: Storniere
-            conn.release();  // Release alte Connection
-            return this.updateBooking(bookingId, {
-                status: 'cancelled',
-                cancellation_reason: reason
-            });
+            // SCHRITT 5: Storniere Buchung
+            await conn.query(`
+                UPDATE bookings
+                SET
+                    status = 'cancelled',
+                    cancelled_at = NOW(),
+                    cancellation_reason = ?
+                WHERE id = ?`,
+                [reason || null, bookingId]
+            );
+
+            logger.info('Booking cancelled successfully');
+
+
+            // SCHRITT 6: Hole die aktualisierte Buchung
+            const cancelledBooking = await this.getBookingById(bookingId);
+
+            if (!cancelledBooking)
+            {
+                logger.warn('Failed to retrieve cancelled booking');
+                throw new Error('Failed to retrieve cancelled booking');
+            }
+
+            // TODO: Sobald SMTP ready ist, Stornierungsmail senden
+            // await EmailService.sendCancellationEmail(cancelledBooking);
+
+            return cancelledBooking;
         } 
         catch (error) 
         {
-            logger.error('Error cancelling booking', error);
+            logger.error('Error cancelling booking', error)
             throw error;
         }
         finally
@@ -611,6 +655,7 @@ import {
             if (conn)
             {
                 conn.release();
+                logger.debug('Database connection released');
             }
         }
     }
