@@ -63,7 +63,7 @@ import { error } from "console";
             // Falls nicht verfügbar, wirf einen Fehler
             if (!validation.valid)
             {
-                logger.warn('Booking validation failed', { errors: validation.errors });
+                logger.warn('Booking validation failed');
                 throw new Error(`Booking not available: ${validation.errors?.join(', ')}`);
             }
 
@@ -118,7 +118,7 @@ import { error } from "console";
         } 
         catch (error) 
         {
-            logger.error('Error creating booking', error);
+            logger.error('Error creating booking');
             throw error;
         }
         finally

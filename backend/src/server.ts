@@ -6,7 +6,8 @@ import { createLogger } from './config/utils/logger';
 import { testConnection, setupGracefulShutdown } from './config/database';
 
 import venueRoutes from './routes/venue.routes';
-import availabilityRoutes from './routes/availability.routes'
+import availabilityRoutes from './routes/availability.routes';
+import bookingRoutes from './routes/booking.routes';
 
 dotenv.config();
 
@@ -50,7 +51,10 @@ app.get('/health', (req, res) => {
 app.use('/venues', venueRoutes);
 
 // Availability routes
-app.use('/availability', availabilityRoutes)
+app.use('/availability', availabilityRoutes);
+
+// Booking routes
+app.use('/bookings', bookingRoutes);
 
 
 // 404 - Handler
@@ -114,6 +118,16 @@ const startServer = async() => {
             logger.info('   POST   /availability/validate - Validate booking request');
             logger.info('   GET    /availability/service/:serviceId - Service details');
             logger.info('   GET    /availability/staff/:staffId/can-perform/:serviceId - Check staff capability');
+            logger.info('');
+            logger.info('   📖 Bookings:');
+            logger.info('   POST   /bookings - Create new booking');
+            logger.info('   GET    /bookings/:id - Get booking by ID');
+            logger.info('   GET    /venues/:venueId/bookings - Get all bookings for venue');
+            logger.info('   GET    /bookings/customer/:email - Get bookings by customer email');
+            logger.info('   PATCH  /bookings/:id - Update booking (email verification required)');
+            logger.info('   POST   /bookings/:id/confirm - Confirm booking');
+            logger.info('   POST   /bookings/:id/cancel - Cancel booking (email verification required)');
+            logger.info('   DELETE /bookings/:id - Delete booking (ADMIN ONLY)');
             logger.separator();
         });
     } catch (error) {
