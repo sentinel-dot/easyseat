@@ -74,7 +74,7 @@ import {
             // SCHRITT 2: Füge die Buchung in die Datenbank ein
             const result = await conn.query(`
                 INSERT INTO bookings (
-                    booking_token
+                    booking_token,
                     venue_id,
                     service_id,
                     staff_member_id,
@@ -348,13 +348,13 @@ import {
      * @param onlyFuture - Optional: Nur zukünftige Buchungen (default: false)
      * @returns Array von Buchungen
      */
-    static async getBookingsByCustomer(
+    static async getBookingsByEmail(
         customerEmail: string,
         onlyFuture: boolean = false
     ): Promise<Booking[]>
     {
         logger.info(`Fetching bookings for customer...`, {
-            email: customerEmail,
+            customer_email: customerEmail,
             only_future: onlyFuture
         });
 
@@ -583,22 +583,20 @@ import {
      * STORNIERE BUCHUNG
      * 
      * Setzt den Status auf 'cancelled' und speichert Zeitpunkt + Grund
-     * Benötigt Email-Verifizierung für Sicherheit
+     * Benötigt Token für Sicherheit
      * 
-     * @param bookingId - ID der zu stornierenden Buchung
-     * @param customerEmail - Email zur Verifizierung
+     * @param token - Token zur Verifizierung
      * @param reason - Optional: Grund für die Stornierung
      * @param bypassPolicy - Optional: Für Admin-Stornierungen (ignoriert Stornierungsfrist)
      * @returns Die stornierte Buchung
      */
     static async cancelBooking(
-        bookingId: number,
-        customerEmail: string,
+        token: string,
         reason?: string,
         bypassPolicy: boolean = false  // Für Admin-Stornierungen
     ): Promise<Booking>
     {
-        logger.info(`Cancelling booking ${bookingId}...` ,{ reason, bypassPolicy });
+        logger.info(`Cancelling booking ${token.substring(0, 8)}...` ,{ reason, bypassPolicy });
 
         let conn;
         try 
@@ -610,8 +608,8 @@ import {
                 SELECT b.*, v.cancellation_hours
                 FROM bookings b
                 JOIN venues v ON b.venue_id = v.id
-                WHERE b.id = ?`,
-                [bookingId]
+                WHERE b.booking_token = ?`,
+                [token]
             ) as Array<Booking & { cancellation_hours: number }>;
 
             if (bookings.length === 0)
@@ -622,15 +620,8 @@ import {
 
             const booking = bookings[0];
 
-            // SCHRITT 2: Verifiziere Email (Sicherheitsmaßnahme)
-            if (booking.customer_email !== customerEmail)
-            {
-                logger.warn('Email verification failed for cancellation');
-                throw new Error('Unauthorized: Email does not match booking');
-            }
 
-
-            // SCHRITT 3: Prüfe ob Stornierung möglich ist
+            // SCHRITT 2: Prüfe ob Stornierung möglich ist
             if (booking.status === 'cancelled')
             {
                 logger.warn('Booking already cancelled');
@@ -644,7 +635,7 @@ import {
             }
 
 
-            // SCHRITT 4: Prüfe Stornierungsfrist (außer bei Admin-Bypass)
+            // SCHRITT 3: Prüfe Stornierungsfrist (außer bei Admin-Bypass)
             if (!bypassPolicy)
             {
                 const bookingDateTime = new Date(`${booking.booking_date}T${booking.start_time}`);
@@ -664,7 +655,7 @@ import {
                 }
             }
 
-            // SCHRITT 5: Storniere Buchung
+            // SCHRITT 4: Storniere Buchung
             await conn.query(`
                 UPDATE bookings
                 SET
@@ -672,14 +663,14 @@ import {
                     cancelled_at = NOW(),
                     cancellation_reason = ?
                 WHERE id = ?`,
-                [reason || null, bookingId]
+                [reason || null, booking.id]
             );
 
             logger.info('Booking cancelled successfully');
 
 
             // SCHRITT 6: Hole die aktualisierte Buchung
-            const cancelledBooking = await this.getBookingById(bookingId);
+            const cancelledBooking = await this.getBookingById(booking.id);
 
             if (!cancelledBooking)
             {

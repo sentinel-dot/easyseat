@@ -2,14 +2,14 @@
  * BOOKING ROUTES
  * 
  * Alle HTTP-Endpunkte für Buchungsoperationen:
- * - POST   /bookings                   -> Neue Buchung erstellen
- * - GET    /bookings/:id               -> Einzelne Buchung abrufen
- * - GET    /venues/:venueId/bookings   -> Buchungen eines Venues abrufen
- * - GET    /bookings/customer/:email   -> Buchungen eines Kunden abrufen
- * - PATCH  /bookings/:id               -> Buchung aktualisieren (Email-Verifizierung erforderlich)
- * - POST   /bookings/:id/confirm       -> Buchung bestätigen
- * - POST   /bookings/:id/cancel        -> Buchung stornieren (Email-Verifizierung erforderlich)
- * - DELETE /bookings/:id               -> Buchung löschen (HARD DELETE)
+ * - POST   /bookings                           -> Neue Buchung erstellen
+ * - GET    /bookings/:id                       -> Einzelne Buchung abrufen
+ * - GET    /venues/:venueId/bookings           -> Buchungen eines Venues abrufen
+ * - GET    /bookings/customer/me               -> Buchungen eines Kunden abrufen
+ * - PATCH  /bookings/manage/:token             -> Buchung aktualisieren (Token-basiert)
+ * - POST   /bookings/:id/confirm               -> Buchung bestätigen
+ * - POST   /bookings/manage/:token/cancel      -> Buchung stornieren
+ * - DELETE /bookings/:id                       -> Buchung löschen (HARD DELETE)
  * 
  * ARCHITEKTUR-PATTERN:
  * --------------------
@@ -27,6 +27,7 @@ import {
     UpdateBookingData,
     ApiResponse
 } from '../config/utils/types';
+import { getTokenPrefix, validateBookingToken } from '../config/utils/helper';
 
 const router = express.Router();
 const logger = createLogger('booking.routes');
@@ -438,27 +439,25 @@ router.get('/venues/:venueId/bookings', async (req: Request<{ venueId: string }>
 
 
 
-
-
-
 /**
  * ============================================================================
  * GET /bookings/customer/:email
  * ============================================================================
- * Ruft alle Buchungen für einen bestimmten Kunden ab (anhand Email)
+ * Ruft alle Buchungen eines Kunden ab (Email-basiert, kein Login erforderlich)
  * 
  * URL PARAMETER:
  * - :email = Customer Email (z.B. /bookings/customer/max@example.com)
  * 
  * USE CASES:
- * - Kunde will alle seine Buchungen sehen
+ * - Gast will alle seine Buchungen sehen (ohne Account)
  * - "Meine Buchungen" Seite im Frontend
- * - Buchungshistorie anzeigen
+ * - Buchungshistorie für Email-Adresse anzeigen
  * 
  * SICHERHEIT:
- * - In Production sollte hier Auth-Middleware sein!
- * - Aktuell kann jeder alle Buchungen einer Email sehen
- * - TODO: Nur authentifizierte Nutzer dürfen EIGENE Buchungen sehen
+ * - KEINE Authentifizierung erforderlich (Guest-Access)
+ * - Jeder mit einer Email kann ALLE Buchungen dieser Email sehen
+ * - ⚠️ In Production: Rate-Limiting hinzufügen (z.B. max 10 requests/min pro IP)
+ * - ⚠️ Alternative: Magic-Link per Email senden statt direktem Zugriff
  * 
  * RESPONSE (Success - 200 OK):
  * {
@@ -471,16 +470,18 @@ router.get('/venues/:venueId/bookings', async (req: Request<{ venueId: string }>
  * - 400: Ungültige Email
  * - 500: Serverfehler
  */
-router.get('/customer/:email', async (req: Request<{ email: string}>, res: Response ) => 
+router.get('/customer/:email', async (req: Request<{ email: string }>, res: Response) => 
 {
     logger.separator();
     logger.info('Received Request - GET /bookings/customer/:email');
 
     const customerEmail = req.params.email;
 
-
+    // ========================================================================
     // EMAIL-VALIDIERUNG
+    // ========================================================================
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    
     if (!emailRegex.test(customerEmail))
     {
         logger.warn('Invalid email format', { email: customerEmail });
@@ -492,10 +493,15 @@ router.get('/customer/:email', async (req: Request<{ email: string}>, res: Respo
         } as ApiResponse<void>);
     }
 
+    // Optional: Email-Präfix loggen (Datenschutz)
+    // max@example.com -> m***@example.com
+    const maskedEmail = customerEmail.replace(/^(.)(.*)(@.*)$/, '$1***$3');
+    logger.info('Fetching bookings for customer', { email: maskedEmail });
+
     try 
     {
         // Service-Aufruf: Hole alle Buchungen für diese Email
-        const bookings = await BookingService.getBookingsByCustomer(customerEmail);
+        const bookings = await BookingService.getBookingsByEmail(customerEmail);
 
         // Auch bei 0 Ergebnissen ist das ein Success (200 OK)
         res.json({
@@ -520,7 +526,6 @@ router.get('/customer/:email', async (req: Request<{ email: string}>, res: Respo
         logger.separator();
     }
 });
-
 
 
 
@@ -594,9 +599,7 @@ router.patch('/manage/:token', async (req: Request<{ token: string }>, res: Resp
     // ========================================================================
     
     // 1. Token-Format-Validierung (UUID v4)
-    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-    
-    if (!token || !uuidRegex.test(token))
+    if (!validateBookingToken(token))
     {
         logger.warn('Invalid booking token format', { provided: token });
         logger.separator();
@@ -666,7 +669,7 @@ router.patch('/manage/:token', async (req: Request<{ token: string }>, res: Resp
 
         logger.info('Booking updated successfully', { 
             booking_id: updatedBooking.id,
-            token_used: token.substring(0, 8) + '...'       // Log nur die ersten 8 Zeichen
+            token_used: getTokenPrefix(token)
         });
 
         res.json({
@@ -848,15 +851,15 @@ router.post('/:id/confirm', async (req: Request<{ id: string }>, res: Response) 
 
 /**
  * ============================================================================
- * POST /bookings/:id/cancel
+ * POST /bookings/manage/:token/cancel
  * ============================================================================
  * Storniert eine Buchung (ändert Status zu 'cancelled')
  * 
- * WICHTIG: Email-Verifizierung erforderlich!
+ * URL PARAMETER:
+ * - :token = booking_token (UUID) aus der Bestätigungs-Email
  * 
  * REQUEST BODY:
  * {
- *   customerEmail: string,        // PFLICHT: Zur Verifizierung
  *   reason?: string,              // Optional: Stornierungsgrund
  *   bypassPolicy?: boolean        // Optional: Nur für Admin (ignoriert Frist)
  * }
@@ -868,7 +871,6 @@ router.post('/:id/confirm', async (req: Request<{ id: string }>, res: Response) 
  * 
  * BEISPIEL:
  * {
- *   "customerEmail": "max@example.com",
  *   "reason": "Krankheit",
  *   "bypassPolicy": false
  * }
@@ -898,42 +900,26 @@ router.post('/:id/confirm', async (req: Request<{ id: string }>, res: Response) 
  * - 404: Buchung nicht gefunden
  * - 500: Serverfehler
  */
-router.post('/:id/cancel', async (req: Request<{ id: string }>, res: Response) => 
+router.post('/manage/:token/cancel', async (req: Request<{ token: string }>, res: Response) => 
 {
     logger.separator();
-    logger.info('Received Request - POST /bookings/:id/cancel');
+    logger.info('Received Request - POST /manage/:token/cancel');
 
-    const bookingId = parseInt(req.params.id);
-    
-    // Body-Daten extrahieren
-    const { customerEmail, reason, bypassPolicy } = req.body;
+    const { token } = req.params;
+    const { reason, bypassPolicy } = req.body;
 
     // ========================================================================
     // VALIDIERUNG
     // ========================================================================
     
-    // 1. ID-Validierung
-    if (isNaN(bookingId) || bookingId <= 0)
-    {
-        logger.warn('Invalid booking ID', { provided: req.params.id });
+    // Token-Format-Validierung
+    if (!validateBookingToken(token)) {
+        logger.warn('Invalid booking token format');
         logger.separator();
 
         return res.status(400).json({
             success: false,
-            message: 'Invalid booking ID'
-        } as ApiResponse<void>);
-    }
-
-    // 2. Email-Validierung (PFLICHT für Security!)
-    // Nur wer die richtige Email kennt, kann stornieren
-    if (!customerEmail)
-    {
-        logger.warn('Missing customer email for verification');
-        logger.separator();
-
-        return res.status(400).json({
-            success: false,
-            message: 'Customer email required for verification'
+            message: 'Invalid booking token format'
         } as ApiResponse<void>);
     }
 
@@ -949,13 +935,12 @@ router.post('/:id/cancel', async (req: Request<{ id: string }>, res: Response) =
         // 3. Ist sie schon storniert?
         // 4. Ist die Stornierungsfrist eingehalten? (außer bypassPolicy=true)
         const cancelledBooking = await BookingService.cancelBooking(
-            bookingId,
-            customerEmail,
+            token,
             reason,                         // Optional: Stornierungsgrund
             bypassPolicy || false           // Default: false (Frist gilt!)
         );
 
-        logger.info('Booking cancelled successfully', { booking_id: bookingId });
+        logger.info('Booking cancelled successfully', { booking_id: cancelledBooking.id });
 
         // TODO: Sobald SMTP ready ist
         // await EmailService.sendCancellationEmail(cancelledBooking);
@@ -975,19 +960,15 @@ router.post('/:id/cancel', async (req: Request<{ id: string }>, res: Response) =
 
         const errorMessage = error instanceof Error ? error.message : 'Unknown error';
 
-        // ERROR 1: UNAUTHORIZED (Email stimmt nicht)
-        if (errorMessage.includes('Unauthorized') || errorMessage.includes('Email does not match'))
-        {
+        if (errorMessage.includes('Invalid token') || errorMessage.includes('Unauthorized')) {
             return res.status(401).json({
                 success: false,
-                message: 'Unauthorized: Email verification failed',
+                message: 'Invalid or expired booking token',
                 error: process.env.NODE_ENV === 'development' ? String(error) : undefined
             } as ApiResponse<void>);
         }
 
-        // ERROR 2: NOT FOUND
-        if (errorMessage.includes('not found'))
-        {
+        if (errorMessage.includes('not found')) {
             return res.status(404).json({
                 success: false,
                 message: 'Booking not found',
@@ -995,10 +976,7 @@ router.post('/:id/cancel', async (req: Request<{ id: string }>, res: Response) =
             } as ApiResponse<void>);
         }
 
-        // ERROR 3: BEREITS STORNIERT
-        // Verhindert doppelte Stornierung
-        if (errorMessage.includes('already cancelled'))
-        {
+        if (errorMessage.includes('already cancelled')) {
             return res.status(400).json({
                 success: false,
                 message: 'Booking is already cancelled',
@@ -1006,10 +984,7 @@ router.post('/:id/cancel', async (req: Request<{ id: string }>, res: Response) =
             } as ApiResponse<void>);
         }
 
-        // ERROR 4: STORNIERUNGSFRIST ÜBERSCHRITTEN
-        // z.B. "Cancellation policy: 24 hours. Only 12 hours remaining."
-        if (errorMessage.includes('cancellation policy') || errorMessage.includes('hours remaining'))
-        {
+        if (errorMessage.includes('cancellation policy')) {
             return res.status(400).json({
                 success: false,
                 message: errorMessage,
@@ -1017,12 +992,12 @@ router.post('/:id/cancel', async (req: Request<{ id: string }>, res: Response) =
             } as ApiResponse<void>);
         }
 
-        // ERROR 5: ALLGEMEINER SERVERFEHLER
         res.status(500).json({
             success: false,
             message: 'Failed to cancel booking',
             error: process.env.NODE_ENV === 'development' ? String(error) : undefined
         } as ApiResponse<void>);
+
     }
     finally
     {
