@@ -17,7 +17,7 @@ import {
     CreateBookingData,
     UpdateBookingData
  } from "../config/utils/types";
-import { error } from "console";
+
 
  const logger = createLogger('booking.service');
 
@@ -67,10 +67,14 @@ import { error } from "console";
                 throw new Error(`Booking not available: ${validation.errors?.join(', ')}`);
             }
 
+            // SCHRITT 1.5: Erstelle booking_token
+            const bookingToken = crypto.randomUUID();
+
 
             // SCHRITT 2: Füge die Buchung in die Datenbank ein
             const result = await conn.query(`
                 INSERT INTO bookings (
+                    booking_token
                     venue_id,
                     service_id,
                     staff_member_id,
@@ -86,8 +90,9 @@ import { error } from "console";
                     status
                 ) 
                 VALUES
-                (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')`,
+                (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')`,
                 [
+                    bookingToken,
                     bookingData.venue_id,
                     bookingData.service_id,
                     bookingData.staff_member_id || null,
@@ -113,6 +118,8 @@ import { error } from "console";
             {
                 throw new Error('Failed to retrieve newly created booking');
             }
+
+            // Confirmation E-Mail -> "${frontendUrl}/booking/manage/${bookingToken}"
 
             return newBooking;
         } 
@@ -154,6 +161,55 @@ import { error } from "console";
                 FROM bookings
                 WHERE id = ?`,
                 [bookingId]
+            ) as Booking[];     // SQL gibt immer Array zurück
+
+            if (bookings.length === 0)
+            {
+                logger.warn('Booking not found');
+                return null;
+            }
+
+            logger.info('Booking found');
+            return bookings[0];
+        } 
+        catch (error) 
+        {
+            logger.error('Error fetching booking by ID', error);
+            throw error;
+        }
+        finally
+        {
+            if (conn)
+            {
+                conn.release();
+                logger.debug('Database connection released');
+            }
+        }
+    }
+
+
+
+
+    /**
+     * HOLE BUCHUNG NACH TOKEN
+     * 
+     * @params token
+     * @returns Die Buchung oder null wenn nicht gefunden
+     */
+    static async getBookingByToken(token: string): Promise<Booking | null>
+    {
+        logger.info(`Fetching booking with token: ${token}...`);
+
+        let conn;
+        try 
+        {
+            conn = await getConnection();
+            
+            const bookings = await conn.query(`
+                SELECT *
+                FROM bookings
+                WHERE booking_token = ?`,
+                [token]
             ) as Booking[];     // SQL gibt immer Array zurück
 
             if (bookings.length === 0)
@@ -361,19 +417,17 @@ import { error } from "console";
      * Prüft bei Änderung von Datum/Zeit die Verfügbarkeit neu
      * Setzt reminder_sent_at zurück, wenn Datum/Zeit geändert wird
      * 
-     * @param bookingId - ID der zu aktualisierenden Buchung
+     * @param token - booking_token der zu aktualisierenden Buchung
      * @param updates - Objekt mit den zu ändernden Feldern
-     * @param customerEmail - Email zur Verifizierung (Sicherheit)
      * 
      * @returns Die aktualisierte Buchung
      */
     static async updateBooking(
-        bookingId: number,
-        updates: UpdateBookingData,
-        customerEmail: string
+        token: string,
+        updates: UpdateBookingData
     ): Promise<Booking>
     {
-        logger.info(`Updating booking ${bookingId}...`, { updates });
+        logger.info(`Updating booking ${token}...`, { updates });
 
         let conn;
         try 
@@ -381,28 +435,21 @@ import { error } from "console";
             conn = await getConnection();
             
             // SCHRITT 1: Hole aktuelle Buchung
-            const currentBooking = await this.getBookingById(bookingId);
+            const currentBooking = await this.getBookingByToken(token);
 
             if (!currentBooking)
             {
                 throw new Error('Booking not found');
             }
 
-            //SCHRITT 2: Verifiziere Email (Sicherheitsmaßnahme)
-            if (currentBooking.customer_email !== customerEmail)
-            {
-                logger.warn('Email verification failed for booking update');
-                throw new Error('Unauthorized: Email does not match booking');
-            }
-
-            // SCHRITT 3: Prüfe, ob Buchung geändert werden kann
+            // SCHRITT 2: Prüfe, ob Buchung geändert werden kann
             if (currentBooking.status === 'cancelled' || currentBooking.status === 'completed')
             {
                 logger.warn(`Cannot update booking with status: ${currentBooking.status}`);
                 throw new Error(`Cannot update booking with status: ${currentBooking.status}`);
             }
 
-            // SCHRITT 4: Wenn Datum/Zeit/Mitarbeiter geändert wird -> Verfügbarkeit prüfen
+            // SCHRITT 3: Wenn Datum/Zeit/Mitarbeiter geändert wird -> Verfügbarkeit prüfen
             // Wenn etwas von diesen Parametern da ist -> hat sich was geändert (Was wenn genau das gleiche eingegeben wird? - wird vlt abgefangen von excludebookingid)
             const dateTimeChanged = 
                 updates.booking_date ||
@@ -424,7 +471,7 @@ import { error } from "console";
                     updates.start_time ?? currentBooking.start_time,
                     updates.end_time ?? currentBooking.end_time,
                     updates.party_size ?? currentBooking.party_size,
-                    bookingId
+                    currentBooking.id
                 );
 
                 if (!validation.valid)
@@ -434,7 +481,7 @@ import { error } from "console";
                 }
             }
 
-            // SCHRITT 5: Baue UPDATE Query dynamisch
+            // SCHRITT 4: Baue UPDATE Query dynamisch
             const updateFields: string[] = [];
             const updateValues: (string | number)[] = [];
 
@@ -491,13 +538,13 @@ import { error } from "console";
             }
 
 
-            // SCHRITT 6: Führe Update aus
-            updateValues.push(bookingId);       // Für WHERE clause
+            // SCHRITT 5: Führe Update aus
+            updateValues.push(token);       // Für WHERE clause
 
             await conn.query(`
                 UPDATE bookings
                 SET ${updateFields.join(', ')}
-                WHERE id = ?`,
+                WHERE booking_token = ?`,
                 updateValues                    // Ist schon ein Array, daher kein [updateValues]
             );
 
@@ -505,7 +552,7 @@ import { error } from "console";
 
 
             // SCHRITT 7: Hole aktualisierte Buchung
-            const updatedBooking = await this.getBookingById(bookingId);
+            const updatedBooking = await this.getBookingByToken(token);
 
             if (!updatedBooking)
             {

@@ -531,36 +531,34 @@ router.get('/customer/:email', async (req: Request<{ email: string}>, res: Respo
 
 /**
  * ============================================================================
- * PATCH /bookings/:id
+ * PATCH /bookings/manage/:token
  * ============================================================================
  * Aktualisiert eine existierende Buchung (partielles Update)
  * 
- * WICHTIG: Email-Verifizierung erforderlich!
- * - Nur der Kunde mit der richtigen Email kann seine Buchung ändern
- * - Dies ist die aktuelle Security-Lösung (später: Token-basiert)
+ * WICHTIG: Token-basierte Authentifizierung!
+ * - Nur wer den korrekten booking_token kennt, kann die Buchung ändern
+ * - Kein Email-Abgleich mehr nötig
+ * - Token kommt aus Bestätigungs-Email oder QR-Code
+ * 
+ * URL PARAMETER:
+ * - :token = booking_token (UUID) aus der Bestätigungs-Email
  * 
  * REQUEST BODY:
  * {
- *   customerEmail: string,           // PFLICHT: Zur Verifizierung
- *   updates: {                        // PFLICHT: Was soll geändert werden
- *     booking_date?: string,          // Optional: Neues Datum
- *     start_time?: string,            // Optional: Neue Startzeit
- *     end_time?: string,              // Optional: Neue Endzeit
- *     party_size?: number,            // Optional: Neue Personenzahl
- *     staff_member_id?: number,       // Optional: Anderer Mitarbeiter
- *     special_requests?: string,      // Optional: Neue Wünsche
- *     status?: string                 // Optional: Status (nur Admin)
- *   }
+ *   booking_date?: string,          // Optional: Neues Datum
+ *   start_time?: string,            // Optional: Neue Startzeit
+ *   end_time?: string,              // Optional: Neue Endzeit
+ *   party_size?: number,            // Optional: Neue Personenzahl
+ *   staff_member_id?: number,       // Optional: Anderer Mitarbeiter
+ *   special_requests?: string       // Optional: Neue Wünsche
  * }
  * 
  * BEISPIEL:
- * {
- *   "customerEmail": "max@example.com",
- *   "updates": {
- *     "booking_date": "2025-10-26",
- *     "start_time": "15:00",
- *     "party_size": 4
- *   }
+ * PATCH /bookings/manage/a1b2c3d4-5e6f-7g8h-9i0j-k1l2m3n4o5p6
+ * Body: {
+ *   "booking_date": "2025-10-26",
+ *   "start_time": "15:00",
+ *   "party_size": 4
  * }
  * 
  * WICHTIG:
@@ -577,52 +575,40 @@ router.get('/customer/:email', async (req: Request<{ email: string}>, res: Respo
  * 
  * RESPONSE (Error):
  * - 400: Validierungsfehler, keine Updates, oder Status verhindert Update
- * - 401: Email-Verifizierung fehlgeschlagen (Unauthorized)
+ * - 401: Token ungültig oder abgelaufen (Unauthorized)
  * - 404: Buchung nicht gefunden
  * - 409: Neuer Slot nicht verfügbar (Conflict)
  * - 500: Serverfehler
  */
-router.patch('/:id', async (req: Request<{ id: string }>, res: Response) => 
+router.patch('/manage/:token', async (req: Request<{ token: string }>, res: Response) => 
 {
     logger.separator();
     logger.info('Received Request - PATCH /bookings/:id');
 
-    const bookingId = parseInt(req.params.id);
-    
-    // Body-Daten extrahieren
-    // customerEmail = Für Verifizierung (Sicherheit!)
-    // updates = Objekt mit allen zu ändernden Feldern
-    const { customerEmail, updates } = req.body;
+    const { token } = req.params;
+    const updates = req.body;
+
 
     // ========================================================================
     // VALIDIERUNG
     // ========================================================================
     
-    // 1. ID-Validierung
-    if (isNaN(bookingId) || bookingId <= 0)
+    // 1. Token-Format-Validierung (UUID v4)
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    
+    if (!token || !uuidRegex.test(token))
     {
-        logger.warn('Invalid booking ID', { provided: req.params.id });
+        logger.warn('Invalid booking token format', { provided: token });
         logger.separator();
 
         return res.status(400).json({
             success: false,
-            message: 'Invalid booking ID'
+            message: 'Invalid booking token format'
         } as ApiResponse<void>);
     }
 
-    // 2. Email-Validierung (PFLICHT für Security!)
-    if (!customerEmail)
-    {
-        logger.warn('Missing customer email for verification');
-        logger.separator();
 
-        return res.status(400).json({
-            success: false,
-            message: 'Customer email required for verification'
-        } as ApiResponse<void>);
-    }
-
-    // 3. Updates-Validierung
+    // 2. Updates-Validierung
     // Object.keys() gibt Array aller Property-Namen zurück
     // Beispiel: { date: "2025-10-25", time: "14:00" } → ["date", "time"]
     if (!updates || Object.keys(updates).length === 0)
@@ -636,24 +622,52 @@ router.patch('/:id', async (req: Request<{ id: string }>, res: Response) =>
         } as ApiResponse<void>);
     }
 
+
+    // 3. Validiere einzelne Update-Felder (optional, aber empfohlen)
+    const allowedFields = [
+        'booking_date', 
+        'start_time', 
+        'end_time', 
+        'party_size', 
+        'staff_member_id', 
+        'special_requests'
+    ];
+
+    const invalidFields = Object.keys(updates).filter(
+        field => !allowedFields.includes(field)
+    );
+
+    if (invalidFields.length > 0)
+    {
+        logger.warn('Invalid update fields', { invalid: invalidFields });
+        logger.separator();
+
+        return res.status(400).json({
+            success: false,
+            message: `Invalid fields: ${invalidFields.join(', ')}`
+        } as ApiResponse<void>);
+    }
+
+
     // ========================================================================
     // UPDATE DURCHFÜHREN
     // ========================================================================
     try 
     {
-        // Service-Aufruf mit Email-Verifizierung
+        // Service-Aufruf mit Token-Verifizierung
         // Der Service prüft:
-        // 1. Existiert die Buchung?
-        // 2. Stimmt die Email überein?
-        // 3. Ist der Status updatebar? (nicht cancelled/completed)
-        // 4. Wenn Datum/Zeit geändert → Ist der neue Slot verfügbar?
+        // 1. Existiert eine Buchung mit diesem Token?
+        // 2. Ist der Status updatebar? (nicht cancelled/completed)
+        // 3. Wenn Datum/Zeit geändert → Ist der neue Slot verfügbar?
         const updatedBooking = await BookingService.updateBooking(
-            bookingId, 
-            updates as UpdateBookingData,      // Type-Cast zu UpdateBookingData
-            customerEmail
+            token, 
+            updates as UpdateBookingData
         );
 
-        logger.info('Booking updated successfully', { booking_id: bookingId });
+        logger.info('Booking updated successfully', { 
+            booking_id: updatedBooking.id,
+            token_used: token.substring(0, 8) + '...'       // Log nur die ersten 8 Zeichen
+        });
 
         res.json({
             success: true,
@@ -671,13 +685,15 @@ router.patch('/:id', async (req: Request<{ id: string }>, res: Response) =>
 
         const errorMessage = error instanceof Error ? error.message : 'Unknown error';
 
-        // ERROR 1: UNAUTHORIZED (Email stimmt nicht überein)
-        // 401 Unauthorized = Authentifizierung fehlgeschlagen
-        if (errorMessage.includes('Unauthorized') || errorMessage.includes('Email does not match'))
+        // ERROR 1: INVALID/EXPIRED TOKEN
+        // 401 Unauthorized = Token ungültig oder abgelaufen
+        if (errorMessage.includes('Invalid token') || 
+            errorMessage.includes('Token not found') ||
+            errorMessage.includes('Unauthorized'))
         {
             return res.status(401).json({
                 success: false,
-                message: 'Unauthorized: Email verification failed',
+                message: 'Invalid or expired booking token',
                 error: process.env.NODE_ENV === 'development' ? String(error) : undefined
             } as ApiResponse<void>);
         }

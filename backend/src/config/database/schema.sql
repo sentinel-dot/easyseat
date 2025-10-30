@@ -116,3 +116,17 @@ CREATE TABLE bookings (
   FOREIGN KEY (staff_member_id) REFERENCES staff_members(id) ON DELETE SET NULL
 );
 
+-- TOKEN for Bookings added
+-- Step 1: Add the booking_token column
+ALTER TABLE bookings
+ADD COLUMN booking_token VARCHAR(36) UNIQUE NULL AFTER id;
+
+-- Step 2: Generate tokens for existing bookings (if any)
+-- Uses UUID() to create secure random tokens
+UPDATE bookings 
+SET booking_token = UUID() 
+WHERE booking_token IS NULL;
+
+-- Step 3: Make the column NOT NULL after all existing rows have tokens
+ALTER TABLE bookings
+MODIFY COLUMN booking_token VARCHAR(36) UNIQUE NOT NULL;
