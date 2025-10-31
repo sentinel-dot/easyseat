@@ -10,6 +10,7 @@
  * - POST   /bookings/:id/confirm               -> Buchung bestätigen
  * - POST   /bookings/manage/:token/cancel      -> Buchung stornieren
  * - DELETE /bookings/:id                       -> Buchung löschen (HARD DELETE)
+ * - GET /bookings/manage/:token -> Hole Buchung via Token (für Management-Seite)
  * 
  * ARCHITEKTUR-PATTERN:
  * --------------------
@@ -1005,6 +1006,130 @@ router.post('/manage/:token/cancel', async (req: Request<{ token: string }>, res
         logger.separator();
     }
 });
+
+
+
+
+/**
+ * =====================================================================================================
+ * GET /bookings/manage/:token (NEU!)
+ * =====================================================================================================
+ * Ruft eine Buchung via Token ab - für Booking Management Page
+ * 
+ * FLOW:
+ * 1. Kunde erhält Email mit Link: https://easyseat.de/booking/manage/a1b2c3d4-...
+ * 2. Frontend ruft diese Route auf
+ * 3. Route gibt Buchungsdetails zurück
+ * 4. Frontend zeigt Management-Seite (Ändern/Stornieren)
+ * 
+ * URL PARAMETER:
+ * - :token = booking_token (UUID v4)
+ * 
+ * VORTEILE:
+ * - Keine Login nötig
+ * - Keine Email-Eingabe nötig
+ * - Link ist shareable (z.B. an Begleiter)
+ * - Funktioniert auch als QR-Code
+ * 
+ * RESPONSE (Success - 200 OK):
+ * {
+ *   success: true,
+ *   message: "Booking retrieved successfully",
+ *   data: {
+ *     id: 42,
+ *     booking_token: "a1b2c3d4-...",
+ *     venue_name: "Restaurant Bella Vista",
+ *     customer_name: "Max Mustermann",
+ *     booking_date: "2025-11-15",
+ *     start_time: "19:00",
+ *     ...
+ *   }
+ * }
+ * 
+ * RESPONSE (Error):
+ * - 400: Ungültiges Token-Format
+ * - 404: Buchung nicht gefunden (falscher Token)
+ * - 500: Serverfehler
+ */
+router.get('/manage/:token', async (req: Request<{ token: string }>, res: Response) => 
+{
+    logger.separator();
+    logger.info('Received Request - GET /bookings/manage/:token');
+
+    const { token } = req.params;
+    const tokenPrefix = getTokenPrefix(token);
+
+    logger.info('Token provided', { token_prefix: tokenPrefix });
+
+
+    // ========================================================================
+    // VALIDIERUNG
+    // ========================================================================
+    
+    // Token-Format-Validierung (UUID v4)
+    if (!validateBookingToken(token))
+    {
+        logger.warn('Invalid booking token format', { token_prefix: tokenPrefix });
+        logger.separator();
+
+        return res.status(400).json({
+            success: false,
+            message: 'Invalid booking token format'
+        } as ApiResponse<void>);
+    }
+
+
+    // ========================================================================
+    // SERVICE CALL
+    // ========================================================================
+    
+    try 
+    {
+        const booking = await BookingService.getBookingByToken(token);
+        
+        if (!booking)
+        {
+            logger.warn('Booking not found', { token_prefix: tokenPrefix });
+
+            return res.status(404).json({
+                success: false,
+                message: 'Booking not found'
+            } as ApiResponse<void>);
+        }
+
+        logger.info('Booking retrieved successfully', { 
+            booking_id: booking.id,
+            token_prefix: tokenPrefix
+        });
+
+        return res.status(200).json({
+            success: true,
+            message: 'Booking retrieved successfully',
+            data: booking
+        } as ApiResponse<Booking>);
+    } 
+    catch (error) 
+    {
+        logger.error('Error fetching booking by token', error);
+
+        res.status(500).json({
+            success: false,
+            message: 'Failed to fetch booking',
+            error: process.env.NODE_ENV === 'development' ? String(error) : undefined
+        } as ApiResponse<void>);
+    }
+    finally
+    {
+        logger.info('Response sent');
+        logger.separator();
+    }
+});
+
+
+
+
+
+
 
 
 /**

@@ -4,7 +4,7 @@
  * Dieser Service ist verantortlich für alle Buchungsoperationen:
  * - Erstellen neuer Buchungen
  * - Abrufen von Buchungen (nach ID, Venue, Kunde)
- * - Aktualisieren von Buchungen (email benötigt)
+ * - Aktualisieren von Buchungen (token/mail benötigt)
  * - Stornieren von Buchungen (was ist benötigt?)
  * - Verwalten von Buchungsstatus (email benötigt oder?)
  */
@@ -17,6 +17,7 @@ import {
     CreateBookingData,
     UpdateBookingData
  } from "../config/utils/types";
+import { getTokenPrefix } from "../config/utils/helper";
 
 
  const logger = createLogger('booking.service');
@@ -191,39 +192,61 @@ import {
 
 
     /**
-     * HOLE BUCHUNG NACH TOKEN
+     * ========================================================================
+     * HOLE BUCHUNG NACH TOKEN (NEU!)
+     * ========================================================================
      * 
-     * @params token
+     * Dies ist die neue Hauptmethode für Token-basierten Zugriff
+     * 
+     * VORTEILE:
+     * - Kein Email-Abgleich nötig
+     * - Token ist unguessable (UUID v4 = 128 bit Entropie)
+     * - Funktioniert auch ohne Email (QR-Codes, Walk-Ins)
+     * 
+     * @param token - Der booking_token (UUID) aus der Bestätigungs-Email
      * @returns Die Buchung oder null wenn nicht gefunden
      */
     static async getBookingByToken(token: string): Promise<Booking | null>
     {
-        logger.info(`Fetching booking with token: ${token}...`);
+        const tokenPrefix = getTokenPrefix(token);
+        
+        logger.info('Fetching booking by token', { token_prefix: tokenPrefix });
+        logger.separator();
 
         let conn;
         try 
         {
             conn = await getConnection();
-            
-            const bookings = await conn.query(`
-                SELECT *
-                FROM bookings
-                WHERE booking_token = ?`,
-                [token]
-            ) as Booking[];     // SQL gibt immer Array zurück
+
+            const [bookings] = await conn.query(`
+                SELECT 
+                    b.*,
+                    v.name as venue_name,
+                    s.name as service_name,
+                    sm.name as staff_member_name
+                FROM bookings b
+                LEFT JOIN venues v ON b.venue_id = v.id
+                LEFT JOIN services s ON b.service_id = s.id
+                LEFT JOIN staff_members sm ON b.staff_member_id = sm.id
+                WHERE b.booking_token = ?
+            `, [token]) as any;
 
             if (bookings.length === 0)
             {
-                logger.warn('Booking not found');
+                logger.warn('Booking not found for token', { token_prefix: tokenPrefix });
                 return null;
             }
 
-            logger.info('Booking found');
-            return bookings[0];
+            logger.info('Booking found', { 
+                booking_id: bookings[0].id,
+                token_prefix: tokenPrefix 
+            });
+
+            return bookings[0] as Booking;
         } 
         catch (error) 
         {
-            logger.error('Error fetching booking by ID', error);
+            logger.error('Error fetching booking by token', error);
             throw error;
         }
         finally
@@ -235,6 +258,10 @@ import {
             }
         }
     }
+
+
+
+
 
 
 
