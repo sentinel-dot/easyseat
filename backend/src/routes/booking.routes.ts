@@ -4,7 +4,6 @@
  * Alle HTTP-Endpunkte für Buchungsoperationen:
  * - POST   /bookings                           -> Neue Buchung erstellen
  * - GET    /bookings/:id                       -> Einzelne Buchung abrufen
- * - GET    /venues/:venueId/bookings           -> Buchungen eines Venues abrufen
  * - GET    /bookings/customer/me               -> Buchungen eines Kunden abrufen
  * - PATCH  /bookings/manage/:token             -> Buchung aktualisieren (Token-basiert)
  * - POST   /bookings/:id/confirm               -> Buchung bestätigen
@@ -326,114 +325,6 @@ router.get('/:id', async (req: Request<{ id: string }>, res: Response) =>
     }
 });
 
-
-
-
-
-
-
-
-
-/**
- * =====================================================================================================
- * GET /venues/:venueId/bookings
- * =====================================================================================================
- * Ruft alle Buchungen für ein bestimmtes Venue ab (mit optionalen Filtern)
- * 
- * URL PARAMETER:
- * - :venueId = Venue ID (z.B. /venues/1/bookings)
- * 
- * QUERY PARAMETERS (alle optional):
- * - ?date=YYYY-MM-DD                                               → Nur Buchungen an diesem Tag
- * - ?status=confirmed                                              → Nur Buchungen mit diesem Status
- * - ?startDate=YYYY-MM-DD                                          → Buchungen ab diesem Datum
- * - ?endDate=YYYY-MM-DD                                            → Buchungen bis zu diesem Datum
- * 
- * BEISPIELE:
- * - /venues/1/bookings                                             → Alle Buchungen
- * - /venues/1/bookings?date=2025-10-25                             → Nur am 25.10.2025
- * - /venues/1/bookings?status=confirmed                            → Nur bestätigte
- * - /venues/1/bookings?startDate=2025-10-01&endDate=2025-10-31     → Oktober 2025
- * 
- * USE CASES:
- * - Admin Dashboard: Tagesübersicht
- * - Kalender-Ansicht: Alle Buchungen in einem Monat
- * - Statistiken: Gefiltert nach Status
- * 
- * RESPONSE (Success - 200 OK):
- * {
- *      success: true,
- *      message: 'X booking(s) found',
- *      data: [...array von bookings]
- * }
- */
-router.get('/venues/:venueId/bookings', async (req: Request<{ venueId: string }>, res: Response) => 
-{
-    logger.separator();
-    logger.info('Received Request - GET /venues/:venueId/bookings');
-
-    const venueId = parseInt(req.params.venueId);
-
-    // Query-Parameter extrahieren (alle sind optional)
-    // req.query enthält alle ?key=value Parameter aus der URL
-    const { date, status, startDate, endDate } = req.query;
-
-
-    // VENUE ID VALIDIERUNG
-    if (isNaN(venueId) || venueId <= 0)
-    {
-        logger.warn('Invalid venue ID', { provided: req.params.venueId });
-        logger.separator();
-
-        return res.status(400).json({
-            success: false,
-            message: 'Invalid venue Id'
-        } as ApiResponse<void>);
-    }
-
-    try 
-    {
-        // FILTER-OBJEKT ERSTELLEN
-        // Nur definierte Query-Parameter werden an den Service übergeben
-        // Warum ? -> Verhindert undefined-Werte in SQL-Query
-        const filters: {
-            date?: string;
-            status?: string;
-            startDate?: string;
-            endDate?: string;
-        } = {};
-
-        // Nur hinzufügen wenn Parameter vorhanden ist
-        if (date) filters.date = date as string;
-        if (status) filters.status = status as string;
-        if (startDate) filters.startDate = startDate as string;
-        if (endDate) filters.endDate = endDate as string;
-
-        // Falls filters = {} (leer), werden alle Buchungen geholt
-        const bookings = await BookingService.getBookingsByVenue(venueId, filters);
-
-        res.json({
-            success: true,
-            message: `${bookings.length} booking${bookings.length !== 1 ? 's' : ''} found`,
-            data: bookings
-        } as ApiResponse<Booking[]>);
-    } 
-    catch (error) 
-    {
-        logger.error('Error fetching venue bookings', error);
-
-        res.status(500).json({
-            success: false,
-            message: 'Failed to fetch bookings',
-            error: process.env.NODE_ENV === 'development' ? String(error) : undefined
-        } as ApiResponse<void>);
-    }
-    finally
-    {
-        logger.info('Response sent');
-        logger.separator();
-    }
-});
 
 
 
