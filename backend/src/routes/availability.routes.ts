@@ -227,9 +227,16 @@ router.post('/validate', async (req, res) =>
     } = req.body;
 
 
-    if (!venueId || !serviceId || !bookingDate || !startTime || !endTime || !partySize)
+    if (
+        venueId == null ||           // Prüft null UND undefined
+        serviceId == null || 
+        bookingDate == null || 
+        startTime == null || 
+        endTime == null || 
+        partySize == null            // ← Erlaubt jetzt 0!
+    )
     {
-        logger.warn('Missing one or more required fiels');
+        logger.warn('Missing one or more required fiels', partySize);
         logger.separator();
         
         return res.status(400).json({

@@ -211,7 +211,7 @@ import { randomUUID } from 'crypto';
     {
         const tokenPrefix = getTokenPrefix(token);
         
-        logger.info('Fetching booking by token', { token_prefix: tokenPrefix });
+        logger.info('Fetching booking by token...');
         logger.separator();
 
         let conn;
@@ -219,7 +219,7 @@ import { randomUUID } from 'crypto';
         {
             conn = await getConnection();
 
-            const [bookings] = await conn.query(`
+            const bookings = await conn.query(`
                 SELECT 
                     b.*,
                     v.name as venue_name,
@@ -230,7 +230,8 @@ import { randomUUID } from 'crypto';
                 LEFT JOIN services s ON b.service_id = s.id
                 LEFT JOIN staff_members sm ON b.staff_member_id = sm.id
                 WHERE b.booking_token = ?
-            `, [token]) as any;
+            `, [token]) as Booking[];
+
 
             if (bookings.length === 0)
             {
@@ -746,6 +747,22 @@ import { randomUUID } from 'crypto';
         try 
         {
             conn = await getConnection();
+
+            // NEU: Prüfe Existenz ZUERST
+            const booking = await this.getBookingById(bookingId);
+            
+            if (!booking)
+            {
+                logger.warn('Booking not found');
+                throw new Error('Booking not found');  // Wird als 404 erkannt!
+            }
+            
+            // Optional: Prüfe ob schon confirmed
+            if (booking.status === 'confirmed')
+            {
+                logger.info('Booking already confirmed');
+                return booking;  // Idempotent!
+            }
             
             await conn.query(`
                 UPDATE bookings
@@ -799,6 +816,16 @@ import { randomUUID } from 'crypto';
         let conn;
         try 
         {
+
+            // NEU: Prüfe Existenz ZUERST
+            const booking = await this.getBookingById(bookingId);
+            
+            if (!booking)
+            {
+                logger.warn('Booking not found');
+                throw new Error('Booking not found');  // Wird als 404 erkannt!
+            }
+            
             conn = await getConnection();
             
             await conn.query(`

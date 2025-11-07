@@ -1,0 +1,1545 @@
+{
+	"info": {
+		"_postman_id": "dba4e9cd-61bf-4c6f-8427-87659634d230",
+		"name": "EasySeat - Booking API Tests",
+		"description": "Umfassende Test-Suite für alle Booking-Endpunkte. Diese Tests sind wiederholbar und prüfen Happy Paths sowie Error Cases.",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "45068530",
+		"_collection_link": "https://niko-9193311.postman.co/workspace/niko's-Workspace~4848bc39-f3b1-4f7d-87ed-e1aa515b249c/collection/45068530-dba4e9cd-61bf-4c6f-8427-87659634d230?action=share&source=collection_link&creator=45068530"
+	},
+	"item": [
+		{
+			"name": "1. CREATE BOOKING",
+			"item": [
+				{
+					"name": "✅ Create Restaurant Booking (Success)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"// Test: Status Code sollte 201 sein",
+									"pm.test('Status code is 201 Created', function() {",
+									"    pm.response.to.have.status(201);",
+									"});",
+									"",
+									"// Test: Response sollte JSON sein",
+									"pm.test('Response is JSON', function() {",
+									"    pm.response.to.be.json;",
+									"});",
+									"",
+									"// Parse Response",
+									"const response = pm.response.json();",
+									"",
+									"// Test: Success Flag",
+									"pm.test('Success flag is true', function() {",
+									"    pm.expect(response.success).to.be.true;",
+									"});",
+									"",
+									"// Test: Message vorhanden",
+									"pm.test('Success message present', function() {",
+									"    pm.expect(response.message).to.include('successfully');",
+									"});",
+									"",
+									"// Test: Data vorhanden",
+									"pm.test('Booking data present', function() {",
+									"    pm.expect(response.data).to.exist;",
+									"    pm.expect(response.data.id).to.exist;",
+									"    pm.expect(response.data.booking_token).to.exist;",
+									"});",
+									"",
+									"// Test: Booking Token ist UUID v4",
+									"pm.test('Booking token is valid UUID', function() {",
+									"    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;",
+									"    pm.expect(response.data.booking_token).to.match(uuidRegex);",
+									"});",
+									"",
+									"// Test: Status ist 'pending'",
+									"pm.test('Booking status is pending', function() {",
+									"    pm.expect(response.data.status).to.equal('pending');",
+									"});",
+									"",
+									"// Test: Alle Request-Daten sind gespeichert",
+									"const requestData = JSON.parse(pm.request.body.raw);",
+									"pm.test('All booking data saved correctly', function() {",
+									"    pm.expect(response.data.venue_id).to.equal(requestData.venue_id);",
+									"    pm.expect(response.data.service_id).to.equal(requestData.service_id);",
+									"    pm.expect(response.data.customer_name).to.equal(requestData.customer_name);",
+									"    pm.expect(response.data.customer_email).to.equal(requestData.customer_email);",
+									"    pm.expect(response.data.party_size).to.equal(requestData.party_size);",
+									"});",
+									"",
+									"// Speichere ID und Token für weitere Tests",
+									"if (response.data) {",
+									"    pm.collectionVariables.set('booking_id', response.data.id);",
+									"    pm.collectionVariables.set('booking_token', response.data.booking_token);",
+									"    console.log('Saved booking_id:', response.data.id);",
+									"    console.log('Saved booking_token:', response.data.booking_token);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"venue_id\": 1,\n  \"service_id\": 2,\n  \"customer_name\": \"Max Mustermann\",\n  \"customer_email\": \"{{test_email}}\",\n  \"customer_phone\": \"+49 170 1234567\",\n  \"booking_date\": \"2025-11-15\",\n  \"start_time\": \"19:00\",\n  \"end_time\": \"21:00\",\n  \"party_size\": 4,\n  \"special_requests\": \"Fensterplatz bevorzugt\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/bookings",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"bookings"
+							]
+						},
+						"description": "Erstellt eine neue Restaurant-Buchung für Tisch für 4 Personen"
+					},
+					"response": []
+				},
+				{
+					"name": "✅ Create Salon Booking with Staff (Success)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 201', function() {",
+									"    pm.response.to.have.status(201);",
+									"});",
+									"",
+									"const response = pm.response.json();",
+									"",
+									"pm.test('Booking created with staff member', function() {",
+									"    pm.expect(response.data.staff_member_id).to.equal(1);",
+									"});",
+									"",
+									"pm.test('Service requires staff', function() {",
+									"    pm.expect(response.data.service_id).to.equal(5); // Damenhaarschnitt",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"venue_id\": 2,\n  \"service_id\": 5,\n  \"staff_member_id\": 1,\n  \"customer_name\": \"Lisa Weber\",\n  \"customer_email\": \"lisa@example.com\",\n  \"customer_phone\": \"+49 170 9876543\",\n  \"booking_date\": \"2025-11-12\",\n  \"start_time\": \"10:00\",\n  \"end_time\": \"11:30\",\n  \"party_size\": 1,\n  \"total_amount\": 55.00\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/bookings",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"bookings"
+							]
+						},
+						"description": "Erstellt Salon-Buchung mit Staff Member (Anna Schmidt)"
+					},
+					"response": []
+				},
+				{
+					"name": "❌ Create Booking - Empty Body",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 400 Bad Request', function() {",
+									"    pm.response.to.have.status(400);",
+									"});",
+									"",
+									"const response = pm.response.json();",
+									"",
+									"pm.test('Success flag is false', function() {",
+									"    pm.expect(response.success).to.be.false;",
+									"});",
+									"",
+									"pm.test('Error message mentions empty body', function() {",
+									"    pm.expect(response.message).to.include('body');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/bookings",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"bookings"
+							]
+						},
+						"description": "Test: Leerer Request Body sollte abgelehnt werden"
+					},
+					"response": []
+				},
+				{
+					"name": "❌ Create Booking - Missing Required Fields",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 400', function() {",
+									"    pm.response.to.have.status(400);",
+									"});",
+									"",
+									"const response = pm.response.json();",
+									"",
+									"pm.test('Error mentions missing fields', function() {",
+									"    pm.expect(response.message).to.include('Missing required fields');",
+									"});",
+									"",
+									"pm.test('Lists specific missing fields', function() {",
+									"    pm.expect(response.message).to.include('customer_email');",
+									"    pm.expect(response.message).to.include('start_time');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"venue_id\": 1,\n  \"service_id\": 2,\n  \"customer_name\": \"Test User\",\n  \"booking_date\": \"2025-11-15\",\n  \"party_size\": 2\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/bookings",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"bookings"
+							]
+						},
+						"description": "Test: Fehlende Pflichtfelder (customer_email, start_time, end_time)"
+					},
+					"response": []
+				},
+				{
+					"name": "❌ Create Booking - Invalid Email Format",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 400', function() {",
+									"    pm.response.to.have.status(400);",
+									"});",
+									"",
+									"const response = pm.response.json();",
+									"",
+									"pm.test('Error mentions invalid email', function() {",
+									"    pm.expect(response.message).to.include('email format');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"venue_id\": 1,\n  \"service_id\": 2,\n  \"customer_name\": \"Test User\",\n  \"customer_email\": \"invalid-email\",\n  \"booking_date\": \"2025-11-15\",\n  \"start_time\": \"19:00\",\n  \"end_time\": \"21:00\",\n  \"party_size\": 2\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/bookings",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"bookings"
+							]
+						},
+						"description": "Test: Ungültiges Email-Format"
+					},
+					"response": []
+				},
+				{
+					"name": "❌ Create Booking - Invalid Date Format",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 400', function() {",
+									"    pm.response.to.have.status(400);",
+									"});",
+									"",
+									"const response = pm.response.json();",
+									"",
+									"pm.test('Error mentions invalid date format', function() {",
+									"    pm.expect(response.message).to.include('date format');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"venue_id\": 1,\n  \"service_id\": 2,\n  \"customer_name\": \"Test User\",\n  \"customer_email\": \"test@example.com\",\n  \"booking_date\": \"15.11.2025\",\n  \"start_time\": \"19:00\",\n  \"end_time\": \"21:00\",\n  \"party_size\": 2\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/bookings",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"bookings"
+							]
+						},
+						"description": "Test: Falsches Datumsformat (DD.MM.YYYY statt YYYY-MM-DD)"
+					},
+					"response": []
+				},
+				{
+					"name": "❌ Create Booking - Invalid Time Format",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 400', function() {",
+									"    pm.response.to.have.status(400);",
+									"});",
+									"",
+									"const response = pm.response.json();",
+									"",
+									"pm.test('Error mentions invalid time format', function() {",
+									"    pm.expect(response.message).to.include('time format');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"venue_id\": 1,\n  \"service_id\": 2,\n  \"customer_name\": \"Test User\",\n  \"customer_email\": \"test@example.com\",\n  \"booking_date\": \"2025-11-15\",\n  \"start_time\": \"19\",\n  \"end_time\": \"9pm\",\n  \"party_size\": 2\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/bookings",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"bookings"
+							]
+						},
+						"description": "Test: Falsches Zeitformat (nicht HH:MM)"
+					},
+					"response": []
+				},
+				{
+					"name": "❌ Create Booking - Invalid Party Size",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 400', function() {",
+									"    pm.response.to.have.status(400);",
+									"});",
+									"",
+									"const response = pm.response.json();",
+									"",
+									"pm.test('Error mentions party size', function() {",
+									"    pm.expect(response.message).to.include('party_size');",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {},
+								"requests": {}
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"venue_id\": 1,\n  \"service_id\": 2,\n  \"customer_name\": \"Test User\",\n  \"customer_email\": \"test@example.com\",\n  \"booking_date\": \"2025-11-15\",\n  \"start_time\": \"19:00\",\n  \"end_time\": \"21:00\",\n  \"party_size\": 0\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/bookings",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"bookings"
+							]
+						},
+						"description": "Test: Party size = 0 sollte abgelehnt werden"
+					},
+					"response": []
+				},
+				{
+					"name": "❌ Create Booking - Slot Not Available",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 409 Conflict', function() {",
+									"    pm.response.to.have.status(409);",
+									"});",
+									"",
+									"const response = pm.response.json();",
+									"",
+									"pm.test('Error mentions availability', function() {",
+									"    pm.expect(response.message).to.include('not available');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"venue_id\": 1,\n  \"service_id\": 2,\n  \"customer_name\": \"Double Booking Test\",\n  \"customer_email\": \"conflict@example.com\",\n  \"booking_date\": \"2025-11-15\",\n  \"start_time\": \"19:00\",\n  \"end_time\": \"21:00\",\n  \"party_size\": 4\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/bookings",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"bookings"
+							]
+						},
+						"description": "Test: Versuche denselben Slot nochmal zu buchen (sollte 409 Conflict geben)"
+					},
+					"response": []
+				}
+			],
+			"description": "Tests für das Erstellen neuer Buchungen"
+		},
+		{
+			"name": "2. GET BOOKING",
+			"item": [
+				{
+					"name": "✅ Get Booking by ID",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 200', function() {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"const response = pm.response.json();",
+									"",
+									"pm.test('Booking data retrieved', function() {",
+									"    pm.expect(response.success).to.be.true;",
+									"    pm.expect(response.data).to.exist;",
+									"    pm.expect(response.data.id).to.equal(parseInt(pm.collectionVariables.get('booking_id')));",
+									"});",
+									"",
+									"pm.test('Booking has all required fields', function() {",
+									"    const booking = response.data;",
+									"    pm.expect(booking).to.have.property('booking_token');",
+									"    pm.expect(booking).to.have.property('customer_name');",
+									"    pm.expect(booking).to.have.property('booking_date');",
+									"    pm.expect(booking).to.have.property('status');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/bookings/{{booking_id}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"bookings",
+								"{{booking_id}}"
+							]
+						},
+						"description": "Ruft die erstellte Buchung über ihre ID ab"
+					},
+					"response": []
+				},
+				{
+					"name": "✅ Get Booking by Token",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 200', function() {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"const response = pm.response.json();",
+									"",
+									"pm.test('Booking retrieved by token', function() {",
+									"    pm.expect(response.success).to.be.true;",
+									"    pm.expect(response.data.booking_token).to.equal(pm.collectionVariables.get('booking_token'));",
+									"});",
+									"",
+									"pm.test('Includes venue and service names', function() {",
+									"    pm.expect(response.data).to.have.property('venue_name');",
+									"    pm.expect(response.data).to.have.property('service_name');",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {},
+								"requests": {}
+							}
+						},
+						{
+							"listen": "prerequest",
+							"script": {
+								"packages": {},
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/bookings/manage/{{booking_token}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"bookings",
+								"manage",
+								"{{booking_token}}"
+							]
+						},
+						"description": "Ruft Buchung über Token ab (für Management-Seite)"
+					},
+					"response": []
+				},
+				{
+					"name": "✅ Get Bookings by Customer Email",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 200', function() {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"const response = pm.response.json();",
+									"",
+									"pm.test('Returns array of bookings', function() {",
+									"    pm.expect(response.success).to.be.true;",
+									"    pm.expect(response.data).to.be.an('array');",
+									"});",
+									"",
+									"pm.test('At least one booking found', function() {",
+									"    pm.expect(response.data.length).to.be.at.least(1);",
+									"});",
+									"",
+									"pm.test('All bookings have correct email', function() {",
+									"    const testEmail = pm.collectionVariables.get('test_email');",
+									"    response.data.forEach(booking => {",
+									"        pm.expect(booking.customer_email).to.equal(testEmail);",
+									"    });",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/bookings/customer/{{test_email}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"bookings",
+								"customer",
+								"{{test_email}}"
+							]
+						},
+						"description": "Ruft alle Buchungen für eine Email-Adresse ab"
+					},
+					"response": []
+				},
+				{
+					"name": "❌ Get Booking - Invalid ID",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 400', function() {",
+									"    pm.response.to.have.status(400);",
+									"});",
+									"",
+									"const response = pm.response.json();",
+									"",
+									"pm.test('Error mentions invalid ID', function() {",
+									"    pm.expect(response.message).to.include('Invalid booking ID');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/bookings/abc",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"bookings",
+								"abc"
+							]
+						},
+						"description": "Test: Nicht-numerische ID sollte 400 geben"
+					},
+					"response": []
+				},
+				{
+					"name": "❌ Get Booking - Not Found",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 404', function() {",
+									"    pm.response.to.have.status(404);",
+									"});",
+									"",
+									"const response = pm.response.json();",
+									"",
+									"pm.test('Error mentions not found', function() {",
+									"    pm.expect(response.message).to.include('not found');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/bookings/999999",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"bookings",
+								"999999"
+							]
+						},
+						"description": "Test: Nicht existierende ID sollte 404 geben"
+					},
+					"response": []
+				},
+				{
+					"name": "❌ Get Booking by Token - Invalid Token Format",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 400', function() {",
+									"    pm.response.to.have.status(400);",
+									"});",
+									"",
+									"const response = pm.response.json();",
+									"",
+									"pm.test('Error mentions invalid token', function() {",
+									"    pm.expect(response.message).to.include('Invalid booking token');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/bookings/manage/invalid-token-123",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"bookings",
+								"manage",
+								"invalid-token-123"
+							]
+						},
+						"description": "Test: Ungültiges Token-Format"
+					},
+					"response": []
+				},
+				{
+					"name": "❌ Get Booking by Email - Invalid Email",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 400', function() {",
+									"    pm.response.to.have.status(400);",
+									"});",
+									"",
+									"const response = pm.response.json();",
+									"",
+									"pm.test('Error mentions invalid email', function() {",
+									"    pm.expect(response.message).to.include('email format');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/bookings/customer/not-an-email",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"bookings",
+								"customer",
+								"not-an-email"
+							]
+						},
+						"description": "Test: Ungültiges Email-Format"
+					},
+					"response": []
+				}
+			],
+			"description": "Tests für das Abrufen von Buchungen"
+		},
+		{
+			"name": "3. UPDATE BOOKING",
+			"item": [
+				{
+					"name": "✅ Update Booking - Change Date and Time",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 200', function() {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"const response = pm.response.json();",
+									"",
+									"pm.test('Booking updated successfully', function() {",
+									"    pm.expect(response.success).to.be.true;",
+									"    pm.expect(response.message).to.include('updated');",
+									"});",
+									"",
+									"const requestData = JSON.parse(pm.request.body.raw);",
+									"pm.test('Date and time were updated', function() {",
+									"    pm.expect(response.data.booking_date).to.include(requestData.booking_date);",
+									"    pm.expect(response.data.start_time).to.equal(requestData.start_time);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"booking_date\": \"2025-11-16\",\n  \"start_time\": \"18:00\",\n  \"end_time\": \"20:00\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/bookings/manage/{{booking_token}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"bookings",
+								"manage",
+								"{{booking_token}}"
+							]
+						},
+						"description": "Ändert Datum und Uhrzeit der Buchung"
+					},
+					"response": []
+				},
+				{
+					"name": "✅ Update Booking - Change Party Size",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 200', function() {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"const response = pm.response.json();",
+									"const requestData = JSON.parse(pm.request.body.raw);",
+									"",
+									"pm.test('Party size updated', function() {",
+									"    pm.expect(response.data.party_size).to.equal(requestData.party_size);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"party_size\": 2\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/bookings/manage/{{booking_token}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"bookings",
+								"manage",
+								"{{booking_token}}"
+							]
+						},
+						"description": "Ändert die Personenzahl"
+					},
+					"response": []
+				},
+				{
+					"name": "✅ Update Booking - Change Special Requests",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 200', function() {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"const response = pm.response.json();",
+									"const requestData = JSON.parse(pm.request.body.raw);",
+									"",
+									"pm.test('Special requests updated', function() {",
+									"    pm.expect(response.data.special_requests).to.equal(requestData.special_requests);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"special_requests\": \"Allergien: Nüsse, bitte Hochstuhl bereitstellen\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/bookings/manage/{{booking_token}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"bookings",
+								"manage",
+								"{{booking_token}}"
+							]
+						},
+						"description": "Ändert spezielle Wünsche"
+					},
+					"response": []
+				},
+				{
+					"name": "❌ Update Booking - Invalid Token",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 400', function() {",
+									"    pm.response.to.have.status(400);",
+									"});",
+									"",
+									"const response = pm.response.json();",
+									"",
+									"pm.test('Error mentions invalid token', function() {",
+									"    pm.expect(response.message).to.include('Invalid booking token');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"party_size\": 3\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/bookings/manage/invalid-token",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"bookings",
+								"manage",
+								"invalid-token"
+							]
+						},
+						"description": "Test: Ungültiger Token"
+					},
+					"response": []
+				},
+				{
+					"name": "❌ Update Booking - No Updates Provided",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 400', function() {",
+									"    pm.response.to.have.status(400);",
+									"});",
+									"",
+									"const response = pm.response.json();",
+									"",
+									"pm.test('Error mentions no updates', function() {",
+									"    pm.expect(response.message).to.include('No updates');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/bookings/manage/{{booking_token}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"bookings",
+								"manage",
+								"{{booking_token}}"
+							]
+						},
+						"description": "Test: Leeres Update sollte abgelehnt werden"
+					},
+					"response": []
+				},
+				{
+					"name": "❌ Update Booking - Invalid Fields",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 400', function() {",
+									"    pm.response.to.have.status(400);",
+									"});",
+									"",
+									"const response = pm.response.json();",
+									"",
+									"pm.test('Error mentions invalid fields', function() {",
+									"    pm.expect(response.message).to.include('Invalid fields');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"status\": \"confirmed\",\n  \"total_amount\": 100.00\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/bookings/manage/{{booking_token}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"bookings",
+								"manage",
+								"{{booking_token}}"
+							]
+						},
+						"description": "Test: Nicht erlaubte Felder (status, total_amount)"
+					},
+					"response": []
+				}
+			],
+			"description": "Tests für das Aktualisieren von Buchungen"
+		},
+		{
+			"name": "4. CONFIRM BOOKING",
+			"item": [
+				{
+					"name": "✅ Confirm Booking",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 200', function() {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"const response = pm.response.json();",
+									"",
+									"pm.test('Booking confirmed', function() {",
+									"    pm.expect(response.success).to.be.true;",
+									"    pm.expect(response.data.status).to.equal('confirmed');",
+									"});",
+									"",
+									"pm.test('Confirmation timestamp set', function() {",
+									"    pm.expect(response.data.confirmation_sent_at).to.exist;",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/bookings/{{booking_id}}/confirm",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"bookings",
+								"{{booking_id}}",
+								"confirm"
+							]
+						},
+						"description": "Bestätigt eine Buchung (Status: pending → confirmed)"
+					},
+					"response": []
+				},
+				{
+					"name": "❌ Confirm Booking - Invalid ID",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 400', function() {",
+									"    pm.response.to.have.status(400);",
+									"});",
+									"",
+									"const response = pm.response.json();",
+									"",
+									"pm.test('Error mentions invalid ID', function() {",
+									"    pm.expect(response.message).to.include('Invalid booking ID');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/bookings/abc/confirm",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"bookings",
+								"abc",
+								"confirm"
+							]
+						},
+						"description": "Test: Ungültige ID"
+					},
+					"response": []
+				},
+				{
+					"name": "❌ Confirm Booking - Not Found",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 404', function() {",
+									"    pm.response.to.have.status(404);",
+									"});",
+									"",
+									"const response = pm.response.json();",
+									"",
+									"pm.test('Error mentions not found', function() {",
+									"    pm.expect(response.message).to.include('not found');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/bookings/999999/confirm",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"bookings",
+								"999999",
+								"confirm"
+							]
+						},
+						"description": "Test: Nicht existierende Buchung"
+					},
+					"response": []
+				}
+			],
+			"description": "Tests für Buchungsbestätigung"
+		},
+		{
+			"name": "5. CANCEL BOOKING",
+			"item": [
+				{
+					"name": "✅ Cancel Booking with Reason",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 200', function() {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"const response = pm.response.json();",
+									"",
+									"pm.test('Booking cancelled', function() {",
+									"    pm.expect(response.success).to.be.true;",
+									"    pm.expect(response.data.status).to.equal('cancelled');",
+									"});",
+									"",
+									"pm.test('Cancellation reason saved', function() {",
+									"    pm.expect(response.data.cancellation_reason).to.exist;",
+									"});",
+									"",
+									"pm.test('Cancellation timestamp set', function() {",
+									"    pm.expect(response.data.cancelled_at).to.exist;",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"reason\": \"Kunde ist krank geworden\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/bookings/manage/{{booking_token}}/cancel",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"bookings",
+								"manage",
+								"{{booking_token}}",
+								"cancel"
+							]
+						},
+						"description": "Storniert eine Buchung mit Grund"
+					},
+					"response": []
+				},
+				{
+					"name": "❌ Cancel Booking - Already Cancelled",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 400', function() {",
+									"    pm.response.to.have.status(400);",
+									"});",
+									"",
+									"const response = pm.response.json();",
+									"",
+									"pm.test('Error mentions already cancelled', function() {",
+									"    pm.expect(response.message).to.include('already cancelled');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"reason\": \"Erneuter Stornierungsversuch\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/bookings/manage/{{booking_token}}/cancel",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"bookings",
+								"manage",
+								"{{booking_token}}",
+								"cancel"
+							]
+						},
+						"description": "Test: Bereits stornierte Buchung kann nicht nochmal storniert werden"
+					},
+					"response": []
+				},
+				{
+					"name": "❌ Cancel Booking - Invalid Token",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 400 or 401', function() {",
+									"    pm.expect(pm.response.code).to.be.oneOf([400, 401]);",
+									"});",
+									"",
+									"const response = pm.response.json();",
+									"",
+									"pm.test('Error mentions invalid token', function() {",
+									"    pm.expect(response.message.toLowerCase()).to.include('token');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"reason\": \"Test\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/bookings/manage/invalid-token-format/cancel",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"bookings",
+								"manage",
+								"invalid-token-format",
+								"cancel"
+							]
+						},
+						"description": "Test: Ungültiger Token"
+					},
+					"response": []
+				}
+			],
+			"description": "Tests für Buchungsstornierung"
+		},
+		{
+			"name": "6. DELETE BOOKING",
+			"item": [
+				{
+					"name": "✅ Delete Booking (Hard Delete)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 200', function() {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"const response = pm.response.json();",
+									"",
+									"pm.test('Booking deleted permanently', function() {",
+									"    pm.expect(response.success).to.be.true;",
+									"    pm.expect(response.message).to.include('deleted permanently');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/bookings/{{booking_id}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"bookings",
+								"{{booking_id}}"
+							]
+						},
+						"description": "⚠️ HARD DELETE - Löscht Buchung permanent aus DB"
+					},
+					"response": []
+				},
+				{
+					"name": "❌ Delete Booking - Invalid ID",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 400', function() {",
+									"    pm.response.to.have.status(400);",
+									"});",
+									"",
+									"const response = pm.response.json();",
+									"",
+									"pm.test('Error mentions invalid ID', function() {",
+									"    pm.expect(response.message).to.include('Invalid booking ID');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/bookings/abc",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"bookings",
+								"abc"
+							]
+						},
+						"description": "Test: Ungültige ID"
+					},
+					"response": []
+				},
+				{
+					"name": "✅ Verify Booking Deleted",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 404', function() {",
+									"    pm.response.to.have.status(404);",
+									"});",
+									"",
+									"const response = pm.response.json();",
+									"",
+									"pm.test('Booking no longer exists', function() {",
+									"    pm.expect(response.message).to.include('not found');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/bookings/{{booking_id}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"bookings",
+								"{{booking_id}}"
+							]
+						},
+						"description": "Verifiziert, dass die Buchung wirklich gelöscht wurde"
+					},
+					"response": []
+				}
+			],
+			"description": "Tests für permanentes Löschen von Buchungen"
+		}
+	],
+	"variable": [
+		{
+			"key": "baseUrl",
+			"value": "http://localhost:5001",
+			"type": "string"
+		},
+		{
+			"key": "booking_id",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "booking_token",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "test_email",
+			"value": "test@easyseat.de",
+			"type": "string"
+		}
+	]
+}

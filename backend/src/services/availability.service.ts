@@ -964,6 +964,12 @@ export class AvailabilityService
 
         try 
         {
+            if (partySize <= 0) 
+            {
+                logger.warn('Party size must be at least 1');
+                errors.push('Party size must be at least 1');
+            }
+
             // Validiere Zeitformat mit Regex (HH:MM)
             if (!/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/.test(startTime) || 
                 !/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/.test(endTime)) 
