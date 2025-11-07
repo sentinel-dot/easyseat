@@ -3,7 +3,7 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 
 import { createLogger } from './config/utils/logger';
-import { testConnection, setupGracefulShutdown } from './config/database';
+import { testConnection, setupGracefulShutdown, resetBookingsTable } from './config/database';
 
 import venueRoutes from './routes/venue.routes';
 import availabilityRoutes from './routes/availability.routes';
@@ -92,6 +92,14 @@ const startServer = async() => {
             logger.error('Failed to connect to database. Exiting...');
             process.exit(1);
         }
+
+        const resetDb = await resetBookingsTable();
+
+        const message = resetDb 
+            ? 'Successfully reset bookings table.'
+            : 'Failed to reset bookings database.'
+
+        logger.info(message);
 
         // Setup Graceful Shutdown Handler
         setupGracefulShutdown();

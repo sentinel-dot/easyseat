@@ -18,6 +18,7 @@ import {
     UpdateBookingData
  } from "../config/utils/types";
 import { getTokenPrefix } from "../config/utils/helper";
+import { randomUUID } from 'crypto';
 
 
  const logger = createLogger('booking.service');
@@ -69,7 +70,7 @@ import { getTokenPrefix } from "../config/utils/helper";
             }
 
             // SCHRITT 1.5: Erstelle booking_token
-            const bookingToken = crypto.randomUUID();
+            const bookingToken = randomUUID();
 
 
             // SCHRITT 2: Füge die Buchung in die Datenbank ein

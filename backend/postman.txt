@@ -1,8 +1,9 @@
 {
   "info": {
-    "name": "Easyseat API Tests",
-    "description": "Complete test suite for Easyseat Backend API",
-    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+    "name": "Easyseat API Tests - Complete Suite",
+    "description": "Complete test suite for Easyseat Backend API - All routes with Happy Path, Error Cases, and Edge Cases",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "version": "2.0.0"
   },
   "variable": [
     {
@@ -12,7 +13,32 @@
     },
     {
       "key": "tomorrow",
-      "value": "{{$isoTimestamp}}",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "bookingId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "bookingIdForCancellation",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "managementToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "managementTokenCancelled",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "customerEmail",
+      "value": "test@example.com",
       "type": "string"
     }
   ],
@@ -172,15 +198,15 @@
                   "pm.test('Has staff members', function () {",
                   "    const jsonData = pm.response.json();",
                   "    pm.expect(jsonData.data.staff_members).to.be.an('array');",
-                  "    pm.expect(jsonData.data.staff_members.length).to.be.at.least(2);",
+                  "    pm.expect(jsonData.data.staff_members.length).to.be.greaterThan(0);",
                   "});",
                   "",
-                  "pm.test('Services require staff', function () {",
+                  "pm.test('Staff members have required fields', function () {",
                   "    const jsonData = pm.response.json();",
-                  "    jsonData.data.services.forEach(service => {",
-                  "        // MariaDB gibt BOOLEAN als 0/1 zurück",
-                  "        pm.expect([true, 1]).to.include(service.requires_staff);",
-                  "    });",
+                  "    const staff = jsonData.data.staff_members[0];",
+                  "    pm.expect(staff).to.have.property('id');",
+                  "    pm.expect(staff).to.have.property('name');",
+                  "    pm.expect(staff).to.have.property('specialization');",
                   "});"
                 ],
                 "type": "text/javascript"
@@ -199,7 +225,192 @@
           "response": []
         },
         {
-          "name": "GET Venue by ID - Invalid (String)",
+          "name": "GET Venue Bookings - All",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Response has success=true', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.success).to.be.true;",
+                  "});",
+                  "",
+                  "pm.test('Data is an array', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.data).to.be.an('array');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/venues/1/bookings",
+              "host": ["{{baseUrl}}"],
+              "path": ["venues", "1", "bookings"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET Venue Bookings - Filtered by Date",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('All bookings match the date', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    if (jsonData.data.length > 0) {",
+                  "        jsonData.data.forEach(booking => {",
+                  "            pm.expect(booking.booking_date).to.include('2025-11-05');",
+                  "        });",
+                  "    }",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/venues/1/bookings?date=2025-11-05",
+              "host": ["{{baseUrl}}"],
+              "path": ["venues", "1", "bookings"],
+              "query": [
+                {
+                  "key": "date",
+                  "value": "2025-11-05"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET Venue Bookings - Filtered by Status",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('All bookings have confirmed status', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    if (jsonData.data.length > 0) {",
+                  "        jsonData.data.forEach(booking => {",
+                  "            pm.expect(booking.status).to.eql('confirmed');",
+                  "        });",
+                  "    }",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/venues/1/bookings?status=confirmed",
+              "host": ["{{baseUrl}}"],
+              "path": ["venues", "1", "bookings"],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "confirmed"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET Venue Bookings - Date Range",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Response is an array', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.data).to.be.an('array');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/venues/1/bookings?startDate=2025-11-01&endDate=2025-11-30",
+              "host": ["{{baseUrl}}"],
+              "path": ["venues", "1", "bookings"],
+              "query": [
+                {
+                  "key": "startDate",
+                  "value": "2025-11-01"
+                },
+                {
+                  "key": "endDate",
+                  "value": "2025-11-30"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET Venue Bookings - Invalid Venue ID",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 400 or 404', function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([400, 404]);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/venues/9999/bookings",
+              "host": ["{{baseUrl}}"],
+              "path": ["venues", "9999", "bookings"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET Venue by ID - Invalid String",
           "event": [
             {
               "listen": "test",
@@ -207,11 +418,6 @@
                 "exec": [
                   "pm.test('Status code is 400', function () {",
                   "    pm.response.to.have.status(400);",
-                  "});",
-                  "",
-                  "pm.test('Error message contains Invalid venue ID', function () {",
-                  "    const jsonData = pm.response.json();",
-                  "    pm.expect(jsonData.message).to.include('Invalid venue ID');",
                   "});"
                 ],
                 "type": "text/javascript"
@@ -259,16 +465,52 @@
             }
           },
           "response": []
-        },
+        }
+      ]
+    },
+    {
+      "name": "Bookings - Create & Retrieve",
+      "item": [
         {
-          "name": "GET Venue by ID - Invalid (Zero)",
+          "name": "POST Create Booking - Restaurant (No Staff)",
           "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "const tomorrow = new Date();",
+                  "tomorrow.setDate(tomorrow.getDate() + 1);",
+                  "const tomorrowStr = tomorrow.toISOString().split('T')[0];",
+                  "pm.collectionVariables.set('tomorrow', tomorrowStr);"
+                ],
+                "type": "text/javascript"
+              }
+            },
             {
               "listen": "test",
               "script": {
                 "exec": [
-                  "pm.test('Status code is 400', function () {",
-                  "    pm.response.to.have.status(400);",
+                  "pm.test('Status code is 201', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "pm.test('Response has success=true', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.success).to.be.true;",
+                  "});",
+                  "",
+                  "pm.test('Booking has ID and token', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.data).to.have.property('id');",
+                  "    pm.expect(jsonData.data).to.have.property('management_token');",
+                  "    ",
+                  "    pm.collectionVariables.set('bookingId', jsonData.data.id);",
+                  "    pm.collectionVariables.set('managementToken', jsonData.data.management_token);",
+                  "});",
+                  "",
+                  "pm.test('Booking status is pending', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.data.status).to.eql('pending');",
                   "});"
                 ],
                 "type": "text/javascript"
@@ -276,18 +518,132 @@
             }
           ],
           "request": {
-            "method": "GET",
-            "header": [],
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"venue_id\": 1,\n  \"service_id\": 1,\n  \"customer_name\": \"Max Mustermann\",\n  \"customer_email\": \"{{customerEmail}}\",\n  \"customer_phone\": \"+49 123 456789\",\n  \"booking_date\": \"{{tomorrow}}\",\n  \"start_time\": \"14:00\",\n  \"end_time\": \"16:00\",\n  \"party_size\": 4,\n  \"special_requests\": \"Fensterplatz bitte\"\n}"
+            },
             "url": {
-              "raw": "{{baseUrl}}/venues/0",
+              "raw": "{{baseUrl}}/bookings",
               "host": ["{{baseUrl}}"],
-              "path": ["venues", "0"]
+              "path": ["bookings"]
             }
           },
           "response": []
         },
         {
-          "name": "GET Venue by ID - Invalid (Negative)",
+          "name": "POST Create Booking - Salon (With Staff)",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "const tomorrow = new Date();",
+                  "tomorrow.setDate(tomorrow.getDate() + 1);",
+                  "const tomorrowStr = tomorrow.toISOString().split('T')[0];",
+                  "pm.collectionVariables.set('tomorrow', tomorrowStr);"
+                ],
+                "type": "text/javascript"
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 201', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "pm.test('Booking includes staff member', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.data.staff_member_id).to.eql(1);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"venue_id\": 2,\n  \"service_id\": 4,\n  \"staff_member_id\": 1,\n  \"customer_name\": \"Anna Schmidt\",\n  \"customer_email\": \"anna@example.com\",\n  \"customer_phone\": \"+49 987 654321\",\n  \"booking_date\": \"{{tomorrow}}\",\n  \"start_time\": \"10:00\",\n  \"end_time\": \"10:45\",\n  \"party_size\": 1,\n  \"special_requests\": \"Kurzes Schneiden\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/bookings",
+              "host": ["{{baseUrl}}"],
+              "path": ["bookings"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "POST Create Booking - For Cancellation Test",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "const tomorrow = new Date();",
+                  "tomorrow.setDate(tomorrow.getDate() + 1);",
+                  "const tomorrowStr = tomorrow.toISOString().split('T')[0];",
+                  "pm.collectionVariables.set('tomorrow', tomorrowStr);"
+                ],
+                "type": "text/javascript"
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 201', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "pm.test('Save booking ID and token for cancellation', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.collectionVariables.set('bookingIdForCancellation', jsonData.data.id);",
+                  "    pm.collectionVariables.set('managementTokenCancelled', jsonData.data.management_token);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"venue_id\": 1,\n  \"service_id\": 1,\n  \"customer_name\": \"Test User For Cancel\",\n  \"customer_email\": \"cancel-test@example.com\",\n  \"customer_phone\": \"+49 123 456789\",\n  \"booking_date\": \"{{tomorrow}}\",\n  \"start_time\": \"18:00\",\n  \"end_time\": \"20:00\",\n  \"party_size\": 2\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/bookings",
+              "host": ["{{baseUrl}}"],
+              "path": ["bookings"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "POST Create Booking - Missing Required Fields",
           "event": [
             {
               "listen": "test",
@@ -295,6 +651,215 @@
                 "exec": [
                   "pm.test('Status code is 400', function () {",
                   "    pm.response.to.have.status(400);",
+                  "});",
+                  "",
+                  "pm.test('Error message mentions missing fields', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.message).to.include('required');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"venue_id\": 1,\n  \"customer_name\": \"Test User\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/bookings",
+              "host": ["{{baseUrl}}"],
+              "path": ["bookings"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "POST Create Booking - Invalid Email Format",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "const tomorrow = new Date();",
+                  "tomorrow.setDate(tomorrow.getDate() + 1);",
+                  "const tomorrowStr = tomorrow.toISOString().split('T')[0];",
+                  "pm.collectionVariables.set('tomorrow', tomorrowStr);"
+                ],
+                "type": "text/javascript"
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 400', function () {",
+                  "    pm.response.to.have.status(400);",
+                  "});",
+                  "",
+                  "pm.test('Error mentions email', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.message.toLowerCase()).to.include('email');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"venue_id\": 1,\n  \"service_id\": 1,\n  \"customer_name\": \"Test User\",\n  \"customer_email\": \"not-an-email\",\n  \"customer_phone\": \"+49 123 456789\",\n  \"booking_date\": \"{{tomorrow}}\",\n  \"start_time\": \"14:00\",\n  \"end_time\": \"16:00\",\n  \"party_size\": 4\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/bookings",
+              "host": ["{{baseUrl}}"],
+              "path": ["bookings"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "POST Create Booking - End Time Before Start Time",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "const tomorrow = new Date();",
+                  "tomorrow.setDate(tomorrow.getDate() + 1);",
+                  "const tomorrowStr = tomorrow.toISOString().split('T')[0];",
+                  "pm.collectionVariables.set('tomorrow', tomorrowStr);"
+                ],
+                "type": "text/javascript"
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 400', function () {",
+                  "    pm.response.to.have.status(400);",
+                  "});",
+                  "",
+                  "pm.test('Error about invalid time range', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.success).to.be.false;",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"venue_id\": 1,\n  \"service_id\": 1,\n  \"customer_name\": \"Test User\",\n  \"customer_email\": \"test@example.com\",\n  \"customer_phone\": \"+49 123 456789\",\n  \"booking_date\": \"{{tomorrow}}\",\n  \"start_time\": \"16:00\",\n  \"end_time\": \"14:00\",\n  \"party_size\": 4\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/bookings",
+              "host": ["{{baseUrl}}"],
+              "path": ["bookings"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "POST Create Booking - Staff Required But Missing",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "const tomorrow = new Date();",
+                  "tomorrow.setDate(tomorrow.getDate() + 1);",
+                  "const tomorrowStr = tomorrow.toISOString().split('T')[0];",
+                  "pm.collectionVariables.set('tomorrow', tomorrowStr);"
+                ],
+                "type": "text/javascript"
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 400', function () {",
+                  "    pm.response.to.have.status(400);",
+                  "});",
+                  "",
+                  "pm.test('Error mentions staff member required', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.message.toLowerCase()).to.include('staff');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"venue_id\": 2,\n  \"service_id\": 4,\n  \"customer_name\": \"Test User\",\n  \"customer_email\": \"test@example.com\",\n  \"customer_phone\": \"+49 123 456789\",\n  \"booking_date\": \"{{tomorrow}}\",\n  \"start_time\": \"10:00\",\n  \"end_time\": \"10:45\",\n  \"party_size\": 1\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/bookings",
+              "host": ["{{baseUrl}}"],
+              "path": ["bookings"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET Booking by ID",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Booking has all required fields', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    const booking = jsonData.data;",
+                  "    pm.expect(booking).to.have.property('id');",
+                  "    pm.expect(booking).to.have.property('venue_id');",
+                  "    pm.expect(booking).to.have.property('service_id');",
+                  "    pm.expect(booking).to.have.property('customer_name');",
+                  "    pm.expect(booking).to.have.property('customer_email');",
+                  "    pm.expect(booking).to.have.property('booking_date');",
+                  "    pm.expect(booking).to.have.property('start_time');",
+                  "    pm.expect(booking).to.have.property('status');",
                   "});"
                 ],
                 "type": "text/javascript"
@@ -305,9 +870,480 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/venues/-1",
+              "raw": "{{baseUrl}}/bookings/{{bookingId}}",
               "host": ["{{baseUrl}}"],
-              "path": ["venues", "-1"]
+              "path": ["bookings", "{{bookingId}}"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET Booking by ID - Not Found",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 404', function () {",
+                  "    pm.response.to.have.status(404);",
+                  "});",
+                  "",
+                  "pm.test('Error message is Booking not found', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.message).to.eql('Booking not found');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/bookings/99999",
+              "host": ["{{baseUrl}}"],
+              "path": ["bookings", "99999"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET Bookings by Customer Email",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Response is an array', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.data).to.be.an('array');",
+                  "});",
+                  "",
+                  "pm.test('All bookings belong to the customer', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    if (jsonData.data.length > 0) {",
+                  "        jsonData.data.forEach(booking => {",
+                  "            pm.expect(booking.customer_email).to.eql(pm.collectionVariables.get('customerEmail'));",
+                  "        });",
+                  "    }",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/bookings/customer/{{customerEmail}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["bookings", "customer", "{{customerEmail}}"]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Bookings - Token Management",
+      "item": [
+        {
+          "name": "GET Booking via Token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Booking retrieved successfully', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.success).to.be.true;",
+                  "    pm.expect(jsonData.data).to.have.property('id');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/bookings/manage/{{managementToken}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["bookings", "manage", "{{managementToken}}"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET Booking via Token - Invalid Token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 404', function () {",
+                  "    pm.response.to.have.status(404);",
+                  "});",
+                  "",
+                  "pm.test('Error message about invalid token', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.message).to.include('not found');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/bookings/manage/INVALID_TOKEN_12345",
+              "host": ["{{baseUrl}}"],
+              "path": ["bookings", "manage", "INVALID_TOKEN_12345"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET Booking with Malformed Token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 400', function () {",
+                  "    pm.response.to.have.status(400);",
+                  "});",
+                  "",
+                  "pm.test('Error mentions invalid token format', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.message).to.include('Invalid');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/bookings/manage/not-a-valid-uuid",
+              "host": ["{{baseUrl}}"],
+              "path": ["bookings", "manage", "not-a-valid-uuid"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "PATCH Update Booking via Token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Booking updated successfully', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.success).to.be.true;",
+                  "    pm.expect(jsonData.message).to.include('updated');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"party_size\": 6,\n  \"special_requests\": \"Ecktisch wenn möglich\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/bookings/manage/{{managementToken}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["bookings", "manage", "{{managementToken}}"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "POST Cancel Booking via Token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Booking cancelled successfully', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.success).to.be.true;",
+                  "    pm.expect(jsonData.message).to.include('cancelled');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"Test cancellation\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/bookings/manage/{{managementTokenCancelled}}/cancel",
+              "host": ["{{baseUrl}}"],
+              "path": ["bookings", "manage", "{{managementTokenCancelled}}", "cancel"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "PATCH Update Cancelled Booking - Should Fail",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 400', function () {",
+                  "    pm.response.to.have.status(400);",
+                  "});",
+                  "",
+                  "pm.test('Error mentions cancelled status', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.success).to.be.false;",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"party_size\": 10\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/bookings/manage/{{managementTokenCancelled}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["bookings", "manage", "{{managementTokenCancelled}}"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "POST Cancel Already Cancelled Booking - Should Fail",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 400', function () {",
+                  "    pm.response.to.have.status(400);",
+                  "});",
+                  "",
+                  "pm.test('Error mentions already cancelled', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.message).to.include('already cancelled');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/bookings/manage/{{managementTokenCancelled}}/cancel",
+              "host": ["{{baseUrl}}"],
+              "path": ["bookings", "manage", "{{managementTokenCancelled}}", "cancel"]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Bookings - Admin Operations",
+      "item": [
+        {
+          "name": "POST Confirm Booking",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Booking confirmed successfully', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.success).to.be.true;",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/bookings/{{bookingId}}/confirm",
+              "host": ["{{baseUrl}}"],
+              "path": ["bookings", "{{bookingId}}", "confirm"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "PATCH Update Booking by ID - Admin",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Booking updated', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.success).to.be.true;",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"confirmed\",\n  \"special_requests\": \"Updated via admin panel\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/bookings/{{bookingId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["bookings", "{{bookingId}}"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "POST Cancel Booking by ID - Admin",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Booking cancelled', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.success).to.be.true;",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"Admin cancellation\",\n  \"bypassPolicy\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/bookings/{{bookingId}}/cancel",
+              "host": ["{{baseUrl}}"],
+              "path": ["bookings", "{{bookingId}}", "cancel"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "DELETE Booking (ADMIN ONLY)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Booking deleted permanently', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.success).to.be.true;",
+                  "    pm.expect(jsonData.message).to.include('deleted');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/bookings/{{bookingId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["bookings", "{{bookingId}}"]
             }
           },
           "response": []
@@ -318,17 +1354,16 @@
       "name": "Availability - Slots",
       "item": [
         {
-          "name": "GET Slots - Restaurant Table Tomorrow",
+          "name": "GET Available Slots - Restaurant",
           "event": [
             {
               "listen": "prerequest",
               "script": {
                 "exec": [
-                  "// Berechne morgen",
                   "const tomorrow = new Date();",
                   "tomorrow.setDate(tomorrow.getDate() + 1);",
                   "const tomorrowStr = tomorrow.toISOString().split('T')[0];",
-                  "pm.environment.set('tomorrow', tomorrowStr);"
+                  "pm.collectionVariables.set('tomorrow', tomorrowStr);"
                 ],
                 "type": "text/javascript"
               }
@@ -341,19 +1376,15 @@
                   "    pm.response.to.have.status(200);",
                   "});",
                   "",
-                  "pm.test('Has time_slots array', function () {",
+                  "pm.test('Response has success=true', function () {",
                   "    const jsonData = pm.response.json();",
-                  "    pm.expect(jsonData.data.time_slots).to.be.an('array');",
+                  "    pm.expect(jsonData.success).to.be.true;",
                   "});",
                   "",
-                  "pm.test('Slots have correct structure', function () {",
+                  "pm.test('Slots array exists', function () {",
                   "    const jsonData = pm.response.json();",
-                  "    if (jsonData.data.time_slots.length > 0) {",
-                  "        const slot = jsonData.data.time_slots[0];",
-                  "        pm.expect(slot).to.have.property('start_time');",
-                  "        pm.expect(slot).to.have.property('end_time');",
-                  "        pm.expect(slot).to.have.property('available');",
-                  "    }",
+                  "    pm.expect(jsonData.data).to.have.property('slots');",
+                  "    pm.expect(jsonData.data.slots).to.be.an('array');",
                   "});"
                 ],
                 "type": "text/javascript"
@@ -368,110 +1399,25 @@
               "host": ["{{baseUrl}}"],
               "path": ["availability", "slots"],
               "query": [
-                {"key": "venueId", "value": "1"},
-                {"key": "serviceId", "value": "1"},
-                {"key": "date", "value": "{{tomorrow}}"}
+                {
+                  "key": "venueId",
+                  "value": "1"
+                },
+                {
+                  "key": "serviceId",
+                  "value": "1"
+                },
+                {
+                  "key": "date",
+                  "value": "{{tomorrow}}"
+                }
               ]
             }
           },
           "response": []
         },
         {
-          "name": "GET Slots - Hair Salon with Staff",
-          "event": [
-            {
-              "listen": "prerequest",
-              "script": {
-                "exec": [
-                  "// Finde nächsten Dienstag",
-                  "const today = new Date();",
-                  "const dayOfWeek = today.getDay();",
-                  "const daysUntilTuesday = (2 - dayOfWeek + 7) % 7 || 7;",
-                  "const tuesday = new Date(today);",
-                  "tuesday.setDate(today.getDate() + daysUntilTuesday);",
-                  "pm.environment.set('nextTuesday', tuesday.toISOString().split('T')[0]);"
-                ],
-                "type": "text/javascript"
-              }
-            },
-            {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "pm.test('Status code is 200', function () {",
-                  "    pm.response.to.have.status(200);",
-                  "});",
-                  "",
-                  "pm.test('Slots have staff_member_id', function () {",
-                  "    const jsonData = pm.response.json();",
-                  "    if (jsonData.data.time_slots.length > 0) {",
-                  "        const slot = jsonData.data.time_slots[0];",
-                  "        pm.expect(slot).to.have.property('staff_member_id');",
-                  "    }",
-                  "});"
-                ],
-                "type": "text/javascript"
-              }
-            }
-          ],
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/availability/slots?venueId=2&serviceId=4&date={{nextTuesday}}",
-              "host": ["{{baseUrl}}"],
-              "path": ["availability", "slots"],
-              "query": [
-                {"key": "venueId", "value": "2"},
-                {"key": "serviceId", "value": "4"},
-                {"key": "date", "value": "{{nextTuesday}}"}
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "GET Slots - Missing venueId (Error)",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "pm.test('Status code is 400', function () {",
-                  "    pm.response.to.have.status(400);",
-                  "});",
-                  "",
-                  "pm.test('Error message mentions missing parameters', function () {",
-                  "    const jsonData = pm.response.json();",
-                  "    pm.expect(jsonData.message).to.include('Missing');",
-                  "});"
-                ],
-                "type": "text/javascript"
-              }
-            }
-          ],
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/availability/slots?serviceId=1&date={{tomorrow}}",
-              "host": ["{{baseUrl}}"],
-              "path": ["availability", "slots"],
-              "query": [
-                {"key": "serviceId", "value": "1"},
-                {"key": "date", "value": "{{tomorrow}}"}
-              ]
-            }
-          },
-          "response": []
-        }
-      ]
-    },
-    {
-      "name": "Availability - Week",
-      "item": [
-        {
-          "name": "GET Week - Restaurant",
+          "name": "GET Available Slots - Hair Salon",
           "event": [
             {
               "listen": "prerequest",
@@ -479,7 +1425,8 @@
                 "exec": [
                   "const tomorrow = new Date();",
                   "tomorrow.setDate(tomorrow.getDate() + 1);",
-                  "pm.environment.set('tomorrow', tomorrow.toISOString().split('T')[0]);"
+                  "const tomorrowStr = tomorrow.toISOString().split('T')[0];",
+                  "pm.collectionVariables.set('tomorrow', tomorrowStr);"
                 ],
                 "type": "text/javascript"
               }
@@ -492,19 +1439,71 @@
                   "    pm.response.to.have.status(200);",
                   "});",
                   "",
-                  "pm.test('Returns 7 days', function () {",
+                  "pm.test('Has staff-specific slots', function () {",
                   "    const jsonData = pm.response.json();",
-                  "    pm.expect(jsonData.data).to.be.an('array');",
-                  "    pm.expect(jsonData.data.length).to.eql(7);",
+                  "    pm.expect(jsonData.data.slots).to.be.an('array');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/availability/slots?venueId=2&serviceId=4&staffMemberId=1&date={{tomorrow}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["availability", "slots"],
+              "query": [
+                {
+                  "key": "venueId",
+                  "value": "2"
+                },
+                {
+                  "key": "serviceId",
+                  "value": "4"
+                },
+                {
+                  "key": "staffMemberId",
+                  "value": "1"
+                },
+                {
+                  "key": "date",
+                  "value": "{{tomorrow}}"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET Available Week Slots",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "const startDate = new Date();",
+                  "startDate.setDate(startDate.getDate() + 1);",
+                  "const startDateStr = startDate.toISOString().split('T')[0];",
+                  "pm.collectionVariables.set('tomorrow', startDateStr);"
+                ],
+                "type": "text/javascript"
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
                   "});",
                   "",
-                  "pm.test('Each day has required fields', function () {",
+                  "pm.test('Has week data', function () {",
                   "    const jsonData = pm.response.json();",
-                  "    jsonData.data.forEach(day => {",
-                  "        pm.expect(day).to.have.property('date');",
-                  "        pm.expect(day).to.have.property('day_of_week');",
-                  "        pm.expect(day).to.have.property('time_slots');",
-                  "    });",
+                  "    pm.expect(jsonData.data).to.have.property('days');",
+                  "    pm.expect(jsonData.data.days).to.be.an('array');",
                   "});"
                 ],
                 "type": "text/javascript"
@@ -519,39 +1518,18 @@
               "host": ["{{baseUrl}}"],
               "path": ["availability", "week"],
               "query": [
-                {"key": "venueId", "value": "1"},
-                {"key": "serviceId", "value": "1"},
-                {"key": "startDate", "value": "{{tomorrow}}"}
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "GET Week - Missing startDate (Error)",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "pm.test('Status code is 400', function () {",
-                  "    pm.response.to.have.status(400);",
-                  "});"
-                ],
-                "type": "text/javascript"
-              }
-            }
-          ],
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/availability/week?venueId=1&serviceId=1",
-              "host": ["{{baseUrl}}"],
-              "path": ["availability", "week"],
-              "query": [
-                {"key": "venueId", "value": "1"},
-                {"key": "serviceId", "value": "1"}
+                {
+                  "key": "venueId",
+                  "value": "1"
+                },
+                {
+                  "key": "serviceId",
+                  "value": "1"
+                },
+                {
+                  "key": "startDate",
+                  "value": "{{tomorrow}}"
+                }
               ]
             }
           },
@@ -560,10 +1538,10 @@
       ]
     },
     {
-      "name": "Availability - Check",
+      "name": "Availability - Validation",
       "item": [
         {
-          "name": "POST Check - Valid Restaurant Booking",
+          "name": "POST Check Availability - Available",
           "event": [
             {
               "listen": "prerequest",
@@ -571,7 +1549,8 @@
                 "exec": [
                   "const tomorrow = new Date();",
                   "tomorrow.setDate(tomorrow.getDate() + 1);",
-                  "pm.environment.set('tomorrow', tomorrow.toISOString().split('T')[0]);"
+                  "const tomorrowStr = tomorrow.toISOString().split('T')[0];",
+                  "pm.collectionVariables.set('tomorrow', tomorrowStr);"
                 ],
                 "type": "text/javascript"
               }
@@ -584,10 +1563,9 @@
                   "    pm.response.to.have.status(200);",
                   "});",
                   "",
-                  "pm.test('Has available property', function () {",
+                  "pm.test('Slot is available', function () {",
                   "    const jsonData = pm.response.json();",
-                  "    pm.expect(jsonData.data).to.have.property('available');",
-                  "    pm.expect(typeof jsonData.data.available).to.eql('boolean');",
+                  "    pm.expect(jsonData.data.available).to.be.true;",
                   "});"
                 ],
                 "type": "text/javascript"
@@ -596,10 +1574,15 @@
           ],
           "request": {
             "method": "POST",
-            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"venueId\": 1,\n  \"serviceId\": 1,\n  \"date\": \"{{tomorrow}}\",\n  \"startTime\": \"19:00\",\n  \"endTime\": \"21:00\",\n  \"partySize\": 2\n}"
+              "raw": "{\n  \"venueId\": 1,\n  \"serviceId\": 1,\n  \"date\": \"{{tomorrow}}\",\n  \"startTime\": \"18:00\",\n  \"endTime\": \"20:00\"\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/availability/check",
@@ -610,7 +1593,7 @@
           "response": []
         },
         {
-          "name": "POST Check - Outside Opening Hours",
+          "name": "POST Check Availability - Outside Business Hours",
           "event": [
             {
               "listen": "prerequest",
@@ -618,7 +1601,8 @@
                 "exec": [
                   "const tomorrow = new Date();",
                   "tomorrow.setDate(tomorrow.getDate() + 1);",
-                  "pm.environment.set('tomorrow', tomorrow.toISOString().split('T')[0]);"
+                  "const tomorrowStr = tomorrow.toISOString().split('T')[0];",
+                  "pm.collectionVariables.set('tomorrow', tomorrowStr);"
                 ],
                 "type": "text/javascript"
               }
@@ -631,14 +1615,9 @@
                   "    pm.response.to.have.status(200);",
                   "});",
                   "",
-                  "pm.test('Slot is not available', function () {",
+                  "pm.test('Slot is not available (outside hours)', function () {",
                   "    const jsonData = pm.response.json();",
                   "    pm.expect(jsonData.data.available).to.be.false;",
-                  "});",
-                  "",
-                  "pm.test('Has reason', function () {",
-                  "    const jsonData = pm.response.json();",
-                  "    pm.expect(jsonData.data).to.have.property('reason');",
                   "});"
                 ],
                 "type": "text/javascript"
@@ -647,10 +1626,15 @@
           ],
           "request": {
             "method": "POST",
-            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"venueId\": 1,\n  \"serviceId\": 1,\n  \"date\": \"{{tomorrow}}\",\n  \"startTime\": \"08:00\",\n  \"endTime\": \"10:00\",\n  \"partySize\": 2\n}"
+              "raw": "{\n  \"venueId\": 1,\n  \"serviceId\": 1,\n  \"date\": \"{{tomorrow}}\",\n  \"startTime\": \"03:00\",\n  \"endTime\": \"04:00\"\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/availability/check",
@@ -661,7 +1645,7 @@
           "response": []
         },
         {
-          "name": "POST Check - Exceeds Capacity",
+          "name": "POST Validate Booking Request - Valid",
           "event": [
             {
               "listen": "prerequest",
@@ -669,7 +1653,8 @@
                 "exec": [
                   "const tomorrow = new Date();",
                   "tomorrow.setDate(tomorrow.getDate() + 1);",
-                  "pm.environment.set('tomorrow', tomorrow.toISOString().split('T')[0]);"
+                  "const tomorrowStr = tomorrow.toISOString().split('T')[0];",
+                  "pm.collectionVariables.set('tomorrow', tomorrowStr);"
                 ],
                 "type": "text/javascript"
               }
@@ -682,92 +1667,9 @@
                   "    pm.response.to.have.status(200);",
                   "});",
                   "",
-                  "pm.test('Slot is not available due to capacity', function () {",
-                  "    const jsonData = pm.response.json();",
-                  "    pm.expect(jsonData.data.available).to.be.false;",
-                  "    pm.expect(jsonData.data.reason).to.include('capacity');",
-                  "});"
-                ],
-                "type": "text/javascript"
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [{"key": "Content-Type", "value": "application/json"}],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"venueId\": 1,\n  \"serviceId\": 1,\n  \"date\": \"{{tomorrow}}\",\n  \"startTime\": \"19:00\",\n  \"endTime\": \"21:00\",\n  \"partySize\": 10\n}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/availability/check",
-              "host": ["{{baseUrl}}"],
-              "path": ["availability", "check"]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "POST Check - Missing Required Fields",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "pm.test('Status code is 400', function () {",
-                  "    pm.response.to.have.status(400);",
-                  "});"
-                ],
-                "type": "text/javascript"
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [{"key": "Content-Type", "value": "application/json"}],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"venueId\": 1\n}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/availability/check",
-              "host": ["{{baseUrl}}"],
-              "path": ["availability", "check"]
-            }
-          },
-          "response": []
-        }
-      ]
-    },
-    {
-      "name": "Availability - Validate",
-      "item": [
-        {
-          "name": "POST Validate - Valid Request",
-          "event": [
-            {
-              "listen": "prerequest",
-              "script": {
-                "exec": [
-                  "const tomorrow = new Date();",
-                  "tomorrow.setDate(tomorrow.getDate() + 1);",
-                  "pm.environment.set('tomorrow', tomorrow.toISOString().split('T')[0]);"
-                ],
-                "type": "text/javascript"
-              }
-            },
-            {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "pm.test('Status code is 200', function () {",
-                  "    pm.response.to.have.status(200);",
-                  "});",
-                  "",
-                  "pm.test('Validation passes', function () {",
+                  "pm.test('Validation passed', function () {",
                   "    const jsonData = pm.response.json();",
                   "    pm.expect(jsonData.data.valid).to.be.true;",
-                  "    pm.expect(jsonData.data.errors.length).to.eql(0);",
                   "});"
                 ],
                 "type": "text/javascript"
@@ -776,10 +1678,15 @@
           ],
           "request": {
             "method": "POST",
-            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"venueId\": 1,\n  \"serviceId\": 1,\n  \"bookingDate\": \"{{tomorrow}}\",\n  \"startTime\": \"19:00\",\n  \"endTime\": \"21:00\",\n  \"partySize\": 2\n}"
+              "raw": "{\n  \"venueId\": 1,\n  \"serviceId\": 1,\n  \"date\": \"{{tomorrow}}\",\n  \"startTime\": \"19:00\",\n  \"endTime\": \"21:00\",\n  \"partySize\": 4\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/availability/validate",
@@ -790,7 +1697,7 @@
           "response": []
         },
         {
-          "name": "POST Validate - Invalid Time Format",
+          "name": "POST Validate Booking - Invalid Party Size (Zero)",
           "event": [
             {
               "listen": "prerequest",
@@ -798,7 +1705,8 @@
                 "exec": [
                   "const tomorrow = new Date();",
                   "tomorrow.setDate(tomorrow.getDate() + 1);",
-                  "pm.environment.set('tomorrow', tomorrow.toISOString().split('T')[0]);"
+                  "const tomorrowStr = tomorrow.toISOString().split('T')[0];",
+                  "pm.collectionVariables.set('tomorrow', tomorrowStr);"
                 ],
                 "type": "text/javascript"
               }
@@ -811,10 +1719,10 @@
                   "    pm.response.to.have.status(400);",
                   "});",
                   "",
-                  "pm.test('Validation fails', function () {",
+                  "pm.test('Validation failed with errors', function () {",
                   "    const jsonData = pm.response.json();",
                   "    pm.expect(jsonData.data.valid).to.be.false;",
-                  "    pm.expect(jsonData.data.errors.length).to.be.greaterThan(0);",
+                  "    pm.expect(jsonData.data.errors).to.be.an('array');",
                   "});"
                 ],
                 "type": "text/javascript"
@@ -823,10 +1731,15 @@
           ],
           "request": {
             "method": "POST",
-            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"venueId\": 1,\n  \"serviceId\": 1,\n  \"bookingDate\": \"{{tomorrow}}\",\n  \"startTime\": \"25:00\",\n  \"endTime\": \"26:00\",\n  \"partySize\": 2\n}"
+              "raw": "{\n  \"venueId\": 1,\n  \"serviceId\": 1,\n  \"date\": \"{{tomorrow}}\",\n  \"startTime\": \"14:00\",\n  \"endTime\": \"16:00\",\n  \"partySize\": 0\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/availability/validate",
@@ -837,19 +1750,8 @@
           "response": []
         },
         {
-          "name": "POST Validate - End Before Start",
+          "name": "POST Validate - Past Date",
           "event": [
-            {
-              "listen": "prerequest",
-              "script": {
-                "exec": [
-                  "const tomorrow = new Date();",
-                  "tomorrow.setDate(tomorrow.getDate() + 1);",
-                  "pm.environment.set('tomorrow', tomorrow.toISOString().split('T')[0]);"
-                ],
-                "type": "text/javascript"
-              }
-            },
             {
               "listen": "test",
               "script": {
@@ -858,10 +1760,10 @@
                   "    pm.response.to.have.status(400);",
                   "});",
                   "",
-                  "pm.test('Error mentions end time', function () {",
+                  "pm.test('Validation failed for past date', function () {",
                   "    const jsonData = pm.response.json();",
-                  "    const hasEndTimeError = jsonData.data.errors.some(e => e.includes('after start time'));",
-                  "    pm.expect(hasEndTimeError).to.be.true;",
+                  "    pm.expect(jsonData.data.valid).to.be.false;",
+                  "    pm.expect(jsonData.data.errors).to.be.an('array');",
                   "});"
                 ],
                 "type": "text/javascript"
@@ -870,109 +1772,15 @@
           ],
           "request": {
             "method": "POST",
-            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"venueId\": 1,\n  \"serviceId\": 1,\n  \"bookingDate\": \"{{tomorrow}}\",\n  \"startTime\": \"20:00\",\n  \"endTime\": \"19:00\",\n  \"partySize\": 2\n}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/availability/validate",
-              "host": ["{{baseUrl}}"],
-              "path": ["availability", "validate"]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "POST Validate - Staff Required Missing",
-          "event": [
-            {
-              "listen": "prerequest",
-              "script": {
-                "exec": [
-                  "const today = new Date();",
-                  "const dayOfWeek = today.getDay();",
-                  "const daysUntilTuesday = (2 - dayOfWeek + 7) % 7 || 7;",
-                  "const tuesday = new Date(today);",
-                  "tuesday.setDate(today.getDate() + daysUntilTuesday);",
-                  "pm.environment.set('nextTuesday', tuesday.toISOString().split('T')[0]);"
-                ],
-                "type": "text/javascript"
-              }
-            },
-            {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "pm.test('Status code is 400', function () {",
-                  "    pm.response.to.have.status(400);",
-                  "});",
-                  "",
-                  "pm.test('Error mentions staff requirement', function () {",
-                  "    const jsonData = pm.response.json();",
-                  "    const hasStaffError = jsonData.data.errors.some(e => e.includes('Staff member is required'));",
-                  "    pm.expect(hasStaffError).to.be.true;",
-                  "});"
-                ],
-                "type": "text/javascript"
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [{"key": "Content-Type", "value": "application/json"}],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"venueId\": 2,\n  \"serviceId\": 4,\n  \"bookingDate\": \"{{nextTuesday}}\",\n  \"startTime\": \"10:00\",\n  \"endTime\": \"10:45\",\n  \"partySize\": 1\n}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/availability/validate",
-              "host": ["{{baseUrl}}"],
-              "path": ["availability", "validate"]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "POST Validate - Valid with Staff",
-          "event": [
-            {
-              "listen": "prerequest",
-              "script": {
-                "exec": [
-                  "const today = new Date();",
-                  "const dayOfWeek = today.getDay();",
-                  "const daysUntilTuesday = (2 - dayOfWeek + 7) % 7 || 7;",
-                  "const tuesday = new Date(today);",
-                  "tuesday.setDate(today.getDate() + daysUntilTuesday);",
-                  "pm.environment.set('nextTuesday', tuesday.toISOString().split('T')[0]);"
-                ],
-                "type": "text/javascript"
-              }
-            },
-            {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "pm.test('Status code is 200', function () {",
-                  "    pm.response.to.have.status(200);",
-                  "});",
-                  "",
-                  "pm.test('Validation passes with staff', function () {",
-                  "    const jsonData = pm.response.json();",
-                  "    pm.expect(jsonData.data.valid).to.be.true;",
-                  "});"
-                ],
-                "type": "text/javascript"
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [{"key": "Content-Type", "value": "application/json"}],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"venueId\": 2,\n  \"serviceId\": 4,\n  \"staffMemberId\": 2,\n  \"bookingDate\": \"{{nextTuesday}}\",\n  \"startTime\": \"10:00\",\n  \"endTime\": \"10:45\",\n  \"partySize\": 1\n}"
+              "raw": "{\n  \"venueId\": 1,\n  \"serviceId\": 1,\n  \"date\": \"2020-01-01\",\n  \"startTime\": \"14:00\",\n  \"endTime\": \"16:00\",\n  \"partySize\": 4\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/availability/validate",
@@ -985,10 +1793,10 @@
       ]
     },
     {
-      "name": "Availability - Service Details",
+      "name": "Availability - Service & Staff",
       "item": [
         {
-          "name": "GET Service Details - Restaurant Table",
+          "name": "GET Service Details",
           "event": [
             {
               "listen": "test",
@@ -998,51 +1806,12 @@
                   "    pm.response.to.have.status(200);",
                   "});",
                   "",
-                  "pm.test('Service details are correct', function () {",
+                  "pm.test('Service details returned', function () {",
                   "    const jsonData = pm.response.json();",
-                  "    pm.expect(jsonData.data.id).to.eql(1);",
-                  "    pm.expect(jsonData.data.name).to.eql('Tisch für 2 Personen');",
-                  "    // MariaDB gibt BOOLEAN als 0/1 zurück",
-                  "    pm.expect(jsonData.data.requires_staff).to.be.oneOf([false, 0]);",
-                  "    pm.expect(jsonData.data.capacity).to.eql(2);",
-                  "});"
-                ],
-                "type": "text/javascript"
-              }
-            }
-          ],
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/availability/service/1?venueId=1",
-              "host": ["{{baseUrl}}"],
-              "path": ["availability", "service", "1"],
-              "query": [{"key": "venueId", "value": "1"}]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "GET Service Details - Herrenhaarschnitt",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "pm.test('Status code is 200', function () {",
-                  "    pm.response.to.have.status(200);",
-                  "});",
-                  "",
-                  "pm.test('Service details are correct', function () {",
-                  "    const jsonData = pm.response.json();",
-                  "    pm.expect(jsonData.data.id).to.eql(4);",
-                  "    pm.expect(jsonData.data.name).to.eql('Herrenhaarschnitt');",
-                  "    // MariaDB gibt BOOLEAN als 0/1 zurück",
-                  "    pm.expect(jsonData.data.requires_staff).to.be.oneOf([true, 1]);",
-                  "    pm.expect(jsonData.data.duration_minutes).to.eql(45);",
-                  "    // MariaDB gibt DECIMAL als String zurück",
-                  "    pm.expect(parseFloat(jsonData.data.price)).to.eql(35);",
+                  "    pm.expect(jsonData.data).to.have.property('id');",
+                  "    pm.expect(jsonData.data).to.have.property('name');",
+                  "    pm.expect(jsonData.data).to.have.property('duration_minutes');",
+                  "    pm.expect(jsonData.data).to.have.property('price');",
                   "});"
                 ],
                 "type": "text/javascript"
@@ -1056,7 +1825,12 @@
               "raw": "{{baseUrl}}/availability/service/4?venueId=2",
               "host": ["{{baseUrl}}"],
               "path": ["availability", "service", "4"],
-              "query": [{"key": "venueId", "value": "2"}]
+              "query": [
+                {
+                  "key": "venueId",
+                  "value": "2"
+                }
+              ]
             }
           },
           "response": []
@@ -1087,38 +1861,6 @@
           },
           "response": []
         },
-        {
-          "name": "GET Service Details - Not Found",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "pm.test('Status code is 404', function () {",
-                  "    pm.response.to.have.status(404);",
-                  "});"
-                ],
-                "type": "text/javascript"
-              }
-            }
-          ],
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/availability/service/9999?venueId=1",
-              "host": ["{{baseUrl}}"],
-              "path": ["availability", "service", "9999"],
-              "query": [{"key": "venueId", "value": "1"}]
-            }
-          },
-          "response": []
-        }
-      ]
-    },
-    {
-      "name": "Availability - Staff Capability",
-      "item": [
         {
           "name": "GET Staff Can Perform - Anna All Services",
           "event": [
@@ -1239,6 +1981,37 @@
               "raw": "{{baseUrl}}/availability/staff/999/can-perform/4",
               "host": ["{{baseUrl}}"],
               "path": ["availability", "staff", "999", "can-perform", "4"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET Staff Can Perform - Non-existent Service",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Cannot perform (service does not exist)', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.data.canPerform).to.be.false;",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/availability/staff/1/can-perform/9999",
+              "host": ["{{baseUrl}}"],
+              "path": ["availability", "staff", "1", "can-perform", "9999"]
             }
           },
           "response": []

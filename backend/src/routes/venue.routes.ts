@@ -161,6 +161,16 @@ router.get('/:venueId/bookings', async (req: Request<{ venueId: string }>, res: 
 
     try 
     {
+        const venue = await VenueService.getVenueById(venueId);
+
+        if (!venue)
+        {
+            return res.status(404).json({
+                success: false,
+                message: 'Venue not found'
+            } as ApiResponse<void>);
+        }
+
         // FILTER-OBJEKT ERSTELLEN
         // Nur definierte Query-Parameter werden an den Service übergeben
         // Warum ? -> Verhindert undefined-Werte in SQL-Query
