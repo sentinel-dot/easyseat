@@ -5,17 +5,7 @@
   "scripts": {
     "dev": "nodemon src/server.ts",
     "build": "tsc",
-    "start": "node dist/server.js",
-    "test": "jest",
-    "test:watch": "jest --watch",
-    "test:coverage": "jest --coverage",
-    "test:verbose": "jest --verbose",
-    "test:venues": "jest venue.routes.test.ts",
-    "test:availability": "jest availability.routes.test.ts",
-    "test:debug": "jest debug.availability.test.ts --verbose",
-    "test:smoke": "jest smoke.test.ts",
-    "test:e2e": "jest e2e.booking.test.ts",
-    "test:quick": "jest smoke.test.ts --verbose"
+    "start": "node dist/server.js"
   },
   "keywords": [],
   "author": "",
@@ -24,13 +14,9 @@
     "@types/cors": "^2.8.19",
     "@types/dotenv": "^8.2.3",
     "@types/express": "^5.0.3",
-    "@types/jest": "^29.5.12",
     "@types/node": "^24.3.0",
     "@types/supertest": "^6.0.2",
-    "jest": "^29.7.0",
     "nodemon": "^3.1.10",
-    "supertest": "^6.3.4",
-    "ts-jest": "^29.1.2",
     "ts-node": "^10.9.2",
     "typescript": "^5.9.2"
   },
