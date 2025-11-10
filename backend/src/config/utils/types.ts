@@ -36,7 +36,7 @@ export interface StaffMember {
   updated_at: Date;
 }
 
-
+ 
 // Venue Types
 export interface Venue {
     id: number;
@@ -90,6 +90,7 @@ export interface DayAvailability {
 export interface Booking 
 {
   id: number;
+  booking_token: string;
   venue_id: number;
   service_id: number;
   staff_member_id?: number | null;              // Optional: Nur bei Services die Mitarbeiter benötigen

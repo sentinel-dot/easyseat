@@ -4,13 +4,15 @@ import { notFound } from 'next/navigation';
 import { BookingCalendar } from './booking-calendar';
 
 interface PageProps {
-  params: {
+  params: Promise<{
     id: string;
-  };
+  }>;
 }
 
 export default async function VenueDetailPage({ params }: PageProps) {
-  const venueId = parseInt(params.id);
+  const { id } = await params;
+  const venueId = parseInt(id);
+
   
   if (isNaN(venueId)) {
     notFound();
@@ -50,7 +52,7 @@ export default async function VenueDetailPage({ params }: PageProps) {
               </p>
               {service.price && (
                 <p className="font-bold text-blue-600">
-                  {service.price.toFixed(2)} €
+                  {Number(service.price).toFixed(2)} €
                 </p>
               )}
             </div>
