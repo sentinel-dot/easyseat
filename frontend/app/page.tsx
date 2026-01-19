@@ -1,23 +1,50 @@
 // app/page.tsx
-import Link from 'next/link';
+import { getVenueById } from '@/lib/api/venues';
+import { HeroSection } from './components/hero-section';
+import { AboutSection } from './components/about-section';
+import { ServiceInfoSection } from './components/service-info-section';
+import { BookingSection } from './components/booking-section';
+import { PricingSection } from './components/pricing-section';
 
-export default function HomePage() {
+export default async function HomePage() {
+  // Hole Venue-Daten (ID 1 = das Studio)
+  // Falls noch nicht vorhanden, wird null zurückgegeben
+  let venue = null;
+  try {
+    const result = await getVenueById(1);
+    if (result.success && result.data) {
+      venue = result.data;
+    }
+  } catch (error) {
+    console.error('Could not load venue data:', error);
+  }
+
   return (
-    <main className="container mx-auto px-4 py-16">
-      <h1 className="text-4xl font-bold text-center mb-8">
-        Willkommen bei easyseat
-      </h1>
-      <p className="text-center text-lg mb-12">
-        Buchen Sie Ihre nächste Reservierung einfach und schnell
-      </p>
-      <div className="text-center">
-        <Link 
-          href="/venues"
-          className="bg-blue-600 text-white px-8 py-3 rounded-lg hover:bg-blue-700"
-        >
-          Venues entdecken
-        </Link>
-      </div>
+    <main className="min-h-screen">
+      {/* Hero Section */}
+      <HeroSection />
+
+      {/* Über sie */}
+      <AboutSection />
+
+      {/* Über Augenbrauen-Lifting */}
+      <ServiceInfoSection />
+
+      {/* Buchungsbereich */}
+      {venue ? (
+        <>
+          <BookingSection venue={venue} />
+          <PricingSection services={venue.services} />
+        </>
+      ) : (
+        <section className="py-20 bg-white">
+          <div className="container mx-auto px-4 text-center">
+            <p className="text-gray-600">
+              Die Buchungsfunktion wird geladen... Bitte stellen Sie sicher, dass das Backend läuft und die Venue-Daten vorhanden sind.
+            </p>
+          </div>
+        </section>
+      )}
     </main>
   );
 }

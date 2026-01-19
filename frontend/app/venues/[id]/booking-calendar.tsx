@@ -17,8 +17,8 @@ export function BookingCalendar({ venue, services, staffMembers }: Props) {
   const [selectedTime, setSelectedTime] = useState<string>('');
 
   return (
-    <div className="border rounded-lg p-6">
-      <h2 className="text-2xl font-semibold mb-6">Jetzt buchen</h2>
+    <div className="bg-white rounded-lg p-4 sm:p-6 md:p-8">
+      <h2 className="text-xl sm:text-2xl font-semibold mb-4 sm:mb-6 text-gray-900">Jetzt buchen</h2>
 
       {/* Service Auswahl */}
       <div className="mb-6">
@@ -54,7 +54,7 @@ export function BookingCalendar({ venue, services, staffMembers }: Props) {
               value={selectedDate}
               onChange={(e) => setSelectedDate(e.target.value)}
               min={new Date().toISOString().split('T')[0]}
-              className="w-full border rounded-lg p-2"
+              className="w-full border border-gray-300 rounded-lg p-2 sm:p-3 text-sm sm:text-base focus:ring-2 focus:ring-rose-500 focus:border-rose-500 transition"
             />
           </div>
 

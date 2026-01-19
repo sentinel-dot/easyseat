@@ -231,7 +231,7 @@ export function BookingForm({ venue, service, date, staffMembers }: Props) {
               ...formData,
               staff_member_id: e.target.value ? Number(e.target.value) : undefined
             })}
-            className="w-full border rounded-lg p-2"
+            className="w-full border border-gray-300 rounded-lg p-2 sm:p-3 text-sm sm:text-base focus:ring-2 focus:ring-rose-500 focus:border-rose-500 transition"
             required={service.requires_staff}
           >
             <option value="">Bitte wählen...</option>
@@ -252,7 +252,7 @@ export function BookingForm({ venue, service, date, staffMembers }: Props) {
         
         {loading ? (
           <div className="text-center py-8">
-            <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+            <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-rose-600"></div>
             <p className="mt-2 text-gray-600">Verfügbarkeiten werden geladen...</p>
           </div>
         ) : timeSlots.length === 0 ? (
@@ -262,7 +262,7 @@ export function BookingForm({ venue, service, date, staffMembers }: Props) {
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2">
             {timeSlots.map((slot, index) => (
               <button
                 key={index}
@@ -270,18 +270,19 @@ export function BookingForm({ venue, service, date, staffMembers }: Props) {
                 onClick={() => slot.available && setSelectedTimeSlot(slot)}
                 disabled={!slot.available}
                 className={`
-                  p-3 rounded-lg border-2 transition text-sm
+                  p-2 sm:p-3 rounded-lg border-2 transition text-xs sm:text-sm font-medium
+                  active:scale-95
                   ${!slot.available
                     ? 'bg-gray-100 text-gray-400 cursor-not-allowed border-gray-200'
                     : selectedTimeSlot === slot
-                    ? 'bg-blue-600 text-white border-blue-600'
-                    : 'bg-white border-gray-300 hover:border-blue-500'
+                    ? 'bg-rose-600 text-white border-rose-600 shadow-md'
+                    : 'bg-white border-gray-300 hover:border-rose-500 hover:bg-rose-50'
                   }
                 `}
               >
                 {slot.start_time}
                 {!slot.available && (
-                  <span className="block text-xs mt-1">Ausgebucht</span>
+                  <span className="block text-[10px] sm:text-xs mt-1">Ausgebucht</span>
                 )}
               </button>
             ))}
@@ -298,7 +299,7 @@ export function BookingForm({ venue, service, date, staffMembers }: Props) {
           type="text"
           value={formData.customer_name}
           onChange={(e) => setFormData({ ...formData, customer_name: e.target.value })}
-          className="w-full border rounded-lg p-2"
+          className="w-full border border-gray-300 rounded-lg p-2 sm:p-3 text-sm sm:text-base focus:ring-2 focus:ring-rose-500 focus:border-rose-500 transition"
           placeholder="Max Mustermann"
           required
         />
@@ -312,7 +313,7 @@ export function BookingForm({ venue, service, date, staffMembers }: Props) {
           type="email"
           value={formData.customer_email}
           onChange={(e) => setFormData({ ...formData, customer_email: e.target.value })}
-          className="w-full border rounded-lg p-2"
+          className="w-full border border-gray-300 rounded-lg p-2 sm:p-3 text-sm sm:text-base focus:ring-2 focus:ring-rose-500 focus:border-rose-500 transition"
           placeholder="max@beispiel.de"
           required
         />
@@ -326,29 +327,14 @@ export function BookingForm({ venue, service, date, staffMembers }: Props) {
           type="tel"
           value={formData.customer_phone}
           onChange={(e) => setFormData({ ...formData, customer_phone: e.target.value })}
-          className="w-full border rounded-lg p-2"
+          className="w-full border border-gray-300 rounded-lg p-2 sm:p-3 text-sm sm:text-base focus:ring-2 focus:ring-rose-500 focus:border-rose-500 transition"
           placeholder="+49 123 456789"
           required={venue.require_phone}
         />
       </div>
 
-      <div>
-        <label className="block text-sm font-medium mb-2">
-          Anzahl Personen *
-        </label>
-        <input
-          type="number"
-          value={formData.party_size}
-          onChange={(e) => setFormData({ ...formData, party_size: Number(e.target.value) })}
-          className="w-full border rounded-lg p-2"
-          min={1}
-          max={service.capacity}
-          required
-        />
-        <p className="text-xs text-gray-500 mt-1">
-          Maximal {service.capacity} Personen
-        </p>
-      </div>
+      {/* Party Size für Beauty-Services immer 1 - versteckt */}
+      <input type="hidden" value={1} />
 
       <div>
         <label className="block text-sm font-medium mb-2">
@@ -357,9 +343,9 @@ export function BookingForm({ venue, service, date, staffMembers }: Props) {
         <textarea
           value={formData.special_requests}
           onChange={(e) => setFormData({ ...formData, special_requests: e.target.value })}
-          className="w-full border rounded-lg p-2"
+          className="w-full border border-gray-300 rounded-lg p-2 sm:p-3 text-sm sm:text-base focus:ring-2 focus:ring-rose-500 focus:border-rose-500 transition"
           rows={3}
-          placeholder="Haben Sie besondere Wünsche oder Anmerkungen?"
+          placeholder="Haben Sie besondere Wünsche, Allergien oder Anmerkungen?"
         />
       </div>
 
@@ -368,10 +354,11 @@ export function BookingForm({ venue, service, date, staffMembers }: Props) {
         type="submit"
         disabled={submitting || !selectedTimeSlot}
         className={`
-          w-full py-3 px-4 rounded-lg font-semibold transition
+          w-full py-3 sm:py-4 px-4 rounded-lg font-semibold transition text-sm sm:text-base
+          active:scale-95
           ${submitting || !selectedTimeSlot
             ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-            : 'bg-blue-600 text-white hover:bg-blue-700'
+            : 'bg-rose-600 text-white hover:bg-rose-700 shadow-lg hover:shadow-xl'
           }
         `}
       >
