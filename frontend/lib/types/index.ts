@@ -107,4 +107,8 @@ export interface Booking extends CreateBookingData
     cancellation_reason?: string | null;
     created_at: Date;
     updated_at: Date;
+    /** Vom Backend bei getBookingByToken geliefert */
+    venue_name?: string | null;
+    service_name?: string | null;
+    staff_member_name?: string | null;
 }

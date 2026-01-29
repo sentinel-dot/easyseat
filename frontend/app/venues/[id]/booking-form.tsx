@@ -2,6 +2,7 @@
 'use client'
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { VenueWithStaff, Service, StaffMember, TimeSlot } from '@/lib/types';
 import { getAvailableSlots } from '@/lib/api/availability';
 
@@ -29,12 +30,22 @@ export function BookingForm({ venue, service, date, staffMembers }: Props) {
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState(false);
+  const router = useRouter();
 
   // Verfügbare Mitarbeiter für diesen Service filtern
   const availableStaff = service.requires_staff 
     ? staffMembers.filter(sm => sm.id) // Hier könnte man noch staff_services abfragen
     : [];
+
+  // Wenn nur ein Mitarbeiter verfügbar ist, diesen automatisch vorauswählen
+  useEffect(() => {
+    if (availableStaff.length === 1 && !formData.staff_member_id) {
+      setFormData(prev => ({
+        ...prev,
+        staff_member_id: availableStaff[0].id
+      }));
+    }
+  }, [availableStaff.length]);
 
   // Zeitslots laden wenn Datum gewählt wurde
   useEffect(() => {
@@ -154,19 +165,14 @@ export function BookingForm({ venue, service, date, staffMembers }: Props) {
         throw new Error(result.error || 'Buchung konnte nicht erstellt werden');
       }
 
-      // Erfolg!
-      setSuccess(true);
-      
-      // Formular zurücksetzen
-      setFormData({
-        customer_name: '',
-        customer_email: '',
-        customer_phone: '',
-        party_size: 1,
-        special_requests: '',
-        staff_member_id: undefined,
-      });
-      setSelectedTimeSlot(null);
+      // Zur Bestätigungsseite mit Token weiterleiten
+      const token = result.data?.booking_token;
+      if (token) {
+        router.push(`/confirmation?token=${encodeURIComponent(token)}`);
+        return;
+      }
+
+      setError('Buchung erstellt, aber Bestätigungslink konnte nicht erzeugt werden.');
 
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Ein Fehler ist aufgetreten');
@@ -174,27 +180,6 @@ export function BookingForm({ venue, service, date, staffMembers }: Props) {
       setSubmitting(false);
     }
   };
-
-  // Erfolgs-Nachricht anzeigen
-  if (success) {
-    return (
-      <div className="bg-green-50 border border-green-200 rounded-lg p-6">
-        <h3 className="text-xl font-semibold text-green-800 mb-2">
-          ✓ Buchung erfolgreich!
-        </h3>
-        <p className="text-green-700 mb-4">
-          Ihre Buchung wurde erfolgreich erstellt. Sie erhalten in Kürze eine
-          Bestätigungs-E-Mail an {formData.customer_email}.
-        </p>
-        <button
-          onClick={() => setSuccess(false)}
-          className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition"
-        >
-          Weitere Buchung erstellen
-        </button>
-      </div>
-    );
-  }
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
