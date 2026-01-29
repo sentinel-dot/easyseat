@@ -3,6 +3,7 @@
 
 import { useState, useEffect } from 'react';
 import { VenueWithStaff, Service, StaffMember, TimeSlot } from '@/lib/types';
+import { getAvailableSlots } from '@/lib/api/availability';
 
 interface Props {
   venue: VenueWithStaff;
@@ -43,38 +44,19 @@ export function BookingForm({ venue, service, date, staffMembers }: Props) {
   }, [date, service.id, formData.staff_member_id]);
 
   /**
-   * Lädt verfügbare Zeitslots vom Backend
+   * Lädt verfügbare Zeitslots vom Backend (GET /availability/slots)
    */
   const fetchTimeSlots = async () => {
     setLoading(true);
     setError(null);
-    
     try {
-      const params = new URLSearchParams({
-        venueId: venue.id.toString(),
-        serviceId: service.id.toString(),
-        date: date,
-      });
-
-      if (formData.staff_member_id) {
-        params.append('staffMemberId', formData.staff_member_id.toString());
-      }
-
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/availability/day?${params}`
+      const dayAvailability = await getAvailableSlots(
+        venue.id,
+        service.id,
+        date,
+        formData.staff_member_id
       );
-
-      if (!response.ok) {
-        throw new Error('Zeitslots konnten nicht geladen werden');
-      }
-
-      const result = await response.json();
-      
-      if (result.success && result.data) {
-        setTimeSlots(result.data.time_slots || []);
-      } else {
-        setTimeSlots([]);
-      }
+      setTimeSlots(dayAvailability.time_slots ?? []);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Ein Fehler ist aufgetreten');
       setTimeSlots([]);
@@ -137,6 +119,9 @@ export function BookingForm({ venue, service, date, staffMembers }: Props) {
     setError(null);
 
     try {
+      const totalAmount =
+        service.price != null ? Math.round(service.price * 100) / 100 : undefined;
+
       const bookingData = {
         venue_id: venue.id,
         service_id: service.id,
@@ -149,6 +134,7 @@ export function BookingForm({ venue, service, date, staffMembers }: Props) {
         end_time: selectedTimeSlot!.end_time,
         party_size: formData.party_size,
         special_requests: formData.special_requests || undefined,
+        ...(totalAmount != null && { total_amount: totalAmount }),
       };
 
       const response = await fetch(
@@ -231,7 +217,7 @@ export function BookingForm({ venue, service, date, staffMembers }: Props) {
               ...formData,
               staff_member_id: e.target.value ? Number(e.target.value) : undefined
             })}
-            className="w-full border border-gray-300 rounded-lg p-2 sm:p-3 text-sm sm:text-base focus:ring-2 focus:ring-rose-500 focus:border-rose-500 transition"
+            className="w-full border border-border rounded-lg p-2 sm:p-3 text-sm sm:text-base focus:ring-2 focus:ring-primary focus:border-primary transition"
             required={service.requires_staff}
           >
             <option value="">Bitte wählen...</option>
@@ -252,12 +238,12 @@ export function BookingForm({ venue, service, date, staffMembers }: Props) {
         
         {loading ? (
           <div className="text-center py-8">
-            <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-rose-600"></div>
-            <p className="mt-2 text-gray-600">Verfügbarkeiten werden geladen...</p>
+            <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+            <p className="mt-2 text-muted">Verfügbarkeiten werden geladen...</p>
           </div>
         ) : timeSlots.length === 0 ? (
-          <div className="bg-gray-50 border rounded-lg p-4 text-center">
-            <p className="text-gray-600">
+          <div className="bg-offwhite border border-border p-4 text-center">
+            <p className="text-muted">
               Für dieses Datum sind keine Zeitslots verfügbar.
             </p>
           </div>
@@ -273,10 +259,10 @@ export function BookingForm({ venue, service, date, staffMembers }: Props) {
                   p-2 sm:p-3 rounded-lg border-2 transition text-xs sm:text-sm font-medium
                   active:scale-95
                   ${!slot.available
-                    ? 'bg-gray-100 text-gray-400 cursor-not-allowed border-gray-200'
+                    ? 'bg-offwhite text-muted cursor-not-allowed border-border'
                     : selectedTimeSlot === slot
-                    ? 'bg-rose-600 text-white border-rose-600 shadow-md'
-                    : 'bg-white border-gray-300 hover:border-rose-500 hover:bg-rose-50'
+                    ? 'bg-primary text-cream border-primary'
+                    : 'bg-background border-border hover:border-primary hover:bg-offwhite'
                   }
                 `}
               >
@@ -299,7 +285,7 @@ export function BookingForm({ venue, service, date, staffMembers }: Props) {
           type="text"
           value={formData.customer_name}
           onChange={(e) => setFormData({ ...formData, customer_name: e.target.value })}
-          className="w-full border border-gray-300 rounded-lg p-2 sm:p-3 text-sm sm:text-base focus:ring-2 focus:ring-rose-500 focus:border-rose-500 transition"
+          className="w-full border border-border rounded-lg p-2 sm:p-3 text-sm sm:text-base focus:ring-2 focus:ring-primary focus:border-primary transition"
           placeholder="Max Mustermann"
           required
         />
@@ -313,7 +299,7 @@ export function BookingForm({ venue, service, date, staffMembers }: Props) {
           type="email"
           value={formData.customer_email}
           onChange={(e) => setFormData({ ...formData, customer_email: e.target.value })}
-          className="w-full border border-gray-300 rounded-lg p-2 sm:p-3 text-sm sm:text-base focus:ring-2 focus:ring-rose-500 focus:border-rose-500 transition"
+          className="w-full border border-border rounded-lg p-2 sm:p-3 text-sm sm:text-base focus:ring-2 focus:ring-primary focus:border-primary transition"
           placeholder="max@beispiel.de"
           required
         />
@@ -321,13 +307,13 @@ export function BookingForm({ venue, service, date, staffMembers }: Props) {
 
       <div>
         <label className="block text-sm font-medium mb-2">
-          Telefonnummer {venue.require_phone && '*'}
+          Telefonnummer {venue.require_phone ? ' *' : ''}
         </label>
         <input
           type="tel"
           value={formData.customer_phone}
           onChange={(e) => setFormData({ ...formData, customer_phone: e.target.value })}
-          className="w-full border border-gray-300 rounded-lg p-2 sm:p-3 text-sm sm:text-base focus:ring-2 focus:ring-rose-500 focus:border-rose-500 transition"
+          className="w-full border border-border rounded-lg p-2 sm:p-3 text-sm sm:text-base focus:ring-2 focus:ring-primary focus:border-primary transition"
           placeholder="+49 123 456789"
           required={venue.require_phone}
         />
@@ -343,7 +329,7 @@ export function BookingForm({ venue, service, date, staffMembers }: Props) {
         <textarea
           value={formData.special_requests}
           onChange={(e) => setFormData({ ...formData, special_requests: e.target.value })}
-          className="w-full border border-gray-300 rounded-lg p-2 sm:p-3 text-sm sm:text-base focus:ring-2 focus:ring-rose-500 focus:border-rose-500 transition"
+          className="w-full border border-border rounded-lg p-2 sm:p-3 text-sm sm:text-base focus:ring-2 focus:ring-primary focus:border-primary transition"
           rows={3}
           placeholder="Haben Sie besondere Wünsche, Allergien oder Anmerkungen?"
         />
@@ -358,14 +344,14 @@ export function BookingForm({ venue, service, date, staffMembers }: Props) {
           active:scale-95
           ${submitting || !selectedTimeSlot
             ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-            : 'bg-rose-600 text-white hover:bg-rose-700 shadow-lg hover:shadow-xl'
+            : 'bg-primary text-cream hover:bg-primary-dark'
           }
         `}
       >
         {submitting ? 'Wird gebucht...' : 'Verbindlich buchen'}
       </button>
 
-      <p className="text-xs text-gray-500 text-center">
+      <p className="text-xs text-muted text-center">
         Mit der Buchung akzeptieren Sie unsere AGB und Datenschutzerklärung
       </p>
     </form>

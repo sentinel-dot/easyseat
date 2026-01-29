@@ -112,11 +112,39 @@ export class VenueService
                 [venueId]
             ) as StaffMember[];
 
-            // Venue mit Services und Staff kombinieren
+            // Öffnungszeiten: zuerst Venue-Level, sonst aus Staff-Regeln aggregieren
+            let openingHours: { day_of_week: number; start_time: string; end_time: string }[] = [];
+            const venueRules = await conn.query(`
+                SELECT day_of_week, start_time, end_time
+                FROM availability_rules
+                WHERE venue_id = ?
+                AND is_active = true
+                ORDER BY day_of_week, start_time`,
+                [venueId]
+            ) as { day_of_week: number; start_time: string; end_time: string }[];
+
+            if (venueRules.length > 0) {
+                openingHours = venueRules;
+            } else if (staffMembers.length > 0) {
+                const staffIds = staffMembers.map((s) => s.id);
+                const placeholders = staffIds.map(() => '?').join(',');
+                const staffRules = await conn.query(`
+                    SELECT day_of_week, start_time, end_time
+                    FROM availability_rules
+                    WHERE staff_member_id IN (${placeholders})
+                    AND is_active = true
+                    ORDER BY day_of_week, start_time`,
+                    staffIds
+                ) as { day_of_week: number; start_time: string; end_time: string }[];
+                openingHours = staffRules;
+            }
+
+            // Venue mit Services, Staff und Öffnungszeiten kombinieren
             const venueWithDetails: VenueWithStaff = {
                 ...venue,
                 services: services,
-                staff_members: staffMembers
+                staff_members: staffMembers,
+                opening_hours: openingHours
             };
 
             logger.info('Venue details fetched successfully', venueWithDetails);

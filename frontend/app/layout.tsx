@@ -1,50 +1,73 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Cormorant_Garamond, Source_Sans_3 } from "next/font/google";
 import "./globals.css";
 import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
+import { getVenueById } from "@/lib/api/venues";
+import type { VenueWithStaff } from "@/lib/types";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const PRIMARY_VENUE_ID = 3;
+
+const cormorant = Cormorant_Garamond({
+  variable: "--font-cormorant",
   subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
 });
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
+const sourceSans = Source_Sans_3({
+  variable: "--font-source-sans",
   subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
 });
 
-export const metadata: Metadata = {
-  title: "Augenbrauen-Lifting & Extensions | Professionelle Beauty-Behandlung",
-  description: "Professionelles Augenbrauen-Lifting und Augenbrauen-Extensions. Individuelle Beratung, natürliche Ergebnisse. Jetzt Termin buchen!",
-  keywords: "Augenbrauen-Lifting, Augenbrauen Extensions, Beauty-Behandlung, Augenbrauen Studio",
-  authors: [{ name: "Augenbrauen Studio" }],
-  viewport: "width=device-width, initial-scale=1, maximum-scale=5",
-  themeColor: "#e11d48",
-  openGraph: {
-    title: "Augenbrauen-Lifting & Extensions | Professionelle Beauty-Behandlung",
-    description: "Professionelles Augenbrauen-Lifting und Augenbrauen-Extensions. Individuelle Beratung, natürliche Ergebnisse.",
-    type: "website",
-  },
-};
+async function getPrimaryVenue(): Promise<VenueWithStaff | null> {
+  try {
+    const res = await getVenueById(PRIMARY_VENUE_ID);
+    return res.success && res.data ? res.data : null;
+  } catch {
+    return null;
+  }
+}
 
-export default function RootLayout({
+export async function generateMetadata(): Promise<Metadata> {
+  const venue = await getPrimaryVenue();
+  const name = venue?.name ?? "EasySeat";
+  return {
+    title: "Augenbrauenlifting, Wimpernlifting & Zahnschmuck | Professionelle Beauty-Behandlung",
+    description:
+      "Professionelles Augenbrauenlifting, Wimpernlifting und Zahnschmuck. Individuelle Beratung, natürliche Ergebnisse. Jetzt Termin buchen!",
+    keywords: "Augenbrauenlifting, Wimpernlifting, Zahnschmuck, Beauty-Behandlung",
+    authors: [{ name }],
+    viewport: "width=device-width, initial-scale=1, maximum-scale=5",
+    themeColor: "#6B5344",
+    openGraph: {
+      title: "Augenbrauenlifting, Wimpernlifting & Zahnschmuck | Professionelle Beauty-Behandlung",
+      description:
+        "Professionelles Augenbrauenlifting, Wimpernlifting und Zahnschmuck. Individuelle Beratung, natürliche Ergebnisse.",
+      type: "website",
+    },
+  };
+}
+
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const venue = await getPrimaryVenue();
+
   return (
     <html lang="de" className="scroll-smooth">
       <head>
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5" />
-        <meta name="theme-color" content="#e11d48" />
+        <meta name="theme-color" content="#6B5344" />
       </head>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        className={`${cormorant.variable} ${sourceSans.variable} font-sans antialiased`}
       >
-        <Header />
+        <Header venue={venue} />
         {children}
-        <Footer />
+        <Footer venue={venue} />
       </body>
     </html>
   );

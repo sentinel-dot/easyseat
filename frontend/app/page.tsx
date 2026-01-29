@@ -7,11 +7,11 @@ import { BookingSection } from './components/booking-section';
 import { PricingSection } from './components/pricing-section';
 
 export default async function HomePage() {
-  // Hole Venue-Daten (ID 1 = das Studio)
+  // Hole Venue-Daten (ID 3 = das Studio)
   // Falls noch nicht vorhanden, wird null zurückgegeben
   let venue = null;
   try {
-    const result = await getVenueById(1);
+    const result = await getVenueById(3);
     if (result.success && result.data) {
       venue = result.data;
     }
@@ -27,7 +27,7 @@ export default async function HomePage() {
       {/* Über sie */}
       <AboutSection />
 
-      {/* Über Augenbrauen-Lifting */}
+      {/* Services */}
       <ServiceInfoSection />
 
       {/* Buchungsbereich */}
@@ -39,7 +39,7 @@ export default async function HomePage() {
       ) : (
         <section className="py-20 bg-white">
           <div className="container mx-auto px-4 text-center">
-            <p className="text-gray-600">
+            <p className="text-muted">
               Die Buchungsfunktion wird geladen... Bitte stellen Sie sicher, dass das Backend läuft und die Venue-Daten vorhanden sind.
             </p>
           </div>

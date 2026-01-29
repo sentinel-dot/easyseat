@@ -1,96 +1,81 @@
-// components/layout/header.tsx
 'use client'
 
 import Link from 'next/link';
 import { useState } from 'react';
+import type { VenueWithStaff } from '@/lib/types';
 
-export function Header() {
+interface HeaderProps {
+  venue?: VenueWithStaff | null;
+}
+
+export function Header({ venue }: HeaderProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const siteName = venue?.name ?? 'EasySeat';
 
   return (
-    <header className="bg-white shadow-sm sticky top-0 z-50">
-      <nav className="container mx-auto px-4 py-4">
+    <header className="bg-cream/95 backdrop-blur border-b border-border sticky top-0 z-50">
+      <nav className="container mx-auto px-4 py-3 sm:py-4">
         <div className="flex items-center justify-between">
-          <Link href="/" className="text-xl md:text-2xl font-bold text-rose-600">
-            Augenbrauen Studio
+          <Link href="/" className="font-serif text-xl md:text-2xl font-semibold text-primary tracking-tight">
+            {siteName}
           </Link>
-          
-          {/* Desktop Navigation */}
-          <div className="hidden md:flex items-center gap-6 lg:gap-8">
-            <Link href="#ueber-mich" className="text-gray-700 hover:text-rose-600 transition text-sm lg:text-base">
+
+          <div className="hidden md:flex items-center gap-8">
+            <Link href="#ueber-mich" className="text-muted hover:text-primary transition text-sm tracking-wide">
               Über mich
             </Link>
-            <Link href="#augenbrauen-lifting" className="text-gray-700 hover:text-rose-600 transition text-sm lg:text-base">
+            <Link href="#services" className="text-muted hover:text-primary transition text-sm tracking-wide">
               Services
             </Link>
-            <Link href="#buchung" className="text-gray-700 hover:text-rose-600 transition text-sm lg:text-base">
+            <Link href="#buchung" className="text-muted hover:text-primary transition text-sm tracking-wide">
               Termin buchen
             </Link>
-            <Link href="#preise" className="text-gray-700 hover:text-rose-600 transition text-sm lg:text-base">
+            <Link href="#preise" className="text-muted hover:text-primary transition text-sm tracking-wide">
               Preise
             </Link>
           </div>
 
-          {/* Desktop CTA Button */}
           <Link
             href="#buchung"
-            className="hidden md:block bg-rose-600 text-white px-5 py-2 rounded-full hover:bg-rose-700 transition font-semibold text-sm lg:text-base"
+            className="hidden md:block bg-primary text-cream px-5 py-2.5 text-sm font-medium hover:bg-primary-dark transition tracking-wide"
           >
             Jetzt buchen
           </Link>
 
-          {/* Mobile Menu Button */}
           <button
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="md:hidden p-2 text-gray-700 hover:text-rose-600 transition"
+            className="md:hidden p-2 text-muted hover:text-primary transition"
             aria-label="Menü öffnen"
           >
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
               {mobileMenuOpen ? (
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
               ) : (
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
               )}
             </svg>
           </button>
         </div>
 
-        {/* Mobile Menu */}
         {mobileMenuOpen && (
-          <div className="md:hidden mt-4 pb-4 border-t border-gray-200">
-            <div className="flex flex-col gap-4 pt-4">
-              <Link 
-                href="#ueber-mich" 
-                onClick={() => setMobileMenuOpen(false)}
-                className="text-gray-700 hover:text-rose-600 transition py-2"
-              >
+          <div className="md:hidden mt-4 pb-4 border-t border-border pt-4">
+            <div className="flex flex-col gap-1">
+              <Link href="#ueber-mich" onClick={() => setMobileMenuOpen(false)} className="py-2.5 text-muted hover:text-primary transition text-sm">
                 Über mich
               </Link>
-              <Link 
-                href="#augenbrauen-lifting" 
-                onClick={() => setMobileMenuOpen(false)}
-                className="text-gray-700 hover:text-rose-600 transition py-2"
-              >
+              <Link href="#services" onClick={() => setMobileMenuOpen(false)} className="py-2.5 text-muted hover:text-primary transition text-sm">
                 Services
               </Link>
-              <Link 
-                href="#buchung" 
-                onClick={() => setMobileMenuOpen(false)}
-                className="text-gray-700 hover:text-rose-600 transition py-2"
-              >
+              <Link href="#buchung" onClick={() => setMobileMenuOpen(false)} className="py-2.5 text-muted hover:text-primary transition text-sm">
                 Termin buchen
               </Link>
-              <Link 
-                href="#preise" 
-                onClick={() => setMobileMenuOpen(false)}
-                className="text-gray-700 hover:text-rose-600 transition py-2"
-              >
+              <Link href="#preise" onClick={() => setMobileMenuOpen(false)} className="py-2.5 text-muted hover:text-primary transition text-sm">
                 Preise
               </Link>
               <Link
                 href="#buchung"
                 onClick={() => setMobileMenuOpen(false)}
-                className="bg-rose-600 text-white px-6 py-3 rounded-full hover:bg-rose-700 transition font-semibold text-center mt-2"
+                className="mt-3 bg-primary text-cream px-6 py-3 text-sm font-medium hover:bg-primary-dark transition text-center"
               >
                 Jetzt buchen
               </Link>

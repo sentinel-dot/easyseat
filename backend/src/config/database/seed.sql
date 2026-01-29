@@ -32,7 +32,8 @@ ALTER TABLE bookings AUTO_INCREMENT = 1;
 -- Insert venues
 INSERT INTO venues (name, type, email, phone, address, city, postal_code, description, created_at, updated_at) VALUES
 ('Bella Vista Restaurant', 'restaurant', 'bella@vista.com', '+49 30 12345678', 'Hauptstraße 123', 'Berlin', '10115', 'Authentische italienische Küche im Herzen Berlins', NOW(), NOW()),
-('Salon Schmidt', 'hair_salon', 'info@salon-schmidt.com', '+49 30 87654321', 'Friedrichstraße 456', 'Berlin', '10117', 'Moderner Friseursalon mit erfahrenen Stylisten', NOW(), NOW());
+('Salon Schmidt', 'hair_salon', 'info@salon-schmidt.com', '+49 30 87654321', 'Friedrichstraße 456', 'Berlin', '10117', 'Moderner Friseursalon mit erfahrenen Stylisten', NOW(), NOW()),
+('Leloluxee Lashes', 'beauty_salon', 'lea@leloluxee-lashes.de', NULL, 'Theodor-Heuss-Straße 6', 'Egelsbach', '63229', 'Wimpern & Brauen – Lashlifting, Browlifting, Zahnschmuck. Deine Ansprechpartnerin: Lea.', NOW(), NOW());
 
 
 
@@ -45,13 +46,23 @@ INSERT INTO services (venue_id, name, description, duration_minutes, price, capa
 -- Insert staff members for hair salon
 INSERT INTO staff_members (venue_id, name, email, description, created_at, updated_at) VALUES
 (2, 'Anna Schmidt', 'anna@salon-schmidt.com', 'Spezialistin für Damenhaarschnitte und Colorationen', NOW(), NOW()),
-(2, 'Klaus Meyer', 'klaus@salon-schmidt.com', 'Experte für Herrenschnitte und Bärte', NOW(), NOW());
+(2, 'Klaus Meyer', 'klaus@salon-schmidt.com', 'Experte für Herrenschnitte und Bärte', NOW(), NOW()),
+(3, 'Lea', 'lea@leloluxee-lashes.de', 'Lashlifting, Browlifting, Zahnschmuck', NOW(), NOW());
 
 -- Insert hair salon services
 INSERT INTO services (venue_id, name, description, duration_minutes, price, capacity, requires_staff, created_at, updated_at) VALUES
 (2, 'Herrenhaarschnitt', 'Klassischer Herrenhaarschnitt mit Styling', 45, 35.00, 1, TRUE, NOW(), NOW()),
 (2, 'Damenhaarschnitt', 'Schnitt und Styling für Damen', 90, 55.00, 1, TRUE, NOW(), NOW()),
 (2, 'Coloration', 'Professionelle Haarfärbung', 180, 95.00, 1, TRUE, NOW(), NOW());
+
+-- Insert Leloluxee Lashes services (venue_id 3)
+INSERT INTO services (venue_id, name, description, duration_minutes, price, capacity, requires_staff, created_at, updated_at) VALUES
+(3, 'Lashlifting inkl. Färben', 'Wimpernlifting inklusive Färben', 90, 40.00, 1, TRUE, NOW(), NOW()),
+(3, 'Lashlifting ohne Färben', 'Wimpernlifting ohne Färben', 75, 35.00, 1, TRUE, NOW(), NOW()),
+(3, 'Browlifting', 'Brauenlifting. Extras buchbar: Zupfen/Wachsen +5€, Färben +5€', 45, 35.00, 1, TRUE, NOW(), NOW()),
+(3, 'Browlifting Extra: Zupfen/Wachsen', 'Zupfen oder Wachsen der Brauen (als Zusatz zu Browlifting)', 15, 5.00, 1, TRUE, NOW(), NOW()),
+(3, 'Browlifting Extra: Färben', 'Färben der Brauen (als Zusatz zu Browlifting)', 15, 5.00, 1, TRUE, NOW(), NOW()),
+(3, 'Zahnschmuck', 'Dekorativer Zahnschmuck', 30, 20.00, 1, TRUE, NOW(), NOW());
 
 -- Insert staff-service relationships
 INSERT INTO staff_services (staff_member_id, service_id, created_at) VALUES
@@ -60,7 +71,14 @@ INSERT INTO staff_services (staff_member_id, service_id, created_at) VALUES
 (1, 5, NOW()),
 (1, 6, NOW()),
 -- Klaus nur Herrenhaarschnitt (Service ID 4)
-(2, 4, NOW());
+(2, 4, NOW()),
+-- Lea (staff_id 3) – alle Leloluxee-Services (Service IDs 7–12)
+(3, 7, NOW()),
+(3, 8, NOW()),
+(3, 9, NOW()),
+(3, 10, NOW()),
+(3, 11, NOW()),
+(3, 12, NOW());
 
 -- Insert availability rules for restaurant (Mo-So)
 INSERT INTO availability_rules (venue_id, day_of_week, start_time, end_time, created_at) VALUES
@@ -87,7 +105,13 @@ INSERT INTO availability_rules (staff_member_id, day_of_week, start_time, end_ti
 (2, 3, '09:00', '18:00', NOW()),
 (2, 4, '09:00', '18:00', NOW()),
 (2, 5, '09:00', '18:00', NOW()),
-(2, 6, '09:00', '18:00', NOW());
+(2, 6, '09:00', '18:00', NOW()),
+-- Lea / Leloluxee Lashes (Di–Sa, Platzhalterzeiten – anpassen!)
+(3, 2, '09:00', '18:00', NOW()),
+(3, 3, '09:00', '18:00', NOW()),
+(3, 4, '09:00', '18:00', NOW()),
+(3, 5, '09:00', '18:00', NOW()),
+(3, 6, '09:00', '18:00', NOW());
 
 -- Insert test bookings for tomorrow
 -- Note: In a real application, you would calculate tomorrow's date dynamically
@@ -106,3 +130,4 @@ SELECT 'Seed data created successfully!' as message;
 SELECT 'Test User: test@example.com / password123' as login_info;
 SELECT 'Restaurant booking link: /book/bella-vista' as restaurant_link;
 SELECT 'Salon booking link: /book/salon-schmidt' as salon_link;
+SELECT 'Leloluxee Lashes booking link: /venues/3' as leloluxee_link;

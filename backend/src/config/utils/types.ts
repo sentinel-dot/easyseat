@@ -60,9 +60,16 @@ export interface Venue {
     updated_at: Date;
 }
 
+export interface OpeningHoursSlot {
+  day_of_week: number;
+  start_time: string;
+  end_time: string;
+}
+
 export interface VenueWithStaff extends Venue {
   staff_members: StaffMember[];
   services: Service[];
+  opening_hours?: OpeningHoursSlot[];
 }
 
 
