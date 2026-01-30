@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { getVenueSettings, updateVenueSettings } from '@/lib/api/admin';
+import { getVenueSettings, updateVenueSettings, changePassword } from '@/lib/api/admin';
 import { Venue } from '@/lib/types';
 
 export default function SettingsPage() {
@@ -13,6 +13,13 @@ export default function SettingsPage() {
 
   const [bookingAdvanceHours, setBookingAdvanceHours] = useState<number>(48);
   const [cancellationHours, setCancellationHours] = useState<number>(24);
+
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [newPasswordConfirm, setNewPasswordConfirm] = useState('');
+  const [passwordSaving, setPasswordSaving] = useState(false);
+  const [passwordError, setPasswordError] = useState<string | null>(null);
+  const [passwordSuccess, setPasswordSuccess] = useState<string | null>(null);
 
   useEffect(() => {
     loadSettings();
@@ -59,6 +66,35 @@ export default function SettingsPage() {
       setError((err as Error).message || 'Fehler beim Speichern');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleChangePassword = async () => {
+    if (newPassword !== newPasswordConfirm) {
+      setPasswordError('Neues Passwort und Bestätigung stimmen nicht überein');
+      return;
+    }
+    if (newPassword.length < 8) {
+      setPasswordError('Neues Passwort muss mindestens 8 Zeichen haben');
+      return;
+    }
+    try {
+      setPasswordSaving(true);
+      setPasswordError(null);
+      setPasswordSuccess(null);
+      const response = await changePassword(currentPassword, newPassword);
+      if (response.success) {
+        setPasswordSuccess(response.message || 'Passwort erfolgreich geändert');
+        setCurrentPassword('');
+        setNewPassword('');
+        setNewPasswordConfirm('');
+      } else {
+        setPasswordError(response.message || 'Fehler beim Ändern des Passworts');
+      }
+    } catch (err) {
+      setPasswordError((err as Error).message || 'Fehler beim Ändern des Passworts');
+    } finally {
+      setPasswordSaving(false);
     }
   };
 
@@ -169,6 +205,71 @@ export default function SettingsPage() {
               className="w-full bg-primary text-white py-3 px-6 rounded-lg font-semibold hover:bg-primary/90 transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed"
             >
               {saving ? 'Speichern...' : 'Einstellungen speichern'}
+            </button>
+          </div>
+        </div>
+
+        {/* Passwort ändern */}
+        <div className="mt-8 bg-white rounded-lg shadow-md p-6">
+          <h2 className="text-xl font-semibold text-gray-900 mb-4">
+            Passwort ändern
+          </h2>
+          {passwordError && (
+            <div className="mb-4 bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded">
+              {passwordError}
+            </div>
+          )}
+          {passwordSuccess && (
+            <div className="mb-4 bg-green-50 border border-green-200 text-green-800 px-4 py-3 rounded">
+              {passwordSuccess}
+            </div>
+          )}
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Aktuelles Passwort
+              </label>
+              <input
+                type="password"
+                value={currentPassword}
+                onChange={(e) => setCurrentPassword(e.target.value)}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                placeholder="••••••••"
+                autoComplete="current-password"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Neues Passwort
+              </label>
+              <input
+                type="password"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                placeholder="Mindestens 8 Zeichen"
+                autoComplete="new-password"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Neues Passwort bestätigen
+              </label>
+              <input
+                type="password"
+                value={newPasswordConfirm}
+                onChange={(e) => setNewPasswordConfirm(e.target.value)}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                placeholder="••••••••"
+                autoComplete="new-password"
+              />
+            </div>
+            <button
+              onClick={handleChangePassword}
+              disabled={passwordSaving || !currentPassword || !newPassword || !newPasswordConfirm}
+              className="w-full bg-gray-800 text-white py-2.5 px-4 rounded-lg font-medium hover:bg-gray-700 transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed"
+            >
+              {passwordSaving ? 'Wird geändert...' : 'Passwort ändern'}
             </button>
           </div>
         </div>

@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { authenticateToken, requireRole } from '../middleware/auth.middleware';
 import { AdminService } from '../services/admin.service';
+import { changePassword } from '../services/auth.service';
 import { BookingService } from '../services/booking.service';
 import { VenueService } from '../services/venue.service';
 import { createLogger } from '../config/utils/logger';
@@ -457,6 +458,54 @@ router.patch('/venue/settings', requireRole('owner', 'admin'), async (req: Reque
         res.status(500).json({
             success: false,
             message: 'Fehler beim Aktualisieren der Einstellungen'
+        });
+    }
+});
+
+/**
+ * PATCH /admin/me/password
+ * Change the current admin user's password
+ */
+router.patch('/me/password', async (req: Request, res: Response) => {
+    logger.info('PATCH /admin/me/password');
+
+    try {
+        const userId = req.jwtPayload?.userId;
+        if (!userId) {
+            res.status(401).json({
+                success: false,
+                message: 'Nicht authentifiziert'
+            });
+            return;
+        }
+
+        const { currentPassword, newPassword } = req.body;
+        if (!currentPassword || !newPassword) {
+            res.status(400).json({
+                success: false,
+                message: 'Aktuelles Passwort und neues Passwort sind erforderlich'
+            });
+            return;
+        }
+
+        const result = await changePassword(userId, currentPassword, newPassword);
+        if (!result.success) {
+            res.status(400).json({
+                success: false,
+                message: result.message
+            });
+            return;
+        }
+
+        res.json({
+            success: true,
+            message: result.data?.message || 'Passwort erfolgreich geändert'
+        });
+    } catch (error) {
+        logger.error('Error changing password', error);
+        res.status(500).json({
+            success: false,
+            message: 'Fehler beim Ändern des Passworts'
         });
     }
 });

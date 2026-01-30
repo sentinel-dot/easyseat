@@ -256,3 +256,19 @@ export async function updateVenueSettings(
         body: JSON.stringify(updates),
     });
 }
+
+/**
+ * Change the current admin user's password
+ */
+export async function changePassword(
+    currentPassword: string,
+    newPassword: string
+): Promise<{ success: boolean; message?: string }> {
+    return adminApiClient('/admin/me/password', {
+        method: 'PATCH',
+        body: JSON.stringify({
+            currentPassword,
+            newPassword,
+        }),
+    });
+}

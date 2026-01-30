@@ -137,6 +137,50 @@ export function toPublicUser(user: AdminUser): AdminUserPublic {
 }
 
 /**
+ * Change password for an admin user
+ */
+export async function changePassword(
+    userId: number,
+    currentPassword: string,
+    newPassword: string
+): Promise<ApiResponse<{ message: string }>> {
+    try {
+        const user = await findAdminById(userId);
+        if (!user) {
+            return { success: false, message: 'Benutzer nicht gefunden' };
+        }
+
+        const isValid = await verifyPassword(currentPassword, user.password_hash);
+        if (!isValid) {
+            logger.warn(`Password change failed: Invalid current password - userId ${userId}`);
+            return { success: false, message: 'Aktuelles Passwort ist falsch' };
+        }
+
+        if (!newPassword || newPassword.length < 8) {
+            return { success: false, message: 'Neues Passwort muss mindestens 8 Zeichen haben' };
+        }
+
+        const newHash = await hashPassword(newPassword);
+        let conn = null;
+        try {
+            conn = await getConnection();
+            await conn.query(
+                'UPDATE admin_users SET password_hash = ? WHERE id = ?',
+                [newHash, userId]
+            );
+        } finally {
+            if (conn) conn.release();
+        }
+
+        logger.info(`Password changed successfully for userId ${userId}`);
+        return { success: true, data: { message: 'Passwort erfolgreich geändert' } };
+    } catch (error) {
+        logger.error('Error changing password', error);
+        return { success: false, message: 'Fehler beim Ändern des Passworts' };
+    }
+}
+
+/**
  * Login user
  */
 export async function login(email: string, password: string): Promise<ApiResponse<LoginResponse>> {
