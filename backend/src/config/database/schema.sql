@@ -130,3 +130,19 @@ WHERE booking_token IS NULL;
 -- Step 3: Make the column NOT NULL after all existing rows have tokens
 ALTER TABLE bookings
 MODIFY COLUMN booking_token VARCHAR(36) UNIQUE NOT NULL;
+
+
+-- Admin users table for dashboard authentication
+CREATE TABLE admin_users (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    email VARCHAR(255) UNIQUE NOT NULL,
+    password_hash VARCHAR(255) NOT NULL,
+    name VARCHAR(255) NOT NULL,
+    venue_id INT,
+    role ENUM('owner', 'admin', 'staff') DEFAULT 'admin',
+    is_active BOOLEAN DEFAULT TRUE,
+    last_login DATETIME,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (venue_id) REFERENCES venues(id) ON DELETE SET NULL
+);

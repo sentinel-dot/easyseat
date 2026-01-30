@@ -23,10 +23,31 @@ export function ManagementActions({ booking, onCancelled }: Props) {
         setShowConfirm(false);
         onCancelled?.(res.data);
       } else {
-        setError('Stornierung fehlgeschlagen. Bitte versuchen Sie es erneut.');
+        setError(res.message || 'Stornierung fehlgeschlagen. Bitte versuchen Sie es erneut.');
       }
-    } catch {
-      setError('Stornierung fehlgeschlagen. Bitte versuchen Sie es erneut.');
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : null;
+      if (msg?.includes('hours in advance') || msg?.includes('hours remaining') || msg?.includes('Cancellation must be made')) {
+        const match = msg.match(/at least (\d+) hours in advance.*?Only (\d+) hours remaining/i)
+          || msg.match(/at least (\d+) hours.*?Only (\d+) hours/i);
+        if (match) {
+          setError(
+            `Eine Stornierung ist nur mindestens ${match[1]} Stunden im Voraus möglich. Es bleiben nur noch ${match[2]} Stunden.`
+          );
+        } else {
+          setError(
+            'Eine Stornierung ist nur innerhalb der Stornierungsfrist möglich. Der Termin liegt zu nah.'
+          );
+        }
+      } else if (msg?.includes('already cancelled')) {
+        setError('Diese Buchung ist bereits storniert.');
+      } else if (msg?.includes('Cannot cancel completed')) {
+        setError('Ein bereits durchgeführter Termin kann nicht mehr storniert werden.');
+      } else if (msg === 'Failed to cancel booking' || !msg) {
+        setError('Stornierung fehlgeschlagen. Bitte versuchen Sie es erneut.');
+      } else {
+        setError(msg);
+      }
     } finally {
       setCancelling(false);
     }
@@ -60,9 +81,14 @@ export function ManagementActions({ booking, onCancelled }: Props) {
             <h2 id="cancel-title" className="font-serif text-xl font-semibold text-foreground mb-2">
               Termin stornieren?
             </h2>
-            <p className="text-muted text-sm mb-6">
+            <p className="text-muted text-sm mb-4">
               Möchten Sie diesen Termin wirklich stornieren? Diese Aktion kann nicht rückgängig gemacht werden.
             </p>
+            {error && (
+              <div className="mb-4 rounded-lg bg-red-50 border border-red-200 p-3 text-sm text-red-800">
+                {error}
+              </div>
+            )}
             <div className="flex gap-3 justify-end">
               <button
                 type="button"

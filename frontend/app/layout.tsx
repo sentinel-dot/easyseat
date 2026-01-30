@@ -1,8 +1,7 @@
 import type { Metadata } from "next";
 import { Cormorant_Garamond, Source_Sans_3 } from "next/font/google";
 import "./globals.css";
-import { Header } from "@/components/layout/header";
-import { Footer } from "@/components/layout/footer";
+import { SiteLayout } from "@/components/layout/site-layout";
 import { getVenueById } from "@/lib/api/venues";
 import type { VenueWithStaff } from "@/lib/types";
 
@@ -65,9 +64,7 @@ export default async function RootLayout({
       <body
         className={`${cormorant.variable} ${sourceSans.variable} font-sans antialiased`}
       >
-        <Header venue={venue} />
-        {children}
-        <Footer venue={venue} />
+        <SiteLayout venue={venue}>{children}</SiteLayout>
       </body>
     </html>
   );

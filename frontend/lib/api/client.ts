@@ -15,11 +15,14 @@ export async function apiClient<T>(
             },
         });
 
-        const data = await response.json();
+        const data = await response.json().catch(() => ({}));
 
         if (!response.ok)
         {
-            throw new Error(data.message || 'API request failed');
+            const message = (data && typeof data.message === 'string') ? data.message : 'API request failed';
+            const err = new Error(message) as Error & { status?: number };
+            err.status = response.status;
+            throw err;
         }
 
         return data;

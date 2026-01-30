@@ -156,3 +156,43 @@ export interface UpdateBookingData
     status?: 'pending' | 'confirmed' | 'cancelled' | 'completed' | 'no_show';
     cancellation_reason?: string;
 }
+
+
+// Admin User Types
+export interface AdminUser {
+    id: number;
+    email: string;
+    password_hash: string;
+    name: string;
+    venue_id: number | null;
+    role: 'owner' | 'admin' | 'staff';
+    is_active: boolean;
+    last_login: Date | null;
+    created_at: Date;
+    updated_at: Date;
+}
+
+export interface AdminUserPublic {
+    id: number;
+    email: string;
+    name: string;
+    venue_id: number | null;
+    role: 'owner' | 'admin' | 'staff';
+}
+
+export interface JwtPayload {
+    userId: number;
+    email: string;
+    role: 'owner' | 'admin' | 'staff';
+    venueId: number | null;
+}
+
+export interface LoginRequest {
+    email: string;
+    password: string;
+}
+
+export interface LoginResponse {
+    token: string;
+    user: AdminUserPublic;
+}

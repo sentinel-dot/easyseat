@@ -112,3 +112,61 @@ export interface Booking extends CreateBookingData
     service_name?: string | null;
     staff_member_name?: string | null;
 }
+
+// Admin Types
+export interface AdminUser {
+    id: number;
+    email: string;
+    name: string;
+    venue_id: number | null;
+    role: 'owner' | 'admin' | 'staff';
+}
+
+export interface LoginResponse {
+    token: string;
+    user: AdminUser;
+}
+
+export interface AdminStats {
+    bookings: {
+        today: number;
+        thisWeek: number;
+        thisMonth: number;
+        pending: number;
+        confirmed: number;
+        cancelled: number;
+        completed: number;
+    };
+    revenue: {
+        today: number;
+        thisWeek: number;
+        thisMonth: number;
+        total: number;
+    };
+    popularServices: Array<{
+        service_id: number;
+        service_name: string;
+        booking_count: number;
+        total_revenue: number;
+    }>;
+    popularTimeSlots: Array<{
+        hour: number;
+        booking_count: number;
+    }>;
+}
+
+export interface BookingWithDetails extends Booking {
+    service_price?: number;
+    service_duration?: number;
+}
+
+export interface AvailabilityRule {
+    id: number;
+    venue_id: number | null;
+    staff_member_id: number | null;
+    staff_member_name?: string;
+    day_of_week: number;
+    start_time: string;
+    end_time: string;
+    is_active: boolean;
+}

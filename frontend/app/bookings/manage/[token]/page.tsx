@@ -4,6 +4,7 @@ import { useParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { getBookingByToken } from '@/lib/api/bookings';
+import { getStatusColor, getStatusLabel } from '@/lib/utils/bookingStatus';
 import { ManagementActions } from './management-actions';
 import type { Booking } from '@/lib/types';
 
@@ -119,6 +120,14 @@ export default function ManageBookingPage() {
             <div>
               <dt className="text-sm text-muted">E-Mail</dt>
               <dd className="font-medium text-foreground">{booking.customer_email}</dd>
+            </div>
+            <div>
+              <dt className="text-sm text-muted">Status</dt>
+              <dd>
+                <span className={`inline-flex px-2.5 py-1 rounded-full text-xs font-medium ${getStatusColor(booking.status)}`}>
+                  {getStatusLabel(booking.status)}
+                </span>
+              </dd>
             </div>
             {booking.customer_phone && (
               <div>

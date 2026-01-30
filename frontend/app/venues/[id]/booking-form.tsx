@@ -56,10 +56,11 @@ export function BookingForm({ venue, service, date, staffMembers }: Props) {
 
   /**
    * Lädt verfügbare Zeitslots vom Backend (GET /availability/slots)
+   * @param preserveError wenn true, wird die aktuelle Fehlermeldung nicht gelöscht (z. B. nach "Slot vergeben")
    */
-  const fetchTimeSlots = async () => {
+  const fetchTimeSlots = async (preserveError = false) => {
     setLoading(true);
-    setError(null);
+    if (!preserveError) setError(null);
     try {
       const dayAvailability = await getAvailableSlots(
         venue.id,
@@ -162,7 +163,8 @@ export function BookingForm({ venue, service, date, staffMembers }: Props) {
       const result = await response.json();
 
       if (!response.ok || !result.success) {
-        throw new Error(result.error || 'Buchung konnte nicht erstellt werden');
+        const msg = result.message || result.error || 'Buchung konnte nicht erstellt werden';
+        throw new Error(msg);
       }
 
       // Zur Bestätigungsseite mit Token weiterleiten
@@ -175,7 +177,18 @@ export function BookingForm({ venue, service, date, staffMembers }: Props) {
       setError('Buchung erstellt, aber Bestätigungslink konnte nicht erzeugt werden.');
 
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Ein Fehler ist aufgetreten');
+      const message = err instanceof Error ? err.message : 'Ein Fehler ist aufgetreten';
+      const isSlotTaken =
+        /already booked|nicht verfügbar|not available|Time slot already booked/i.test(message);
+      setError(
+        isSlotTaken
+          ? 'Dieser Termin wurde in der Zwischenzeit vergeben. Bitte wähle einen anderen Zeitslot.'
+          : message
+      );
+      if (isSlotTaken) {
+        setSelectedTimeSlot(null);
+        fetchTimeSlots(true); // Meldung nicht überschreiben
+      }
     } finally {
       setSubmitting(false);
     }
@@ -183,10 +196,24 @@ export function BookingForm({ venue, service, date, staffMembers }: Props) {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
-      {/* Fehler-Anzeige */}
+      {/* Fehler- / Hinweis-Anzeige */}
       {error && (
-        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-          <p className="text-red-700">{error}</p>
+        <div
+          className={`rounded-lg p-4 ${
+            error.includes('in der Zwischenzeit vergeben')
+              ? 'bg-amber-50 border border-amber-200'
+              : 'bg-red-50 border border-red-200'
+          }`}
+        >
+          <p
+            className={
+              error.includes('in der Zwischenzeit vergeben')
+                ? 'text-amber-800'
+                : 'text-red-700'
+            }
+          >
+            {error}
+          </p>
         </div>
       )}
 

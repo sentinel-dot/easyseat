@@ -231,13 +231,122 @@ router.post('/', async (req: Request, res: Response) =>
     }
 });
 
+/**
+ * GET /bookings/customer/:email - muss vor GET /:id stehen (Route-Reihenfolge!)
+ */
+router.get('/customer/:email', async (req: Request<{ email: string }>, res: Response) => 
+{
+    logger.separator();
+    logger.info('Received Request - GET /bookings/customer/:email');
 
+    const customerEmail = req.params.email;
 
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    
+    if (!emailRegex.test(customerEmail))
+    {
+        logger.warn('Invalid email format', { email: customerEmail });
+        logger.separator();
 
+        return res.status(400).json({
+            success: false,
+            message: 'Invalid email format'
+        } as ApiResponse<void>);
+    }
 
+    const maskedEmail = customerEmail.replace(/^(.)(.*)(@.*)$/, '$1***$3');
+    logger.info('Fetching bookings for customer', { email: maskedEmail });
 
+    try 
+    {
+        const bookings = await BookingService.getBookingsByEmail(customerEmail);
 
+        res.json({
+            success: true,
+            message: `${bookings.length} booking${bookings.length !== 1 ? 's' : ''} found`,
+            data: bookings
+        } as ApiResponse<Booking[]>);
+    } 
+    catch (error) 
+    {
+        logger.error('Error fetching customer bookings', error);
 
+        res.status(500).json({
+            success: false,
+            message: 'Failed to fetch bookings',
+            error: process.env.NODE_ENV === 'development' ? String(error) : undefined
+        } as ApiResponse<void>);
+    }
+    finally
+    {
+        logger.info('Response sent');
+        logger.separator();
+    }
+});
+
+/**
+ * GET /bookings/manage/:token - muss vor GET /:id stehen (sonst wird "manage" als :id gematcht!)
+ */
+router.get('/manage/:token', async (req: Request<{ token: string }>, res: Response) => 
+{
+    logger.separator();
+    logger.info('Received Request - GET /bookings/manage/:token');
+
+    const { token } = req.params;
+    const tokenPrefix = getTokenPrefix(token);
+
+    if (!validateBookingToken(token))
+    {
+        logger.warn('Invalid booking token format', { token_prefix: tokenPrefix });
+        logger.separator();
+
+        return res.status(400).json({
+            success: false,
+            message: 'Invalid booking token format'
+        } as ApiResponse<void>);
+    }
+
+    try 
+    {
+        const booking = await BookingService.getBookingByToken(token);
+        
+        if (!booking)
+        {
+            logger.warn('Booking not found', { token_prefix: tokenPrefix });
+
+            return res.status(404).json({
+                success: false,
+                message: 'Booking not found'
+            } as ApiResponse<void>);
+        }
+
+        logger.info('Booking retrieved successfully', { 
+            booking_id: booking.id,
+            token_prefix: tokenPrefix
+        });
+
+        return res.status(200).json({
+            success: true,
+            message: 'Booking retrieved successfully',
+            data: booking
+        } as ApiResponse<Booking>);
+    } 
+    catch (error) 
+    {
+        logger.error('Error fetching booking by token', error);
+
+        res.status(500).json({
+            success: false,
+            message: 'Failed to fetch booking',
+            error: process.env.NODE_ENV === 'development' ? String(error) : undefined
+        } as ApiResponse<void>);
+    }
+    finally
+    {
+        logger.info('Response sent');
+        logger.separator();
+    }
+});
 
 /**
  * =====================================================================================================
@@ -324,101 +433,6 @@ router.get('/:id', async (req: Request<{ id: string }>, res: Response) =>
         logger.separator();
     }
 });
-
-
-
-
-
-
-
-/**
- * ============================================================================
- * GET /bookings/customer/:email
- * ============================================================================
- * Ruft alle Buchungen eines Kunden ab (Email-basiert, kein Login erforderlich)
- * 
- * URL PARAMETER:
- * - :email = Customer Email (z.B. /bookings/customer/max@example.com)
- * 
- * USE CASES:
- * - Gast will alle seine Buchungen sehen (ohne Account)
- * - "Meine Buchungen" Seite im Frontend
- * - Buchungshistorie für Email-Adresse anzeigen
- * 
- * SICHERHEIT:
- * - KEINE Authentifizierung erforderlich (Guest-Access)
- * - Jeder mit einer Email kann ALLE Buchungen dieser Email sehen
- * - ⚠️ In Production: Rate-Limiting hinzufügen (z.B. max 10 requests/min pro IP)
- * - ⚠️ Alternative: Magic-Link per Email senden statt direktem Zugriff
- * 
- * RESPONSE (Success - 200 OK):
- * {
- *   success: true,
- *   message: "X booking(s) found",
- *   data: [ ...array von bookings ]
- * }
- * 
- * RESPONSE (Error):
- * - 400: Ungültige Email
- * - 500: Serverfehler
- */
-router.get('/customer/:email', async (req: Request<{ email: string }>, res: Response) => 
-{
-    logger.separator();
-    logger.info('Received Request - GET /bookings/customer/:email');
-
-    const customerEmail = req.params.email;
-
-    // ========================================================================
-    // EMAIL-VALIDIERUNG
-    // ========================================================================
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    
-    if (!emailRegex.test(customerEmail))
-    {
-        logger.warn('Invalid email format', { email: customerEmail });
-        logger.separator();
-
-        return res.status(400).json({
-            success: false,
-            message: 'Invalid email format'
-        } as ApiResponse<void>);
-    }
-
-    // Optional: Email-Präfix loggen (Datenschutz)
-    // max@example.com -> m***@example.com
-    const maskedEmail = customerEmail.replace(/^(.)(.*)(@.*)$/, '$1***$3');
-    logger.info('Fetching bookings for customer', { email: maskedEmail });
-
-    try 
-    {
-        // Service-Aufruf: Hole alle Buchungen für diese Email
-        const bookings = await BookingService.getBookingsByEmail(customerEmail);
-
-        // Auch bei 0 Ergebnissen ist das ein Success (200 OK)
-        res.json({
-            success: true,
-            message: `${bookings.length} booking${bookings.length !== 1 ? 's' : ''} found`,
-            data: bookings
-        } as ApiResponse<Booking[]>);
-    } 
-    catch (error) 
-    {
-        logger.error('Error fetching customer bookings', error);
-
-        res.status(500).json({
-            success: false,
-            message: 'Failed to fetch bookings',
-            error: process.env.NODE_ENV === 'development' ? String(error) : undefined
-        } as ApiResponse<void>);
-    }
-    finally
-    {
-        logger.info('Response sent');
-        logger.separator();
-    }
-});
-
 
 
 
@@ -876,6 +890,23 @@ router.post('/manage/:token/cancel', async (req: Request<{ token: string }>, res
             } as ApiResponse<void>);
         }
 
+        if (errorMessage.includes('Cannot cancel completed')) {
+            return res.status(400).json({
+                success: false,
+                message: errorMessage,
+                error: process.env.NODE_ENV === 'development' ? String(error) : undefined
+            } as ApiResponse<void>);
+        }
+
+        // Stornierungsfrist nicht eingehalten (z. B. "at least 24 hours in advance", "Only 12 hours remaining")
+        if (errorMessage.includes('hours in advance') || errorMessage.includes('hours remaining')) {
+            return res.status(400).json({
+                success: false,
+                message: errorMessage,
+                error: process.env.NODE_ENV === 'development' ? String(error) : undefined
+            } as ApiResponse<void>);
+        }
+
         if (errorMessage.includes('cancellation policy')) {
             return res.status(400).json({
                 success: false,
@@ -884,9 +915,19 @@ router.post('/manage/:token/cancel', async (req: Request<{ token: string }>, res
             } as ApiResponse<void>);
         }
 
-        res.status(500).json({
+        // Alle anderen Fehler (z. B. Stornierungsfrist): echte Meldung durchreichen, Status 400 für Business-Fehler
+        const isBusinessError =
+            errorMessage !== 'Unknown error' &&
+            (errorMessage.includes('Cancellation') ||
+             errorMessage.includes('hours') ||
+             errorMessage.includes('cancel') ||
+             errorMessage.includes('retrieve'));
+        const status = isBusinessError ? 400 : 500;
+        const message = errorMessage !== 'Unknown error' ? errorMessage : 'Failed to cancel booking';
+
+        return res.status(status).json({
             success: false,
-            message: 'Failed to cancel booking',
+            message,
             error: process.env.NODE_ENV === 'development' ? String(error) : undefined
         } as ApiResponse<void>);
 
@@ -897,125 +938,6 @@ router.post('/manage/:token/cancel', async (req: Request<{ token: string }>, res
         logger.separator();
     }
 });
-
-
-
-
-/**
- * =====================================================================================================
- * GET /bookings/manage/:token (NEU!)
- * =====================================================================================================
- * Ruft eine Buchung via Token ab - für Booking Management Page
- * 
- * FLOW:
- * 1. Kunde erhält Email mit Link: https://easyseat.de/booking/manage/a1b2c3d4-...
- * 2. Frontend ruft diese Route auf
- * 3. Route gibt Buchungsdetails zurück
- * 4. Frontend zeigt Management-Seite (Ändern/Stornieren)
- * 
- * URL PARAMETER:
- * - :token = booking_token (UUID v4)
- * 
- * VORTEILE:
- * - Keine Login nötig
- * - Keine Email-Eingabe nötig
- * - Link ist shareable (z.B. an Begleiter)
- * - Funktioniert auch als QR-Code
- * 
- * RESPONSE (Success - 200 OK):
- * {
- *   success: true,
- *   message: "Booking retrieved successfully",
- *   data: {
- *     id: 42,
- *     booking_token: "a1b2c3d4-...",
- *     venue_name: "Restaurant Bella Vista",
- *     customer_name: "Max Mustermann",
- *     booking_date: "2025-11-15",
- *     start_time: "19:00",
- *     ...
- *   }
- * }
- * 
- * RESPONSE (Error):
- * - 400: Ungültiges Token-Format
- * - 404: Buchung nicht gefunden (falscher Token)
- * - 500: Serverfehler
- */
-router.get('/manage/:token', async (req: Request<{ token: string }>, res: Response) => 
-{
-    logger.separator();
-    logger.info('Received Request - GET /bookings/manage/:token');
-
-    const { token } = req.params;
-    const tokenPrefix = getTokenPrefix(token);
-
-    logger.info('Token provided', { token_prefix: tokenPrefix });
-
-
-    // ========================================================================
-    // VALIDIERUNG
-    // ========================================================================
-    
-    // Token-Format-Validierung (UUID v4)
-    if (!validateBookingToken(token))
-    {
-        logger.warn('Invalid booking token format', { token_prefix: tokenPrefix });
-        logger.separator();
-
-        return res.status(400).json({
-            success: false,
-            message: 'Invalid booking token format'
-        } as ApiResponse<void>);
-    }
-
-
-    // ========================================================================
-    // SERVICE CALL
-    // ========================================================================
-    
-    try 
-    {
-        const booking = await BookingService.getBookingByToken(token);
-        
-        if (!booking)
-        {
-            logger.warn('Booking not found', { token_prefix: tokenPrefix });
-
-            return res.status(404).json({
-                success: false,
-                message: 'Booking not found'
-            } as ApiResponse<void>);
-        }
-
-        logger.info('Booking retrieved successfully', { 
-            booking_id: booking.id,
-            token_prefix: tokenPrefix
-        });
-
-        return res.status(200).json({
-            success: true,
-            message: 'Booking retrieved successfully',
-            data: booking
-        } as ApiResponse<Booking>);
-    } 
-    catch (error) 
-    {
-        logger.error('Error fetching booking by token', error);
-
-        res.status(500).json({
-            success: false,
-            message: 'Failed to fetch booking',
-            error: process.env.NODE_ENV === 'development' ? String(error) : undefined
-        } as ApiResponse<void>);
-    }
-    finally
-    {
-        logger.info('Response sent');
-        logger.separator();
-    }
-});
-
 
 
 

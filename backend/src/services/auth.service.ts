@@ -1,0 +1,186 @@
+import bcrypt from 'bcrypt';
+import jwt from 'jsonwebtoken';
+import { getConnection } from '../config/database';
+import { createLogger } from '../config/utils/logger';
+import { AdminUser, AdminUserPublic, JwtPayload, ApiResponse, LoginResponse } from '../config/utils/types';
+
+const logger = createLogger('auth.service');
+
+const JWT_SECRET = process.env.JWT_SECRET || 'easyseat-admin-secret-key-change-in-production';
+const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '24h';
+
+/**
+ * Find admin user by email
+ */
+export async function findAdminByEmail(email: string): Promise<AdminUser | null> {
+    let conn = null;
+    try {
+        conn = await getConnection();
+        const rows = await conn.query(
+            'SELECT * FROM admin_users WHERE email = ? AND is_active = TRUE',
+            [email]
+        );
+        
+        if (rows.length === 0) {
+            return null;
+        }
+        
+        return rows[0] as AdminUser;
+    } catch (error) {
+        logger.error('Error finding admin by email', error);
+        throw error;
+    } finally {
+        if (conn) conn.release();
+    }
+}
+
+/**
+ * Find admin user by ID
+ */
+export async function findAdminById(id: number): Promise<AdminUser | null> {
+    let conn = null;
+    try {
+        conn = await getConnection();
+        const rows = await conn.query(
+            'SELECT * FROM admin_users WHERE id = ? AND is_active = TRUE',
+            [id]
+        );
+        
+        if (rows.length === 0) {
+            return null;
+        }
+        
+        return rows[0] as AdminUser;
+    } catch (error) {
+        logger.error('Error finding admin by ID', error);
+        throw error;
+    } finally {
+        if (conn) conn.release();
+    }
+}
+
+/**
+ * Verify password against hash
+ */
+export async function verifyPassword(password: string, hash: string): Promise<boolean> {
+    try {
+        return await bcrypt.compare(password, hash);
+    } catch (error) {
+        logger.error('Error verifying password', error);
+        return false;
+    }
+}
+
+/**
+ * Hash a password
+ */
+export async function hashPassword(password: string): Promise<string> {
+    const saltRounds = 10;
+    return await bcrypt.hash(password, saltRounds);
+}
+
+/**
+ * Generate JWT token
+ */
+export function generateToken(user: AdminUser): string {
+    const payload: JwtPayload = {
+        userId: user.id,
+        email: user.email,
+        role: user.role,
+        venueId: user.venue_id
+    };
+    
+    return jwt.sign(payload, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN } as jwt.SignOptions);
+}
+
+/**
+ * Verify JWT token
+ */
+export function verifyToken(token: string): JwtPayload | null {
+    try {
+        return jwt.verify(token, JWT_SECRET) as JwtPayload;
+    } catch (error) {
+        logger.debug('Token verification failed', error);
+        return null;
+    }
+}
+
+/**
+ * Update last login timestamp
+ */
+export async function updateLastLogin(userId: number): Promise<void> {
+    let conn = null;
+    try {
+        conn = await getConnection();
+        await conn.query(
+            'UPDATE admin_users SET last_login = NOW() WHERE id = ?',
+            [userId]
+        );
+    } catch (error) {
+        logger.error('Error updating last login', error);
+    } finally {
+        if (conn) conn.release();
+    }
+}
+
+/**
+ * Convert AdminUser to public representation (without password)
+ */
+export function toPublicUser(user: AdminUser): AdminUserPublic {
+    return {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        venue_id: user.venue_id,
+        role: user.role
+    };
+}
+
+/**
+ * Login user
+ */
+export async function login(email: string, password: string): Promise<ApiResponse<LoginResponse>> {
+    try {
+        // Find user
+        const user = await findAdminByEmail(email);
+        if (!user) {
+            logger.warn(`Login attempt failed: User not found - ${email}`);
+            return {
+                success: false,
+                message: 'Ungültige E-Mail oder Passwort'
+            };
+        }
+        
+        // Verify password
+        const isValid = await verifyPassword(password, user.password_hash);
+        if (!isValid) {
+            logger.warn(`Login attempt failed: Invalid password - ${email}`);
+            return {
+                success: false,
+                message: 'Ungültige E-Mail oder Passwort'
+            };
+        }
+        
+        // Generate token
+        const token = generateToken(user);
+        
+        // Update last login
+        await updateLastLogin(user.id);
+        
+        logger.info(`User logged in successfully: ${email}`);
+        
+        return {
+            success: true,
+            data: {
+                token,
+                user: toPublicUser(user)
+            }
+        };
+    } catch (error) {
+        logger.error('Login error', error);
+        return {
+            success: false,
+            message: 'Ein Fehler ist aufgetreten'
+        };
+    }
+}

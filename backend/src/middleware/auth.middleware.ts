@@ -1,0 +1,149 @@
+import { Request, Response, NextFunction } from 'express';
+import { verifyToken, findAdminById, toPublicUser } from '../services/auth.service';
+import { createLogger } from '../config/utils/logger';
+import { JwtPayload, AdminUserPublic } from '../config/utils/types';
+
+const logger = createLogger('auth.middleware');
+
+// Extend Express Request type to include user
+declare global {
+    namespace Express {
+        interface Request {
+            user?: AdminUserPublic;
+            jwtPayload?: JwtPayload;
+        }
+    }
+}
+
+/**
+ * Authentication middleware
+ * Verifies JWT token from Authorization header
+ */
+export function authenticateToken(req: Request, res: Response, next: NextFunction): void {
+    const authHeader = req.headers['authorization'];
+    const token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
+    
+    if (!token) {
+        res.status(401).json({
+            success: false,
+            message: 'Authentifizierung erforderlich'
+        });
+        return;
+    }
+    
+    const payload = verifyToken(token);
+    if (!payload) {
+        res.status(403).json({
+            success: false,
+            message: 'Ungültiger oder abgelaufener Token'
+        });
+        return;
+    }
+    
+    req.jwtPayload = payload;
+    next();
+}
+
+/**
+ * Authentication middleware that also loads the full user
+ */
+export async function authenticateAndLoadUser(req: Request, res: Response, next: NextFunction): Promise<void> {
+    const authHeader = req.headers['authorization'];
+    const token = authHeader && authHeader.split(' ')[1];
+    
+    if (!token) {
+        res.status(401).json({
+            success: false,
+            message: 'Authentifizierung erforderlich'
+        });
+        return;
+    }
+    
+    const payload = verifyToken(token);
+    if (!payload) {
+        res.status(403).json({
+            success: false,
+            message: 'Ungültiger oder abgelaufener Token'
+        });
+        return;
+    }
+    
+    try {
+        const user = await findAdminById(payload.userId);
+        if (!user) {
+            res.status(403).json({
+                success: false,
+                message: 'Benutzer nicht gefunden'
+            });
+            return;
+        }
+        
+        req.user = toPublicUser(user);
+        req.jwtPayload = payload;
+        next();
+    } catch (error) {
+        logger.error('Error loading user in middleware', error);
+        res.status(500).json({
+            success: false,
+            message: 'Interner Serverfehler'
+        });
+    }
+}
+
+/**
+ * Role-based authorization middleware
+ * Must be used after authenticateToken or authenticateAndLoadUser
+ */
+export function requireRole(...roles: Array<'owner' | 'admin' | 'staff'>) {
+    return (req: Request, res: Response, next: NextFunction): void => {
+        if (!req.jwtPayload) {
+            res.status(401).json({
+                success: false,
+                message: 'Authentifizierung erforderlich'
+            });
+            return;
+        }
+        
+        if (!roles.includes(req.jwtPayload.role)) {
+            res.status(403).json({
+                success: false,
+                message: 'Keine Berechtigung für diese Aktion'
+            });
+            return;
+        }
+        
+        next();
+    };
+}
+
+/**
+ * Venue-based authorization middleware
+ * Ensures user can only access their own venue's data
+ */
+export function requireVenueAccess(req: Request, res: Response, next: NextFunction): void {
+    if (!req.jwtPayload) {
+        res.status(401).json({
+            success: false,
+            message: 'Authentifizierung erforderlich'
+        });
+        return;
+    }
+    
+    // Owner can access all venues
+    if (req.jwtPayload.role === 'owner') {
+        next();
+        return;
+    }
+    
+    const requestedVenueId = parseInt(req.params.venueId || req.body.venue_id);
+    
+    if (req.jwtPayload.venueId && requestedVenueId !== req.jwtPayload.venueId) {
+        res.status(403).json({
+            success: false,
+            message: 'Kein Zugriff auf diese Venue'
+        });
+        return;
+    }
+    
+    next();
+}

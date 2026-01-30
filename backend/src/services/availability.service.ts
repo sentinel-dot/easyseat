@@ -325,23 +325,34 @@ export class AvailabilityService
 
 
             // Erstelle Query zum Prüfen existierender Buchungen
-            let conflictQuery = `
-                SELECT id, start_time, end_time, party_size, status
-                FROM bookings
-                WHERE venue_id = ?
-                AND service_id = ?
-                AND booking_date = ?
-                AND status IN ('confirmed', 'pending')
-            `;
+            // Bei Mitarbeiter-Services: Konflikt = alle Buchungen dieses Mitarbeiters an dem Tag (jeder Service),
+            // da eine Person nur einen Termin gleichzeitig haben kann.
+            let conflictQuery: string;
+            let conflictParams: any[];
 
-            let conflictParams: any[] = [venueId, serviceId, date];
-
-
-            // Für Mitarbeiter-Services
             if (service.requires_staff && staffMemberId)
             {
-                conflictQuery += ' AND staff_member_id = ?';
-                conflictParams.push(staffMemberId);
+                conflictQuery = `
+                    SELECT id, start_time, end_time, party_size, status
+                    FROM bookings
+                    WHERE venue_id = ?
+                    AND staff_member_id = ?
+                    AND booking_date = ?
+                    AND status = 'confirmed'
+                `;
+                conflictParams = [venueId, staffMemberId, date];
+            }
+            else
+            {
+                conflictQuery = `
+                    SELECT id, start_time, end_time, party_size, status
+                    FROM bookings
+                    WHERE venue_id = ?
+                    AND service_id = ?
+                    AND booking_date = ?
+                    AND status = 'confirmed'
+                `;
+                conflictParams = [venueId, serviceId, date];
             }
 
 
@@ -580,15 +591,27 @@ export class AvailabilityService
 
 
             // Hole existierende Buchungen
-            const existingBookings = await conn.query(`
-                SELECT start_time, end_time, staff_member_id, party_size
-                FROM bookings
-                WHERE venue_id = ?
-                AND service_id = ?
-                AND booking_date = ?
-                AND status IN ('confirmed', 'pending')`,
-                [venueId, serviceId, date]
-            ) as { start_time: string; end_time: string; staff_member_id: number | null; party_size: number }[];;
+            // Bei Mitarbeiter-Services: alle Buchungen mit Mitarbeiter an dem Tag (jeder Service),
+            // damit Slots blockiert werden, wenn der Mitarbeiter schon einen anderen Service hat.
+            const existingBookings = service.requires_staff
+                ? (await conn.query(`
+                    SELECT start_time, end_time, staff_member_id, party_size
+                    FROM bookings
+                    WHERE venue_id = ?
+                    AND booking_date = ?
+                    AND staff_member_id IS NOT NULL
+                    AND status = 'confirmed'`,
+                    [venueId, date]
+                ) as { start_time: string; end_time: string; staff_member_id: number | null; party_size: number }[])
+                : (await conn.query(`
+                    SELECT start_time, end_time, staff_member_id, party_size
+                    FROM bookings
+                    WHERE venue_id = ?
+                    AND service_id = ?
+                    AND booking_date = ?
+                    AND status = 'confirmed'`,
+                    [venueId, serviceId, date]
+                ) as { start_time: string; end_time: string; staff_member_id: number | null; party_size: number }[]);
 
             // Markiere konfliktbehaften Slots als nicht verfügbar
             availableSlots = availableSlots.map(slot => {

@@ -3,11 +3,13 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 
 import { createLogger } from './config/utils/logger';
-import { testConnection, setupGracefulShutdown, resetBookingsTable } from './config/database';
+import { testConnection, setupGracefulShutdown } from './config/database';
 
 import venueRoutes from './routes/venue.routes';
 import availabilityRoutes from './routes/availability.routes';
 import bookingRoutes from './routes/booking.routes';
+import authRoutes from './routes/auth.routes';
+import adminRoutes from './routes/admin.routes';
 
 dotenv.config();
 
@@ -47,6 +49,9 @@ app.get('/health', (req, res) => {
 });
 
 
+// Auth routes
+app.use('/auth', authRoutes);
+
 // Venue routes
 app.use('/venues', venueRoutes);
 
@@ -55,6 +60,9 @@ app.use('/availability', availabilityRoutes);
 
 // Booking routes
 app.use('/bookings', bookingRoutes);
+
+// Admin routes (protected)
+app.use('/admin', adminRoutes);
 
 
 // 404 - Handler
@@ -93,14 +101,6 @@ const startServer = async() => {
             process.exit(1);
         }
 
-        const resetDb = await resetBookingsTable();
-
-        const message = resetDb 
-            ? 'Successfully reset bookings table.'
-            : 'Failed to reset bookings database.'
-
-        logger.info(message);
-
         // Setup Graceful Shutdown Handler
         setupGracefulShutdown();
 
@@ -114,6 +114,11 @@ const startServer = async() => {
             logger.info('   ℹ️  General:');
             logger.info('   GET    / - Info check');
             logger.info('   GET    /health - Healthcheck');
+            logger.info('');
+            logger.info('   🔐 Auth:');
+            logger.info('   POST   /auth/login - Login with email/password');
+            logger.info('   GET    /auth/me - Get current user (requires auth)');
+            logger.info('   POST   /auth/logout - Logout (requires auth)');
             logger.info('');
             logger.info('   🏢 Venues:');
             logger.info('   GET    /venues - All venues');
@@ -136,6 +141,15 @@ const startServer = async() => {
             logger.info('   POST   /bookings/:id/confirm - Confirm booking');
             logger.info('   POST   /bookings/:id/cancel - Cancel booking (email verification required)');
             logger.info('   DELETE /bookings/:id - Delete booking (ADMIN ONLY)');
+            logger.info('');
+            logger.info('   👤 Admin (requires auth):');
+            logger.info('   GET    /admin/bookings - Get bookings with filters');
+            logger.info('   PATCH  /admin/bookings/:id/status - Update booking status');
+            logger.info('   GET    /admin/stats - Get dashboard statistics');
+            logger.info('   GET    /admin/services - Get all services');
+            logger.info('   PATCH  /admin/services/:id - Update service');
+            logger.info('   GET    /admin/availability - Get availability rules');
+            logger.info('   PATCH  /admin/availability/:id - Update availability rule');
             logger.separator();
         });
     } catch (error) {
