@@ -1,7 +1,10 @@
 import { Router, Request, Response } from 'express';
 import { authenticateToken, requireRole } from '../middleware/auth.middleware';
 import { AdminService } from '../services/admin.service';
+import { BookingService } from '../services/booking.service';
+import { VenueService } from '../services/venue.service';
 import { createLogger } from '../config/utils/logger';
+import { CreateBookingData } from '../config/utils/types';
 
 const router = Router();
 const logger = createLogger('admin.routes');
@@ -277,6 +280,183 @@ router.patch('/availability/:id', requireRole('owner', 'admin'), async (req: Req
         res.status(500).json({
             success: false,
             message: 'Fehler beim Aktualisieren der Verfügbarkeit'
+        });
+    }
+});
+
+/**
+ * POST /admin/bookings
+ * Create a manual booking (bypasses booking_advance_hours check)
+ * 
+ * This allows admins to create last-minute bookings for:
+ * - Walk-ins
+ * - Family members filling slots
+ * - Emergency appointments
+ */
+router.post('/bookings', async (req: Request, res: Response) => {
+    logger.info('POST /admin/bookings - Manual booking creation');
+
+    try {
+        const venueId = req.jwtPayload?.venueId;
+
+        if (!venueId) {
+            res.status(403).json({
+                success: false,
+                message: 'Kein Venue zugewiesen'
+            });
+            return;
+        }
+
+        const bookingData: CreateBookingData = {
+            ...req.body,
+            venue_id: venueId  // Force venue_id from JWT
+        };
+
+        // Validate required fields
+        const requiredFields = [
+            'service_id',
+            'customer_name',
+            'customer_email',
+            'booking_date',
+            'start_time',
+            'end_time',
+            'party_size'
+        ];
+
+        const missingFields = requiredFields.filter(field => !bookingData[field as keyof CreateBookingData]);
+
+        if (missingFields.length > 0) {
+            res.status(400).json({
+                success: false,
+                message: `Fehlende Felder: ${missingFields.join(', ')}`
+            });
+            return;
+        }
+
+        // Create booking with bypass flag (ignores booking_advance_hours)
+        const booking = await BookingService.createBooking(bookingData, true);
+
+        res.status(201).json({
+            success: true,
+            data: booking,
+            message: 'Buchung erfolgreich erstellt'
+        });
+    } catch (error) {
+        logger.error('Error creating manual booking', error);
+        
+        const errorMessage = (error as Error).message || 'Unknown error';
+
+        if (errorMessage.includes('not available')) {
+            res.status(400).json({
+                success: false,
+                message: 'Zeitslot nicht verfügbar'
+            });
+            return;
+        }
+
+        res.status(500).json({
+            success: false,
+            message: 'Fehler beim Erstellen der Buchung'
+        });
+    }
+});
+
+/**
+ * GET /admin/venue/settings
+ * Get venue settings (including booking policies)
+ */
+router.get('/venue/settings', async (req: Request, res: Response) => {
+    logger.info('GET /admin/venue/settings');
+
+    try {
+        const venueId = req.jwtPayload?.venueId;
+
+        if (!venueId) {
+            res.status(403).json({
+                success: false,
+                message: 'Kein Venue zugewiesen'
+            });
+            return;
+        }
+
+        const venue = await VenueService.getVenueById(venueId);
+
+        if (!venue) {
+            res.status(404).json({
+                success: false,
+                message: 'Venue nicht gefunden'
+            });
+            return;
+        }
+
+        res.json({
+            success: true,
+            data: venue
+        });
+    } catch (error) {
+        logger.error('Error fetching venue settings', error);
+        res.status(500).json({
+            success: false,
+            message: 'Fehler beim Laden der Einstellungen'
+        });
+    }
+});
+
+/**
+ * PATCH /admin/venue/settings
+ * Update venue settings (booking_advance_hours, cancellation_hours, etc.)
+ */
+router.patch('/venue/settings', requireRole('owner', 'admin'), async (req: Request, res: Response) => {
+    logger.info('PATCH /admin/venue/settings');
+
+    try {
+        const venueId = req.jwtPayload?.venueId;
+
+        if (!venueId) {
+            res.status(403).json({
+                success: false,
+                message: 'Kein Venue zugewiesen'
+            });
+            return;
+        }
+
+        const { booking_advance_hours, cancellation_hours } = req.body;
+
+        // Validate values if provided
+        if (booking_advance_hours !== undefined) {
+            if (typeof booking_advance_hours !== 'number' || booking_advance_hours < 0) {
+                res.status(400).json({
+                    success: false,
+                    message: 'booking_advance_hours muss eine positive Zahl sein'
+                });
+                return;
+            }
+        }
+
+        if (cancellation_hours !== undefined) {
+            if (typeof cancellation_hours !== 'number' || cancellation_hours < 0) {
+                res.status(400).json({
+                    success: false,
+                    message: 'cancellation_hours muss eine positive Zahl sein'
+                });
+                return;
+            }
+        }
+
+        await AdminService.updateVenueSettings(venueId, {
+            booking_advance_hours,
+            cancellation_hours
+        });
+
+        res.json({
+            success: true,
+            message: 'Einstellungen erfolgreich aktualisiert'
+        });
+    } catch (error) {
+        logger.error('Error updating venue settings', error);
+        res.status(500).json({
+            success: false,
+            message: 'Fehler beim Aktualisieren der Einstellungen'
         });
     }
 });

@@ -170,8 +170,15 @@ export default function AdminDashboardPage() {
                     </div>
                 </div>
 
-                {/* Pending Bookings */}
-                <div className="bg-white rounded-xl border border-gray-200 p-5">
+                {/* Pending Bookings – needs confirmation to become active */}
+                <Link
+                    href="/admin/bookings?status=pending"
+                    className={`rounded-xl border p-5 block transition-colors ${
+                        (stats?.bookings.pending || 0) > 0
+                            ? 'bg-orange-50 border-orange-200 hover:border-orange-300 hover:bg-orange-100'
+                            : 'bg-white border-gray-200 hover:border-gray-300'
+                    }`}
+                >
                     <div className="flex items-center justify-between">
                         <div>
                             <p className="text-sm text-gray-500">Ausstehend</p>
@@ -179,16 +186,18 @@ export default function AdminDashboardPage() {
                                 {stats?.bookings.pending || 0}
                             </p>
                             <p className="text-xs text-gray-500 mt-1">
-                                {stats?.bookings.confirmed || 0} bestätigt
+                                {(stats?.bookings.pending || 0) > 0
+                                    ? 'Bitte bestätigen →'
+                                    : `${stats?.bookings.confirmed || 0} bestätigt`}
                             </p>
                         </div>
-                        <div className="w-12 h-12 rounded-full bg-orange-100 flex items-center justify-center">
+                        <div className={`w-12 h-12 rounded-full flex items-center justify-center ${(stats?.bookings.pending || 0) > 0 ? 'bg-orange-200' : 'bg-orange-100'}`}>
                             <svg className="w-6 h-6 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                             </svg>
                         </div>
                     </div>
-                </div>
+                </Link>
             </div>
 
             {/* Recent Bookings & Popular Services */}

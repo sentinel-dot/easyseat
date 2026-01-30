@@ -13,6 +13,7 @@ export interface Venue
     description?: string;
     website_url?: string;
     booking_advance_days: number;
+    booking_advance_hours: number;         // Mindestvorlaufzeit für Kundenbuchungen (z.B. 48 Stunden)
     cancellation_hours: number;
     require_phone: boolean;
     require_deposit: boolean;
@@ -109,6 +110,7 @@ export interface Booking extends CreateBookingData
     updated_at: Date;
     /** Vom Backend bei getBookingByToken geliefert */
     venue_name?: string | null;
+    cancellation_hours?: number | null;
     service_name?: string | null;
     staff_member_name?: string | null;
 }

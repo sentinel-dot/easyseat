@@ -239,14 +239,21 @@ export class AdminService {
         try {
             conn = await getConnection();
 
-            // Get booking counts
+            // Active bookings (for counts): confirmed + completed; pending/cancelled excluded
+            const activeStatusCondition = "status IN ('confirmed', 'completed')";
+            const activeStatusConditionB = "b.status IN ('confirmed', 'completed')";
+            // Revenue and "completed" stats: only completed = real revenue; cancelled never counted
+            const completedOnlyCondition = "status = 'completed'";
+            const completedOnlyConditionB = "b.status = 'completed'";
+
+            // Get booking counts (today/week/month = only active; pending/confirmed/cancelled/completed for overview)
             const bookingStats = await conn.query(`
                 SELECT
-                    COUNT(CASE WHEN booking_date = CURDATE() THEN 1 END) as today,
-                    COUNT(CASE WHEN booking_date >= DATE_SUB(CURDATE(), INTERVAL WEEKDAY(CURDATE()) DAY) 
-                               AND booking_date <= CURDATE() THEN 1 END) as this_week,
+                    COUNT(CASE WHEN booking_date = CURDATE() AND ${activeStatusCondition} THEN 1 END) as today,
+                    COUNT(CASE WHEN booking_date >= DATE_SUB(CURDATE(), INTERVAL (WEEKDAY(CURDATE())) DAY) 
+                               AND booking_date < DATE_ADD(CURDATE(), INTERVAL 1 DAY) AND ${activeStatusCondition} THEN 1 END) as this_week,
                     COUNT(CASE WHEN MONTH(booking_date) = MONTH(CURDATE()) 
-                               AND YEAR(booking_date) = YEAR(CURDATE()) THEN 1 END) as this_month,
+                               AND YEAR(booking_date) = YEAR(CURDATE()) AND ${activeStatusCondition} THEN 1 END) as this_month,
                     COUNT(CASE WHEN status = 'pending' THEN 1 END) as pending,
                     COUNT(CASE WHEN status = 'confirmed' THEN 1 END) as confirmed,
                     COUNT(CASE WHEN status = 'cancelled' THEN 1 END) as cancelled,
@@ -263,15 +270,15 @@ export class AdminService {
                 completed: bigint;
             }];
 
-            // Get revenue stats
+            // Revenue: only completed (service delivered); confirmed = not yet revenue; cancelled never counted
             const revenueStats = await conn.query(`
                 SELECT
-                    COALESCE(SUM(CASE WHEN booking_date = CURDATE() AND status NOT IN ('cancelled') THEN total_amount END), 0) as today,
-                    COALESCE(SUM(CASE WHEN booking_date >= DATE_SUB(CURDATE(), INTERVAL WEEKDAY(CURDATE()) DAY) 
-                               AND booking_date <= CURDATE() AND status NOT IN ('cancelled') THEN total_amount END), 0) as this_week,
+                    COALESCE(SUM(CASE WHEN booking_date = CURDATE() AND ${completedOnlyCondition} THEN total_amount END), 0) as today,
+                    COALESCE(SUM(CASE WHEN booking_date >= DATE_SUB(CURDATE(), INTERVAL (WEEKDAY(CURDATE())) DAY) 
+                               AND booking_date < DATE_ADD(CURDATE(), INTERVAL 1 DAY) AND ${completedOnlyCondition} THEN total_amount END), 0) as this_week,
                     COALESCE(SUM(CASE WHEN MONTH(booking_date) = MONTH(CURDATE()) 
-                               AND YEAR(booking_date) = YEAR(CURDATE()) AND status NOT IN ('cancelled') THEN total_amount END), 0) as this_month,
-                    COALESCE(SUM(CASE WHEN status NOT IN ('cancelled') THEN total_amount END), 0) as total
+                               AND YEAR(booking_date) = YEAR(CURDATE()) AND ${completedOnlyCondition} THEN total_amount END), 0) as this_month,
+                    COALESCE(SUM(CASE WHEN ${completedOnlyCondition} THEN total_amount END), 0) as total
                 FROM bookings
                 WHERE venue_id = ?
             `, [venueId]) as [{
@@ -281,7 +288,7 @@ export class AdminService {
                 total: string;
             }];
 
-            // Get popular services
+            // Popular services: only completed (real revenue & count; cancelled excluded)
             const popularServices = await conn.query(`
                 SELECT 
                     b.service_id,
@@ -290,7 +297,7 @@ export class AdminService {
                     COALESCE(SUM(b.total_amount), 0) as total_revenue
                 FROM bookings b
                 JOIN services s ON b.service_id = s.id
-                WHERE b.venue_id = ? AND b.status NOT IN ('cancelled')
+                WHERE b.venue_id = ? AND ${completedOnlyConditionB}
                 GROUP BY b.service_id, s.name
                 ORDER BY booking_count DESC
                 LIMIT 5
@@ -301,13 +308,13 @@ export class AdminService {
                 total_revenue: string;
             }>;
 
-            // Get popular time slots
+            // Popular time slots: only completed (cancelled excluded)
             const popularTimeSlots = await conn.query(`
                 SELECT 
                     HOUR(start_time) as hour,
                     COUNT(*) as booking_count
                 FROM bookings
-                WHERE venue_id = ? AND status NOT IN ('cancelled')
+                WHERE venue_id = ? AND ${completedOnlyCondition}
                 GROUP BY HOUR(start_time)
                 ORDER BY booking_count DESC
                 LIMIT 10
@@ -565,6 +572,57 @@ export class AdminService {
             logger.info(`Admin: Availability rule ${ruleId} updated`);
         } catch (error) {
             logger.error('Admin: Error updating availability rule', error);
+            throw error;
+        } finally {
+            if (conn) conn.release();
+        }
+    }
+
+    /**
+     * Update venue settings (booking policies)
+     */
+    static async updateVenueSettings(
+        venueId: number,
+        updates: {
+            booking_advance_hours?: number;
+            cancellation_hours?: number;
+        }
+    ): Promise<void> {
+        logger.info(`Admin: Updating venue ${venueId} settings`, updates);
+
+        let conn;
+        try {
+            conn = await getConnection();
+
+            const updateFields: string[] = [];
+            const params: any[] = [];
+
+            if (updates.booking_advance_hours !== undefined) {
+                updateFields.push('booking_advance_hours = ?');
+                params.push(updates.booking_advance_hours);
+            }
+
+            if (updates.cancellation_hours !== undefined) {
+                updateFields.push('cancellation_hours = ?');
+                params.push(updates.cancellation_hours);
+            }
+
+            if (updateFields.length === 0) {
+                logger.warn('No fields to update');
+                return;
+            }
+
+            params.push(venueId);
+
+            await conn.query(`
+                UPDATE venues
+                SET ${updateFields.join(', ')}, updated_at = NOW()
+                WHERE id = ?
+            `, params);
+
+            logger.info(`Admin: Venue ${venueId} settings updated successfully`);
+        } catch (error) {
+            logger.error('Admin: Error updating venue settings', error);
             throw error;
         } finally {
             if (conn) conn.release();

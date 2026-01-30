@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { getBookings, updateBookingStatus, getServices } from '@/lib/api/admin';
 import type { BookingWithDetails, Service } from '@/lib/types';
 
@@ -62,9 +63,11 @@ export default function AdminBookingsPage() {
     const [error, setError] = useState('');
     const [total, setTotal] = useState(0);
 
-    // Filters
+    const searchParams = useSearchParams();
+
+    // Filters (status can be pre-set via ?status=pending etc.)
     const [search, setSearch] = useState('');
-    const [statusFilter, setStatusFilter] = useState('');
+    const [statusFilter, setStatusFilter] = useState(() => searchParams.get('status') || '');
     const [serviceFilter, setServiceFilter] = useState('');
     const [startDate, setStartDate] = useState('');
     const [endDate, setEndDate] = useState('');

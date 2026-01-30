@@ -27,21 +27,23 @@ import { randomUUID } from 'crypto';
 
  export class BookingService
  {
-    /**
-     * ERSTELLE NEUE BUCHUNG
-     * 
-     * Prüft zuerst die Verfügbarkeit, dann erstellt die Buchung in der DB
-     * 
-     * @param bookingData - Daten für die neue Buchung
-     * @returns Die erstellte Buchung mit ID oder Exception, welche dann von der Route abgefangen wird
-     */
-    static async createBooking(bookingData: CreateBookingData): Promise<Booking>
+   /**
+    * ERSTELLE NEUE BUCHUNG
+    * 
+    * Prüft zuerst die Verfügbarkeit, dann erstellt die Buchung in der DB
+    * 
+    * @param bookingData - Daten für die neue Buchung
+    * @param bypassAdvanceCheck - Optional: Für Admin-Buchungen (ignoriert booking_advance_hours)
+    * @returns Die erstellte Buchung mit ID oder Exception, welche dann von der Route abgefangen wird
+    */
+   static async createBooking(bookingData: CreateBookingData, bypassAdvanceCheck: boolean = false): Promise<Booking>
     {
         logger.info('Creating new booking...', {
             venue_id: bookingData.venue_id,
             service_id: bookingData.service_id,
             date: bookingData.booking_date,
-            time: `${bookingData.start_time} - ${bookingData.end_time}`
+            time: `${bookingData.start_time} - ${bookingData.end_time}`,
+            bypass_advance_check: bypassAdvanceCheck
         });
 
         let conn;
@@ -59,7 +61,9 @@ import { randomUUID } from 'crypto';
                 bookingData.booking_date,
                 bookingData.start_time,
                 bookingData.end_time,
-                bookingData.party_size
+                bookingData.party_size,
+                undefined,              // excludeBookingId
+                bypassAdvanceCheck      // Admin kann Vorlaufzeit umgehen
             );
 
             // Falls nicht verfügbar, wirf einen Fehler
@@ -223,6 +227,7 @@ import { randomUUID } from 'crypto';
                 SELECT 
                     b.*,
                     v.name as venue_name,
+                    v.cancellation_hours,
                     s.name as service_name,
                     sm.name as staff_member_name
                 FROM bookings b
@@ -239,12 +244,28 @@ import { randomUUID } from 'crypto';
                 return null;
             }
 
+            let booking = bookings[0] as Booking;
+
+            // Wenn Terminzeit (Datum + Endzeit) vorbei ist und Status noch pending/confirmed → auf 'completed' setzen
+            if (booking.status === 'pending' || booking.status === 'confirmed')
+            {
+                const endDateTime = new Date(`${booking.booking_date}T${booking.end_time}`);
+                if (endDateTime.getTime() <= Date.now())
+                {
+                    await conn.query(`
+                        UPDATE bookings SET status = 'completed', updated_at = NOW() WHERE id = ?
+                    `, [booking.id]);
+                    booking = { ...booking, status: 'completed' };
+                    logger.info('Booking auto-marked as completed (appointment time passed)', { booking_id: booking.id });
+                }
+            }
+
             logger.info('Booking found', { 
-                booking_id: bookings[0].id,
+                booking_id: booking.id,
                 token_prefix: tokenPrefix 
             });
 
-            return bookings[0] as Booking;
+            return booking;
         } 
         catch (error) 
         {

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { cancelBooking } from '@/lib/api/bookings';
 import type { Booking } from '@/lib/types';
 
@@ -9,10 +9,28 @@ interface Props {
   onCancelled?: (updatedBooking?: Booking) => void;
 }
 
+/** Prüft, ob die Stornierungsfrist noch eingehalten werden kann (Frontend-Vorprüfung). */
+function useCancellationPolicyBlock(booking: Booking): { blocked: boolean; message: string | null } {
+  return useMemo(() => {
+    const hours = booking.cancellation_hours;
+    if (hours == null || hours === undefined) return { blocked: false, message: null };
+    const start = new Date(`${booking.booking_date}T${booking.start_time}`).getTime();
+    const now = Date.now();
+    const hoursUntilBooking = (start - now) / (1000 * 60 * 60);
+    if (hoursUntilBooking >= hours) return { blocked: false, message: null };
+    const remaining = Math.max(0, Math.round(hoursUntilBooking));
+    return {
+      blocked: true,
+      message: `Eine Stornierung ist nur mindestens ${hours} Stunden im Voraus möglich. Es bleiben nur noch ${remaining} Stunden.`,
+    };
+  }, [booking.booking_date, booking.start_time, booking.cancellation_hours]);
+}
+
 export function ManagementActions({ booking, onCancelled }: Props) {
   const [cancelling, setCancelling] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { blocked: cancellationBlocked, message: cancellationBlockMessage } = useCancellationPolicyBlock(booking);
 
   const handleCancel = async () => {
     setCancelling(true);
@@ -27,6 +45,7 @@ export function ManagementActions({ booking, onCancelled }: Props) {
       }
     } catch (err) {
       const msg = err instanceof Error ? err.message : null;
+      setShowConfirm(false); // Box schließen, Fehler wird auf der Manage-Seite angezeigt
       if (msg?.includes('hours in advance') || msg?.includes('hours remaining') || msg?.includes('Cancellation must be made')) {
         const match = msg.match(/at least (\d+) hours in advance.*?Only (\d+) hours remaining/i)
           || msg.match(/at least (\d+) hours.*?Only (\d+) hours/i);
@@ -53,18 +72,20 @@ export function ManagementActions({ booking, onCancelled }: Props) {
     }
   };
 
+  const cannotCancel = cancellationBlocked;
+
   return (
     <div>
       <h2 className="font-serif text-lg font-semibold text-foreground mb-3">Aktionen</h2>
-      {error && (
+      {(cancellationBlockMessage || error) && (
         <div className="mb-4 rounded-lg bg-red-50 border border-red-200 p-3 text-sm text-red-800">
-          {error}
+          {cancellationBlockMessage ?? error}
         </div>
       )}
       <button
         type="button"
-        onClick={() => setShowConfirm(true)}
-        disabled={cancelling}
+        onClick={() => !cannotCancel && setShowConfirm(true)}
+        disabled={cancelling || cannotCancel}
         className="rounded-lg border border-red-300 bg-white px-4 py-2 text-red-700 hover:bg-red-50 transition disabled:opacity-50"
       >
         Termin stornieren

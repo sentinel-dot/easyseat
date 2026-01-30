@@ -672,13 +672,38 @@ export class AvailabilityService
             );
 
             // Entferne doppelte Slots (kann bei mehreren Mitarbeitern vorkommen)
-            const uniqueSlots = availableSlots.filter((slot, index, array) =>
+            let uniqueSlots = availableSlots.filter((slot, index, array) =>
                 index === array.findIndex(s =>
                     s.start_time === slot.start_time &&         // Entfernt potenzielle Duplikate die durch mehrfache Verfügbarkeitsregeln
                     s.end_time === slot.end_time &&             // desselben Mitarbeiters oder Datenbank-Inkonsistenzen entstehen könnten.
                     s.staff_member_id === slot.staff_member_id  // Defensive Programmierung: In 99% der Fälle ändert dieser Filter nichts.
                 )
             );
+
+            // Hole booking_advance_hours für Vorlaufzeit-Filter
+            const venueData = await conn.query(`
+                SELECT booking_advance_hours
+                FROM venues
+                WHERE id = ?`,
+                [venueId]
+            ) as Pick<import('../config/utils/types').Venue, 'booking_advance_hours'>[];
+
+            const bookingAdvanceHours = venueData[0]?.booking_advance_hours || 0;
+
+            // Filter Slots basierend auf Mindestvorlaufzeit (booking_advance_hours)
+            const now = new Date();
+            uniqueSlots = uniqueSlots.filter(slot => {
+                // Erstelle DateTime-Objekt für den Slot
+                const [hours, minutes] = slot.start_time.split(':').map(Number);
+                const slotDateTime = new Date(date);
+                slotDateTime.setHours(hours, minutes, 0, 0);
+
+                // Berechne Stunden bis zum Slot
+                const hoursUntilSlot = (slotDateTime.getTime() - now.getTime()) / (1000 * 60 * 60);
+
+                // Slot muss mindestens booking_advance_hours in der Zukunft liegen
+                return hoursUntilSlot >= bookingAdvanceHours;
+            });
 
             const available_slots = uniqueSlots.filter(s => s.available).length;
             const total_slots = uniqueSlots.length;
@@ -968,7 +993,8 @@ export class AvailabilityService
         startTime: string,              // Startzeit
         endTime: string,                // Endzeit
         partySize: number,              // Gruppengröße
-        excludeBookingId?: number       // Optional: zu ignorierende Buchungs-ID
+        excludeBookingId?: number,      // Optional: zu ignorierende Buchungs-ID
+        bypassAdvanceCheck?: boolean    // Optional: Für Admin-Buchungen (ignoriert booking_advance_hours)
     ): Promise<{ valid: boolean; errors: string[] }>
     {
         logger.info('Validating booking request...', {
@@ -979,7 +1005,8 @@ export class AvailabilityService
             start_time: startTime,
             end_time: endTime,
             party_size: partySize,
-            exclude_booking_id: excludeBookingId
+            exclude_booking_id: excludeBookingId,
+            bypass_advance_check: bypassAdvanceCheck
         });
 
         // Initialisiere das Fehler-Array
@@ -1017,6 +1044,61 @@ export class AvailabilityService
             {
                 logger.warn('Cannot book in the past');
                 errors.push('Cannot book in the past');
+            }
+
+            // Hole Venue-Details für booking_advance_hours Check
+            let conn;
+            try 
+            {
+                conn = await getConnection();
+                const venues = await conn.query(`
+                    SELECT booking_advance_hours
+                    FROM venues
+                    WHERE id = ?
+                    AND is_active = true`,
+                    [venueId]
+                ) as Pick<import('../config/utils/types').Venue, 'booking_advance_hours'>[];
+
+                if (venues.length === 0)
+                {
+                    logger.warn('Venue not found or inactive');
+                    errors.push('Venue not found or inactive');
+                    return { valid: false, errors };
+                }
+
+                const venue = venues[0];
+
+                // Prüfe Mindestvorlaufzeit (außer bei Admin-Bypass)
+                if (!bypassAdvanceCheck)
+                {
+                    // Erstelle vollständiges Datetime-Objekt für den Buchungstermin
+                    const [hours, minutes] = startTime.split(':').map(Number);
+                    const bookingDateTime = new Date(bookingDate);
+                    bookingDateTime.setHours(hours, minutes, 0, 0);
+
+                    // Berechne Zeitdifferenz in Stunden
+                    const now = new Date();
+                    const hoursUntilBooking = (bookingDateTime.getTime() - now.getTime()) / (1000 * 60 * 60);
+
+                    if (hoursUntilBooking < venue.booking_advance_hours)
+                    {
+                        logger.warn('Booking too soon', {
+                            hours_until_booking: hoursUntilBooking,
+                            required_advance: venue.booking_advance_hours
+                        });
+                        errors.push(
+                            `Bookings must be made at least ${venue.booking_advance_hours} hours in advance. ` +
+                            `Only ${Math.floor(hoursUntilBooking)} hours remaining.`
+                        );
+                    }
+                }
+            }
+            finally
+            {
+                if (conn)
+                {
+                    conn.release();
+                }
             }
 
             // Hole und prüfe Service-Details

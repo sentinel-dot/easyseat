@@ -1,4 +1,4 @@
-import { AdminUser, LoginResponse, AdminStats, BookingWithDetails, Service, AvailabilityRule } from '../types';
+import { AdminUser, LoginResponse, AdminStats, BookingWithDetails, Service, AvailabilityRule, CreateBookingData, Booking, Venue } from '../types';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001';
 
@@ -218,6 +218,40 @@ export async function updateAvailabilityRule(
     }
 ): Promise<{ success: boolean; message?: string }> {
     return adminApiClient(`/admin/availability/${ruleId}`, {
+        method: 'PATCH',
+        body: JSON.stringify(updates),
+    });
+}
+
+/**
+ * Create manual booking (bypasses booking_advance_hours check)
+ */
+export async function createManualBooking(
+    bookingData: Omit<CreateBookingData, 'venue_id'>
+): Promise<{ success: boolean; data?: Booking; message?: string }> {
+    return adminApiClient<Booking>('/admin/bookings', {
+        method: 'POST',
+        body: JSON.stringify(bookingData),
+    });
+}
+
+/**
+ * Get venue settings
+ */
+export async function getVenueSettings(): Promise<{ success: boolean; data?: Venue; message?: string }> {
+    return adminApiClient<Venue>('/admin/venue/settings');
+}
+
+/**
+ * Update venue settings (booking policies)
+ */
+export async function updateVenueSettings(
+    updates: {
+        booking_advance_hours?: number;
+        cancellation_hours?: number;
+    }
+): Promise<{ success: boolean; message?: string }> {
+    return adminApiClient('/admin/venue/settings', {
         method: 'PATCH',
         body: JSON.stringify(updates),
     });

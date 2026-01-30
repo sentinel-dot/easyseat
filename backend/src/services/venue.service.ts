@@ -30,7 +30,7 @@ export class VenueService
 
             const venues = await conn.query(`
                 SELECT id, name, type, email, phone, address, city, postal_code, country,
-                    description, website_url, booking_advance_days, cancellation_hours,
+                    description, website_url, booking_advance_days, booking_advance_hours, cancellation_hours,
                     require_phone, require_deposit, deposit_amount, created_at, updated_at
                 FROM venues
                 WHERE is_active = true
@@ -72,7 +72,7 @@ export class VenueService
             // Venue abrufen
             const venues = await conn.query(`
                 SELECT id, name, type, email, phone, address, city, postal_code, country,
-                       description, website_url, booking_advance_days, cancellation_hours,
+                       description, website_url, booking_advance_days, booking_advance_hours, cancellation_hours,
                        require_phone, require_deposit, deposit_amount, created_at, updated_at
                 FROM venues
                 WHERE id = ?

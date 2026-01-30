@@ -4,6 +4,7 @@
 
 Das bestehende EasySeat-Projekt ist bereits sehr gut für ein Beauty-Business geeignet! Die meisten Funktionen können direkt übernommen werden. Hier ist der detaillierte Plan zur Umstellung.
 
+
 ---
 
 ## ✅ Was bereits passt (kann so bleiben)

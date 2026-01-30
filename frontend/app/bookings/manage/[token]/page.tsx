@@ -75,6 +75,8 @@ export default function ManageBookingPage() {
     year: 'numeric',
   });
   const isCancelled = booking.status === 'cancelled';
+  const isCompleted = booking.status === 'completed';
+  const canCancel = !isCancelled && !isCompleted;
 
   return (
     <main className="min-h-screen bg-cream">
@@ -137,7 +139,7 @@ export default function ManageBookingPage() {
             )}
           </dl>
 
-          {!isCancelled && (
+          {canCancel && (
             <div className="mt-8 pt-6 border-t border-border">
               <ManagementActions
                 booking={booking}

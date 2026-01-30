@@ -29,7 +29,11 @@ export async function apiClient<T>(
     } 
     catch (error) 
     {
-        console.error('API Error:', error);
+        // Erwartete Business-Fehler (4xx) nicht als Error loggen, nur unerwartete/5xx
+        const status = (error as Error & { status?: number }).status;
+        if (status == null || status >= 500) {
+            console.error('API Error:', error);
+        }
         throw error;
     }
 }
