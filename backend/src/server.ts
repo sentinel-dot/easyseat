@@ -1,5 +1,7 @@
 import express from 'express';
 import cors from 'cors';
+import helmet from 'helmet';
+import rateLimit from 'express-rate-limit';
 import dotenv from 'dotenv';
 
 import { createLogger } from './config/utils/logger';
@@ -17,6 +19,9 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 5001;
 const logger = createLogger('backend.server');
+
+// Security headers (Helmet)
+app.use(helmet());
 
 // CORS: eine Origin (FRONTEND_URL) oder mehrere komma-getrennt (FRONTEND_URLS), für Vercel + Previews
 const frontendUrls = process.env.FRONTEND_URLS
@@ -36,6 +41,26 @@ app.use(cors({
 }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// Rate limiting: allgemein (z. B. 100 Requests / 15 Min pro IP)
+const generalLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: process.env.NODE_ENV === 'production' ? 100 : 500,
+    message: { success: false, message: 'Zu viele Anfragen. Bitte später erneut versuchen.' },
+    standardHeaders: true,
+    legacyHeaders: false,
+});
+app.use(generalLimiter);
+
+// Strikteres Limit für Login (Brute-Force-Schutz)
+const authLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: process.env.NODE_ENV === 'production' ? 10 : 30,
+    message: { success: false, message: 'Zu viele Login-Versuche. Bitte in 15 Minuten erneut versuchen.' },
+    standardHeaders: true,
+    legacyHeaders: false,
+});
+app.use('/auth', authLimiter);
 
 
 // Basic Route
