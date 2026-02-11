@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from 'react';
 import { cancelBooking } from '@/lib/api/bookings';
+import { isNetworkError, NETWORK_ERROR_MESSAGE } from '@/lib/api/client';
 import type { Booking } from '@/lib/types';
 
 interface Props {
@@ -64,6 +65,8 @@ export function ManagementActions({ booking, onCancelled }: Props) {
         setError('Ein bereits durchgeführter Termin kann nicht mehr storniert werden.');
       } else if (msg === 'Failed to cancel booking' || !msg) {
         setError('Stornierung fehlgeschlagen. Bitte versuchen Sie es erneut.');
+      } else if (isNetworkError(err)) {
+        setError(NETWORK_ERROR_MESSAGE);
       } else {
         setError(msg);
       }

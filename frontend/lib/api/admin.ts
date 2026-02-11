@@ -1,4 +1,5 @@
 import { AdminUser, LoginResponse, AdminStats, BookingWithDetails, Service, AvailabilityRule, CreateBookingData, Booking, Venue } from '../types';
+import { NETWORK_ERROR_MESSAGE, isNetworkError } from './client';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001';
 
@@ -54,26 +55,32 @@ async function adminApiClient<T>(
     options?: RequestInit
 ): Promise<{ success: boolean; data?: T; message?: string; pagination?: { total: number; limit: number; offset: number } }> {
     const token = getToken();
-    
-    const response = await fetch(`${API_URL}${endpoint}`, {
-        ...options,
-        headers: {
-            'Content-Type': 'application/json',
-            ...(token ? { Authorization: `Bearer ${token}` } : {}),
-            ...options?.headers,
-        },
-    });
+    try {
+        const response = await fetch(`${API_URL}${endpoint}`, {
+            ...options,
+            headers: {
+                'Content-Type': 'application/json',
+                ...(token ? { Authorization: `Bearer ${token}` } : {}),
+                ...options?.headers,
+            },
+        });
 
-    const data = await response.json();
+        const data = await response.json().catch(() => ({}));
 
-    if (!response.ok) {
-        if (response.status === 401 || response.status === 403) {
-            clearAuth();
+        if (!response.ok) {
+            if (response.status === 401 || response.status === 403) {
+                clearAuth();
+            }
+            throw new Error((data && typeof data.message === 'string') ? data.message : 'API request failed');
         }
-        throw new Error(data.message || 'API request failed');
-    }
 
-    return data;
+        return data;
+    } catch (error) {
+        if (isNetworkError(error)) {
+            throw new Error(NETWORK_ERROR_MESSAGE);
+        }
+        throw error;
+    }
 }
 
 /**
@@ -97,7 +104,7 @@ export async function login(email: string, password: string): Promise<{ success:
     } catch (error) {
         return {
             success: false,
-            message: (error as Error).message || 'Login fehlgeschlagen'
+            message: isNetworkError(error) ? NETWORK_ERROR_MESSAGE : ((error as Error).message || 'Login fehlgeschlagen')
         };
     }
 }

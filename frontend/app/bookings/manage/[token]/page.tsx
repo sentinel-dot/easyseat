@@ -4,6 +4,7 @@ import { useParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { getBookingByToken } from '@/lib/api/bookings';
+import { isNetworkError, NETWORK_ERROR_MESSAGE } from '@/lib/api/client';
 import { getStatusColor, getStatusLabel } from '@/lib/utils/bookingStatus';
 import { ManagementActions } from './management-actions';
 import type { Booking } from '@/lib/types';
@@ -25,7 +26,7 @@ export default function ManageBookingPage() {
         if (res.success && res.data) setBooking(res.data);
         else setError('Buchung konnte nicht geladen werden.');
       })
-      .catch(() => setError('Buchung konnte nicht geladen werden.'))
+      .catch((err) => setError(isNetworkError(err) ? NETWORK_ERROR_MESSAGE : 'Buchung konnte nicht geladen werden.'))
       .finally(() => setLoading(false));
   }, [token]);
 

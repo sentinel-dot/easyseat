@@ -5,6 +5,8 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { VenueWithStaff, Service, StaffMember, TimeSlot } from '@/lib/types';
 import { getAvailableSlots } from '@/lib/api/availability';
+import { createBooking } from '@/lib/api/bookings';
+import { NETWORK_ERROR_MESSAGE } from '@/lib/api/client';
 
 interface Props {
   venue: VenueWithStaff;
@@ -70,7 +72,8 @@ export function BookingForm({ venue, service, date, staffMembers }: Props) {
       );
       setTimeSlots(dayAvailability.time_slots ?? []);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Ein Fehler ist aufgetreten');
+      const msg = err instanceof Error ? err.message : 'Ein Fehler ist aufgetreten';
+      setError(/failed to fetch|network error/i.test(msg) ? NETWORK_ERROR_MESSAGE : msg);
       setTimeSlots([]);
     } finally {
       setLoading(false);
@@ -149,41 +152,27 @@ export function BookingForm({ venue, service, date, staffMembers }: Props) {
         ...(totalAmount != null && { total_amount: totalAmount }),
       };
 
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/bookings`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(bookingData),
-        }
-      );
+      const result = await createBooking(bookingData);
 
-      const result = await response.json();
-
-      if (!response.ok || !result.success) {
-        const msg = result.message || result.error || 'Buchung konnte nicht erstellt werden';
-        throw new Error(msg);
-      }
-
-      // Zur Bestätigungsseite mit Token weiterleiten
-      const token = result.data?.booking_token;
-      if (token) {
-        router.push(`/confirmation?token=${encodeURIComponent(token)}`);
+      if (!result.success || !result.data?.booking_token) {
+        setError(result.message || result.error || 'Buchung konnte nicht erstellt werden.');
         return;
       }
 
-      setError('Buchung erstellt, aber Bestätigungslink konnte nicht erzeugt werden.');
+      router.push(`/confirmation?token=${encodeURIComponent(result.data.booking_token)}`);
+      return;
 
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Ein Fehler ist aufgetreten';
+      const isNetwork = /failed to fetch|network error|verbindung zum server/i.test(message);
       const isSlotTaken =
         /already booked|nicht verfügbar|not available|Time slot already booked/i.test(message);
       setError(
         isSlotTaken
           ? 'Dieser Termin wurde in der Zwischenzeit vergeben. Bitte wähle einen anderen Zeitslot.'
-          : message
+          : isNetwork
+            ? NETWORK_ERROR_MESSAGE
+            : message
       );
       if (isSlotTaken) {
         setSelectedTimeSlot(null);

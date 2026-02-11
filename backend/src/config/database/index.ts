@@ -7,16 +7,24 @@ dotenv.config({ path: '.env'});
 
 const logger = createLogger('database');
 
-const mariadbSocket = '/run/mysqld/mysqld.sock';
-
-const pool = mariadb.createPool({
-    socketPath: mariadbSocket,
+// Railway (und andere Cloud-Hosts) erwarten TCP (Host + Port), kein Unix-Socket.
+// Lokal kann weiterhin das Socket genutzt werden.
+const poolConfig: mariadb.PoolConfig = {
     user: process.env.DB_USER,
     password: process.env.DB_PASSWORD,
     database: process.env.DB_NAME,
     connectionLimit: 10,
-    dateStrings: true
-});
+    dateStrings: true,
+};
+
+if (process.env.DB_HOST) {
+    poolConfig.host = process.env.DB_HOST;
+    poolConfig.port = parseInt(process.env.DB_PORT ?? '3306', 10);
+} else {
+    poolConfig.socketPath = '/run/mysqld/mysqld.sock';
+}
+
+const pool = mariadb.createPool(poolConfig);
 
 /**
  * Hole eine Datenbankverbindung aus dem Pool

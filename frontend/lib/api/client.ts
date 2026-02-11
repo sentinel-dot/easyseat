@@ -1,5 +1,15 @@
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001';
 
+/** Für Kunden sichtbare Meldung bei Netzwerkfehlern (kein "Failed to fetch" in Production). */
+export const NETWORK_ERROR_MESSAGE =
+    'Die Verbindung zum Server ist fehlgeschlagen. Bitte prüfen Sie Ihre Internetverbindung und versuchen Sie es in Kürze erneut.';
+
+export function isNetworkError(error: unknown): boolean {
+    if (error instanceof TypeError && error.message === 'Failed to fetch') return true;
+    if (error instanceof Error && /failed to fetch|network error|load failed/i.test(error.message)) return true;
+    return false;
+}
+
 export async function apiClient<T>(
     endpoint: String,
     options?: RequestInit
@@ -29,6 +39,10 @@ export async function apiClient<T>(
     } 
     catch (error) 
     {
+        if (isNetworkError(error)) {
+            console.error('API network error:', error);
+            throw new Error(NETWORK_ERROR_MESSAGE);
+        }
         // Erwartete Business-Fehler (4xx) nicht als Error loggen, nur unerwartete/5xx
         const status = (error as Error & { status?: number }).status;
         if (status == null || status >= 500) {
