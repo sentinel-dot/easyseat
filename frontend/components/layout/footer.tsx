@@ -1,5 +1,6 @@
-'use client'
+'use client';
 
+import Link from 'next/link';
 import type { VenueWithStaff } from '@/lib/types';
 
 const DAY_ORDER = [1, 2, 3, 4, 5, 6, 0] as const;
@@ -93,13 +94,13 @@ export function Footer({ venue }: FooterProps) {
           <div className="sm:col-span-2 md:col-span-1">
             <h3 className="font-serif text-lg font-semibold text-cream mb-4">Rechtliches</h3>
             <p className="mb-2 text-sm">
-              <a href="#" className="text-offwhite/90 hover:text-accent-light transition">Impressum</a>
+              <Link href="/impressum" className="text-offwhite/90 hover:text-accent-light transition">Impressum</Link>
             </p>
             <p className="mb-2 text-sm">
-              <a href="#" className="text-offwhite/90 hover:text-accent-light transition">Datenschutz</a>
+              <Link href="/datenschutz" className="text-offwhite/90 hover:text-accent-light transition">Datenschutz</Link>
             </p>
             <p className="text-sm">
-              <a href="#" className="text-offwhite/90 hover:text-accent-light transition">AGB</a>
+              <Link href="/agb" className="text-offwhite/90 hover:text-accent-light transition">AGB</Link>
             </p>
           </div>
         </div>

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Cormorant_Garamond, Source_Sans_3 } from "next/font/google";
 import "./globals.css";
 import { SiteLayout } from "@/components/layout/site-layout";
+import { ToasterProvider } from "@/components/shared/toaster-provider";
 import { getVenueById } from "@/lib/api/venues";
 import type { VenueWithStaff } from "@/lib/types";
 
@@ -65,6 +66,7 @@ export default async function RootLayout({
         className={`${cormorant.variable} ${sourceSans.variable} font-sans antialiased`}
       >
         <SiteLayout venue={venue}>{children}</SiteLayout>
+        <ToasterProvider />
       </body>
     </html>
   );

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { toast } from 'sonner';
 import { login, isAuthenticated } from '@/lib/api/admin';
 
 export default function AdminLoginPage() {
@@ -27,6 +28,7 @@ export default function AdminLoginPage() {
             const result = await login(email, password);
 
             if (result.success) {
+                toast.success('Anmeldung erfolgreich.');
                 router.push('/admin');
             } else {
                 setError(result.message || 'Login fehlgeschlagen');

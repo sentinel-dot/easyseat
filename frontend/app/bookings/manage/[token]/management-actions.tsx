@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useMemo } from 'react';
+import { toast } from 'sonner';
 import { cancelBooking } from '@/lib/api/bookings';
 import { isNetworkError, NETWORK_ERROR_MESSAGE } from '@/lib/api/client';
 import type { Booking } from '@/lib/types';
@@ -40,6 +41,7 @@ export function ManagementActions({ booking, onCancelled }: Props) {
       const res = await cancelBooking(booking.booking_token);
       if (res.success && res.data) {
         setShowConfirm(false);
+        toast.success('Termin wurde storniert.');
         onCancelled?.(res.data);
       } else {
         setError(res.message || 'Stornierung fehlgeschlagen. Bitte versuchen Sie es erneut.');
