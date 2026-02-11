@@ -103,6 +103,7 @@ Die API-URL muss **ohne** abschließenden Schrägstrich sein und mit der Railway
 ## 3. CORS & Sicherheit
 
 - **CORS:** Das Backend erlaubt nur die in `FRONTEND_URL` oder `FRONTEND_URLS` eingetragenen Origins. Für Vercel-Preview-Deployments die jeweilige Preview-URL in `FRONTEND_URLS` (komma-getrennt) eintragen, sonst blockiert der Browser die API-Aufrufe.
+- **Admin-Auth (Cookie, sicher in Dev & Prod):** Das Admin-Token wird ausschließlich in einem **HttpOnly-Cookie** gespeichert (kein Token im Response-Body, kein sessionStorage). Damit das Cookie unabhängig von Port/Host immer funktioniert (lokal andere Ports, Prod Frontend auf Vercel / Backend auf Railway), gehen **alle Admin-API-Aufrufe im Browser über die Frontend-Origin** unter dem Pfad `/api/*`. Ein Next.js Route Handler (`app/api/[...path]/route.ts`) leitet diese Anfragen an das Backend weiter und reicht Cookie sowie Set-Cookie durch. Der Browser spricht also nur mit derselben Origin (z. B. `https://easyseat.vercel.app/api/...`) – keine Cross-Origin-Cookies, keine CORS-Probleme für die Admin-Auth. Das Backend wird nur von deinem Frontend-Server (Vercel/lokal) aufgerufen, nicht direkt vom Browser.
 - **JWT:** In Production muss `JWT_SECRET` gesetzt und sicher sein (mind. 32 Zeichen, zufällig). Das Backend startet sonst nicht.
 - **Secrets:** `.env` liegt nicht im Git. Auf Railway und Vercel nur über die jeweiligen **Variables** setzen, keine Secrets ins Repo committen.
 

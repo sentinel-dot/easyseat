@@ -31,7 +31,7 @@ export class VenueService
             const venues = await conn.query(`
                 SELECT id, name, type, email, phone, address, city, postal_code, country,
                     description, website_url, booking_advance_days, booking_advance_hours, cancellation_hours,
-                    require_phone, require_deposit, deposit_amount, created_at, updated_at
+                    require_phone, require_deposit, deposit_amount, is_active, created_at, updated_at
                 FROM venues
                 WHERE is_active = true
                 ORDER BY name ASC`
@@ -73,7 +73,7 @@ export class VenueService
             const venues = await conn.query(`
                 SELECT id, name, type, email, phone, address, city, postal_code, country,
                        description, website_url, booking_advance_days, booking_advance_hours, cancellation_hours,
-                       require_phone, require_deposit, deposit_amount, created_at, updated_at
+                       require_phone, require_deposit, deposit_amount, is_active, created_at, updated_at
                 FROM venues
                 WHERE id = ?
                 AND is_active = true
@@ -93,7 +93,7 @@ export class VenueService
             // Services abrufen
             const services = await conn.query(`
                 SELECT id, venue_id, name, description, duration_minutes, price,
-                       capacity, requires_staff, created_at, updated_at
+                       capacity, requires_staff, is_active, created_at, updated_at
                 FROM services
                 WHERE venue_id = ?
                 AND is_active = true
@@ -104,7 +104,7 @@ export class VenueService
             // Staff-Mitglieder abrufen
             const staffMembers = await conn.query(`
                 SELECT id, venue_id, name, email, phone, 
-                       description, created_at, updated_at
+                       description, is_active, created_at, updated_at
                 FROM staff_members
                 WHERE venue_id = ?
                 AND is_active = true

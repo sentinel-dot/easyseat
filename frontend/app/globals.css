@@ -1,85 +1,28 @@
 @import "tailwindcss";
 
-:root {
-  --background: #FAF8F5;
-  --foreground: #2C2A28;
-  --primary: #6B5344;
-  --primary-dark: #4A382C;
-  --accent: #A67C52;
-  --accent-light: #C4A574;
-  --cream: #FAF8F5;
-  --offwhite: #F2EDE8;
-  --muted: #5C5652;
-  --border: #E5DFD9;
+@theme {
+  /* Schlichte, ruhige Palette – kein KI-Gradient */
+  --color-page: #fafafa;
+  --color-surface: #ffffff;
+  --color-border: #e5e5e5;
+  --color-muted: #737373;
+  --color-text: #171717;
+  --color-accent: #0f766e;
+  --color-accent-hover: #0d9488;
+  --color-accent-muted: #ccfbf1;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --color-primary: #6B5344;
-  --color-primary-dark: #4A382C;
-  --color-accent: #A67C52;
-  --color-accent-light: #C4A574;
-  --color-cream: #FAF8F5;
-  --color-offwhite: #F2EDE8;
-  --color-muted: #5C5652;
-  --color-border: #E5DFD9;
-  --font-sans: var(--font-source-sans);
-  --font-serif: var(--font-cormorant);
-}
-
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: var(--font-source-sans), system-ui, sans-serif;
-}
-
-/* Smooth Scrolling */
-html {
-  scroll-behavior: smooth;
-}
-
-/* Custom Scrollbar */
-::-webkit-scrollbar {
-  width: 8px;
-}
-
-::-webkit-scrollbar-track {
-  background: var(--offwhite);
-}
-
-::-webkit-scrollbar-thumb {
-  background: var(--border);
-  border-radius: 4px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: var(--muted);
-}
-
-/* Performance Optimizations */
-* {
-  -webkit-tap-highlight-color: transparent;
-}
-
-img {
-  max-width: 100%;
-  height: auto;
-}
-
-/* Focus visible for accessibility */
-:focus-visible {
-  outline: 2px solid var(--primary);
-  outline-offset: 2px;
-}
-
-/* Reduce motion for users who prefer it */
-@media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
+@layer base {
+  html {
+    @apply antialiased;
   }
+  body {
+    background-color: var(--color-page);
+    color: var(--color-text);
+    font-family: var(--font-sans), system-ui, sans-serif;
+  }
+}
+
+.font-display {
+  font-family: var(--font-serif), Georgia, serif;
 }

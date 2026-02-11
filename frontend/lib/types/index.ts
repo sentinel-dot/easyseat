@@ -26,7 +26,9 @@ export interface Venue
 export interface Service 
 {
     id: number;
-    business_id: number;
+    /** Backend returns venue_id; legacy alias business_id for compatibility */
+    business_id?: number;
+    venue_id?: number;
     name: string;
     description?: string;
     duration_minutes: number;
@@ -41,7 +43,9 @@ export interface Service
 export interface StaffMember 
 {
     id: number;
-    business_id: number;
+    /** Backend returns venue_id; legacy alias business_id for compatibility */
+    business_id?: number;
+    venue_id?: number;
     name: string;
     email?: string;
     phone?: string;

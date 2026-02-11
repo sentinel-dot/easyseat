@@ -1,66 +1,25 @@
 import { AdminUser, LoginResponse, AdminStats, BookingWithDetails, Service, AvailabilityRule, CreateBookingData, Booking, Venue } from '../types';
 import { NETWORK_ERROR_MESSAGE, isNetworkError } from './client';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001';
-
-// Token storage key
-const TOKEN_KEY = 'admin_token';
-const USER_KEY = 'admin_user';
-
-/**
- * Get stored auth token
- */
-export function getToken(): string | null {
-    if (typeof window === 'undefined') return null;
-    return localStorage.getItem(TOKEN_KEY);
+/** Im Browser Same-Origin (/api) für Cookie-Auth, sonst direkte Backend-URL. */
+function getAdminApiBase(): string {
+    if (typeof window !== 'undefined') return '/api';
+    return process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001';
 }
 
 /**
- * Get stored user
- */
-export function getStoredUser(): AdminUser | null {
-    if (typeof window === 'undefined') return null;
-    const user = localStorage.getItem(USER_KEY);
-    return user ? JSON.parse(user) : null;
-}
-
-/**
- * Store auth data
- */
-function storeAuth(token: string, user: AdminUser): void {
-    localStorage.setItem(TOKEN_KEY, token);
-    localStorage.setItem(USER_KEY, JSON.stringify(user));
-}
-
-/**
- * Clear auth data
- */
-export function clearAuth(): void {
-    localStorage.removeItem(TOKEN_KEY);
-    localStorage.removeItem(USER_KEY);
-}
-
-/**
- * Check if user is authenticated
- */
-export function isAuthenticated(): boolean {
-    return !!getToken();
-}
-
-/**
- * Admin API client with auth header
+ * Admin API client – Auth nur per HttpOnly-Cookie (credentials: 'include').
  */
 async function adminApiClient<T>(
     endpoint: string,
     options?: RequestInit
 ): Promise<{ success: boolean; data?: T; message?: string; pagination?: { total: number; limit: number; offset: number } }> {
-    const token = getToken();
     try {
-        const response = await fetch(`${API_URL}${endpoint}`, {
+        const response = await fetch(`${getAdminApiBase()}${endpoint}`, {
             ...options,
+            credentials: 'include',
             headers: {
                 'Content-Type': 'application/json',
-                ...(token ? { Authorization: `Bearer ${token}` } : {}),
                 ...options?.headers,
             },
         });
@@ -68,9 +27,6 @@ async function adminApiClient<T>(
         const data = await response.json().catch(() => ({}));
 
         if (!response.ok) {
-            if (response.status === 401 || response.status === 403) {
-                clearAuth();
-            }
             throw new Error((data && typeof data.message === 'string') ? data.message : 'API request failed');
         }
 
@@ -84,22 +40,18 @@ async function adminApiClient<T>(
 }
 
 /**
- * Login
+ * Login – Backend setzt HttpOnly-Cookie, Response enthält nur { user }.
  */
-export async function login(email: string, password: string): Promise<{ success: boolean; data?: LoginResponse; message?: string }> {
+export async function login(email: string, password: string): Promise<{ success: boolean; data?: { user: AdminUser }; message?: string }> {
     try {
-        const response = await fetch(`${API_URL}/auth/login`, {
+        const response = await fetch(`${getAdminApiBase()}/auth/login`, {
             method: 'POST',
+            credentials: 'include',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ email, password }),
         });
 
         const data = await response.json();
-
-        if (data.success && data.data) {
-            storeAuth(data.data.token, data.data.user);
-        }
-
         return data;
     } catch (error) {
         return {
@@ -116,9 +68,8 @@ export async function logout(): Promise<void> {
     try {
         await adminApiClient('/auth/logout', { method: 'POST' });
     } catch {
-        // Ignore errors on logout
+        // Ignore – Cookie wird vom Backend gelöscht
     }
-    clearAuth();
 }
 
 /**

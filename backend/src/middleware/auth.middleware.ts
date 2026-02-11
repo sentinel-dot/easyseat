@@ -16,12 +16,22 @@ declare global {
 }
 
 /**
+ * Get JWT from Authorization header (Bearer) or from HttpOnly cookie (production-safe)
+ */
+function getTokenFromRequest(req: Request): string | null {
+    const authHeader = req.headers['authorization'];
+    const bearerToken = authHeader && authHeader.split(' ')[1];
+    if (bearerToken) return bearerToken;
+    const cookieToken = req.cookies?.admin_token;
+    return typeof cookieToken === 'string' ? cookieToken : null;
+}
+
+/**
  * Authentication middleware
- * Verifies JWT token from Authorization header
+ * Verifies JWT from Authorization header or from HttpOnly cookie
  */
 export function authenticateToken(req: Request, res: Response, next: NextFunction): void {
-    const authHeader = req.headers['authorization'];
-    const token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
+    const token = getTokenFromRequest(req);
     
     if (!token) {
         res.status(401).json({
@@ -48,8 +58,7 @@ export function authenticateToken(req: Request, res: Response, next: NextFunctio
  * Authentication middleware that also loads the full user
  */
 export async function authenticateAndLoadUser(req: Request, res: Response, next: NextFunction): Promise<void> {
-    const authHeader = req.headers['authorization'];
-    const token = authHeader && authHeader.split(' ')[1];
+    const token = getTokenFromRequest(req);
     
     if (!token) {
         res.status(401).json({

@@ -1,7 +1,9 @@
-'use client';
+"use client";
 
-import { useEffect } from 'react';
-import Link from 'next/link';
+import { useEffect } from "react";
+import Link from "next/link";
+import { SiteLayout } from "@/components/layout/site-layout";
+import { Button } from "@/components/shared/button";
 
 export default function Error({
   error,
@@ -11,39 +13,29 @@ export default function Error({
   reset: () => void;
 }) {
   useEffect(() => {
-    console.error('Application error:', error);
+    console.error(error);
   }, [error]);
 
   return (
-    <main className="min-h-screen bg-cream flex items-center justify-center px-4">
-      <div className="max-w-md w-full text-center">
-        <div className="inline-flex h-16 w-16 items-center justify-center rounded-full bg-red-100 text-red-600 mb-6">
-          <svg className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-          </svg>
-        </div>
-        <h1 className="font-serif text-2xl font-semibold text-foreground mb-2">
+    <SiteLayout>
+      <div className="mx-auto max-w-xl px-4 py-16 text-center sm:px-6">
+        <h1 className="font-display text-2xl text-[var(--color-text)]">
           Etwas ist schiefgelaufen
         </h1>
-        <p className="text-muted mb-6">
-          Ein unerwarteter Fehler ist aufgetreten. Bitte versuchen Sie es erneut oder kehren Sie zur Startseite zurück.
+        <p className="mt-4 text-[var(--color-muted)]">
+          Ein unerwarteter Fehler ist aufgetreten. Bitte versuchen Sie es
+          erneut.
         </p>
-        <div className="flex flex-col sm:flex-row gap-3 justify-center">
-          <button
-            type="button"
-            onClick={reset}
-            className="inline-flex items-center justify-center px-6 py-3 rounded-lg font-medium bg-primary text-white hover:bg-primary-dark transition"
-          >
-            Erneut versuchen
-          </button>
+        <div className="mt-8 flex flex-wrap justify-center gap-4">
+          <Button onClick={reset}>Erneut versuchen</Button>
           <Link
             href="/"
-            className="inline-flex items-center justify-center px-6 py-3 rounded-lg font-medium border border-border bg-background text-foreground hover:bg-offwhite transition"
+            className="inline-flex h-11 items-center justify-center rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-5 text-sm font-medium hover:bg-neutral-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent)] focus-visible:ring-offset-2"
           >
             Zur Startseite
           </Link>
         </div>
       </div>
-    </main>
+    </SiteLayout>
   );
 }

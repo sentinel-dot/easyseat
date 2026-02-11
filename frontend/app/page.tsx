@@ -1,50 +1,28 @@
-// app/page.tsx
-import { getVenueById } from '@/lib/api/venues';
-import { HeroSection } from './components/hero-section';
-import { AboutSection } from './components/about-section';
-import { ServiceInfoSection } from './components/service-info-section';
-import { BookingSection } from './components/booking-section';
-import { PricingSection } from './components/pricing-section';
+import Link from "next/link";
+import { SiteLayout } from "@/components/layout/site-layout";
 
-export default async function HomePage() {
-  // Hole Venue-Daten (ID 3 = das Studio)
-  // Falls noch nicht vorhanden, wird null zurückgegeben
-  let venue = null;
-  try {
-    const result = await getVenueById(3);
-    if (result.success && result.data) {
-      venue = result.data;
-    }
-  } catch (error) {
-    console.error('Could not load venue data:', error);
-  }
-
+export default function HomePage() {
   return (
-    <main className="min-h-screen">
-      {/* Hero Section */}
-      <HeroSection />
-
-      {/* Über sie */}
-      <AboutSection />
-
-      {/* Services */}
-      <ServiceInfoSection />
-
-      {/* Buchungsbereich */}
-      {venue ? (
-        <>
-          <BookingSection venue={venue} />
-          <PricingSection services={venue.services} />
-        </>
-      ) : (
-        <section className="py-20 bg-white">
-          <div className="container mx-auto px-4 text-center">
-            <p className="text-muted">
-              Die Buchungsfunktion wird geladen... Bitte stellen Sie sicher, dass das Backend läuft und die Venue-Daten vorhanden sind.
-            </p>
+    <SiteLayout>
+      <section className="mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-24">
+        <div className="mx-auto max-w-2xl text-center">
+          <h1 className="font-display text-4xl tracking-tight text-[var(--color-text)] sm:text-5xl">
+            Tische & Termine einfach buchen
+          </h1>
+          <p className="mt-4 text-lg text-[var(--color-muted)]">
+            Reservieren Sie bei Restaurants, Friseuren und weiteren Betrieben in
+            Ihrer Nähe – schnell und unkompliziert.
+          </p>
+          <div className="mt-10">
+            <Link
+              href="/venues"
+              className="inline-flex h-12 items-center justify-center rounded-lg bg-[var(--color-accent)] px-6 text-base font-medium text-white hover:bg-[var(--color-accent-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent)] focus-visible:ring-offset-2"
+            >
+              Orte finden
+            </Link>
           </div>
-        </section>
-      )}
-    </main>
+        </div>
+      </section>
+    </SiteLayout>
   );
 }

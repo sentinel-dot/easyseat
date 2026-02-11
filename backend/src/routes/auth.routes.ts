@@ -25,8 +25,18 @@ router.post('/login', async (req: Request, res: Response) => {
     
     const result = await login(email, password);
     
-    if (result.success) {
-        res.json(result);
+    if (result.success && result.data) {
+        const { token, user } = result.data;
+        const isProduction = process.env.NODE_ENV === 'production';
+        const cookieOptions = {
+            httpOnly: true,
+            secure: isProduction,
+            sameSite: isProduction ? ('none' as const) : ('lax' as const),
+            maxAge: 24 * 60 * 60 * 1000,
+            path: '/',
+        };
+        res.cookie('admin_token', token, cookieOptions);
+        res.json({ success: true, data: { user } });
     } else {
         res.status(401).json(result);
     }
@@ -73,14 +83,17 @@ router.get('/me', authenticateToken, async (req: Request, res: Response) => {
 
 /**
  * POST /auth/logout
- * Logout (client-side token removal, server-side optional blacklisting)
+ * Clears HttpOnly auth cookie (no auth required – so cookie is always cleared)
  */
-router.post('/logout', authenticateToken, (req: Request, res: Response) => {
+router.post('/logout', (req: Request, res: Response) => {
     logger.info('POST /auth/logout');
-    
-    // In a production app, you might want to blacklist the token here
-    // For simplicity, we just return success and let the client remove the token
-    
+    const isProduction = process.env.NODE_ENV === 'production';
+    res.clearCookie('admin_token', {
+        path: '/',
+        httpOnly: true,
+        secure: isProduction,
+        sameSite: isProduction ? 'none' : 'lax',
+    });
     res.json({
         success: true,
         message: 'Erfolgreich abgemeldet'

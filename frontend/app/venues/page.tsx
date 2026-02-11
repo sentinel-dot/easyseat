@@ -1,28 +1,27 @@
-import { getVenues } from "@/lib/api/venues";
-import Link from "next/link";
+import { Suspense } from "react";
+import { SiteLayout } from "@/components/layout/site-layout";
 import { VenuesContent } from "./venues-content";
+import { PageLoader } from "@/components/shared/loading-spinner";
 
-export default async function VenuesPage() {
-  let venues: { id: number; name: string; type: string; city?: string }[] = [];
-  let error: string | null = null;
+export const metadata = {
+  title: "Orte finden – easyseat",
+  description: "Restaurants, Friseure und weitere Betriebe – buchen Sie Ihren Termin.",
+};
 
-  try {
-    const result = await getVenues();
-    if (result.success && result.data) {
-      venues = result.data;
-    } else {
-      error = result.message || result.error || "Venues konnten nicht geladen werden.";
-    }
-  } catch (e) {
-    error = "Die Verbindung zum Server ist fehlgeschlagen. Bitte versuchen Sie es später erneut.";
-  }
-
+export default function VenuesPage() {
   return (
-    <main className="min-h-screen bg-cream">
-      <div className="container mx-auto px-4 py-10 md:py-16">
-        <h1 className="font-serif text-3xl font-semibold text-foreground mb-8">Verfügbare Venues</h1>
-        <VenuesContent venues={venues} error={error} />
+    <SiteLayout>
+      <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
+        <h1 className="font-display text-3xl text-[var(--color-text)]">
+          Orte finden
+        </h1>
+        <p className="mt-2 text-[var(--color-muted)]">
+          Wählen Sie eine Kategorie oder durchsuchen Sie alle Orte.
+        </p>
+        <Suspense fallback={<PageLoader />}>
+          <VenuesContent />
+        </Suspense>
       </div>
-    </main>
+    </SiteLayout>
   );
 }

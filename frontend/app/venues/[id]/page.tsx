@@ -1,71 +1,94 @@
-// app/venues/[id]/page.tsx
-import { getVenueById } from '@/lib/api/venues';
-import { notFound } from 'next/navigation';
-import { BookingCalendar } from './booking-calendar';
+import { notFound } from "next/navigation";
+import { getVenueById } from "@/lib/api/venues";
+import { getVenueTypeLabel } from "@/lib/utils/venueType";
+import { SiteLayout } from "@/components/layout/site-layout";
+import { BookingWidget } from "./booking-widget";
 
-interface PageProps {
-  params: Promise<{
-    id: string;
-  }>;
+type Props = { params: Promise<{ id: string }> };
+
+export async function generateMetadata({ params }: Props) {
+  const { id } = await params;
+  const res = await getVenueById(Number(id));
+  if (!res.success || !res.data) return { title: "Ort – easyseat" };
+  return {
+    title: `${res.data.name} – easyseat`,
+    description: res.data.description ?? `Jetzt bei ${res.data.name} buchen.`,
+  };
 }
 
-export default async function VenueDetailPage({ params }: PageProps) {
+export default async function VenuePage({ params }: Props) {
   const { id } = await params;
-  const venueId = parseInt(id);
+  const venueId = Number(id);
+  if (Number.isNaN(venueId)) notFound();
 
-  
-  if (isNaN(venueId)) {
-    notFound();
-  }
+  const res = await getVenueById(venueId);
+  if (!res.success || !res.data) notFound();
+  const venue = res.data;
 
-  const result = await getVenueById(venueId);
-  
-  if (!result.success || !result.data) {
-    notFound();
-  }
+  if (venue.is_active === false) notFound();
 
-  const venue = result.data;
+  const openingByDay = (venue.opening_hours ?? []).reduce(
+    (acc, slot) => {
+      const key = slot.day_of_week;
+      if (!acc[key]) acc[key] = [];
+      acc[key].push(`${slot.start_time}–${slot.end_time}`);
+      return acc;
+    },
+    {} as Record<number, string[]>
+  );
+  const dayNames = ["So", "Mo", "Di", "Mi", "Do", "Fr", "Sa"];
 
   return (
-    <main className="min-h-screen bg-cream">
-      <div className="container mx-auto px-4 py-10 md:py-16">
-        <div className="mb-10">
-          <h1 className="font-serif text-3xl sm:text-4xl font-semibold text-foreground mb-4">{venue.name}</h1>
-          {venue.description && (
-            <p className="text-foreground/90 mb-4 max-w-2xl">{venue.description}</p>
-          )}
-          <div className="flex gap-6 text-sm text-muted">
-            {venue.phone && <span>{venue.phone}</span>}
-            {venue.email && <a href={`mailto:${venue.email}`} className="hover:text-primary transition">{venue.email}</a>}
-          </div>
-        </div>
+    <SiteLayout>
+      <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
+        <div className="grid gap-8 lg:grid-cols-3">
+          <div className="lg:col-span-2">
+            <span className="text-sm font-medium text-[var(--color-accent)]">
+              {getVenueTypeLabel(venue.type)}
+            </span>
+            <h1 className="mt-1 font-display text-3xl text-[var(--color-text)]">
+              {venue.name}
+            </h1>
+            {(venue.address || venue.city) && (
+              <p className="mt-2 text-[var(--color-muted)]">
+                {[venue.address, venue.postal_code, venue.city]
+                  .filter(Boolean)
+                  .join(", ")}
+              </p>
+            )}
+            {venue.description && (
+              <p className="mt-4 text-[var(--color-text)]">{venue.description}</p>
+            )}
 
-        <div className="mb-10">
-          <h2 className="font-serif text-2xl font-semibold text-foreground mb-6">Unsere Services</h2>
-          <div className="grid md:grid-cols-2 gap-4">
-            {venue.services.map((service) => (
-              <div key={service.id} className="border border-border bg-background p-5">
-                <h3 className="font-medium text-foreground">{service.name}</h3>
-                <p className="text-sm text-muted mt-1">
-                  {service.duration_minutes} Minuten
-                </p>
-                {service.price && (
-                  <p className="font-serif text-primary font-semibold mt-2">
-                    {Number(service.price).toFixed(2)} €
-                  </p>
-                )}
+            {venue.opening_hours && venue.opening_hours.length > 0 && (
+              <div className="mt-6">
+                <h2 className="font-display text-lg text-[var(--color-text)]">
+                  Öffnungszeiten
+                </h2>
+                <ul className="mt-2 space-y-1 text-sm text-[var(--color-muted)]">
+                  {[1, 2, 3, 4, 5, 6, 0].map((d) => (
+                    <li key={d} className="flex gap-3">
+                      <span className="w-8">{dayNames[d]}</span>
+                      <span>
+                        {openingByDay[d]?.join(", ") ?? "Geschlossen"}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
               </div>
-            ))}
+            )}
+          </div>
+
+          <div className="lg:col-span-1">
+            <div className="sticky top-24 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-6 shadow-sm">
+              <h2 className="font-display text-xl text-[var(--color-text)]">
+                Jetzt buchen
+              </h2>
+              <BookingWidget venue={venue} />
+            </div>
           </div>
         </div>
-
-        {/* CLIENT COMPONENT - Interaktive Buchung */}
-        <BookingCalendar 
-          venue={venue}
-          services={venue.services}
-          staffMembers={venue.staff_members}
-        />
       </div>
-    </main>
+    </SiteLayout>
   );
 }

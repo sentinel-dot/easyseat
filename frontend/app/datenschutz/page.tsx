@@ -1,65 +1,127 @@
-import type { Metadata } from 'next';
-import Link from 'next/link';
+import { SiteLayout } from "@/components/layout/site-layout";
 
-export const metadata: Metadata = {
-  title: 'Datenschutzerklärung',
-  description: 'Datenschutzerklärung und Informationen zur Verarbeitung personenbezogener Daten.',
+export const metadata = {
+  title: "Datenschutz – easyseat",
+  description: "Datenschutzerklärung der easyseat-Plattform.",
 };
 
 export default function DatenschutzPage() {
   return (
-    <main className="min-h-screen bg-cream">
-      <div className="container mx-auto px-4 py-10 md:py-16 max-w-3xl">
-        <h1 className="font-serif text-3xl font-semibold text-foreground mb-8">Datenschutzerklärung</h1>
-        <div className="prose prose-neutral max-w-none text-foreground/90 space-y-6">
-          <p className="text-muted">
-            Bitte ergänzen Sie diese Datenschutzerklärung mit Ihren konkreten Angaben (Verantwortlicher, Hosting, verwendete Dienste usw.).
-          </p>
-          <section>
-            <h2 className="font-serif text-xl font-semibold text-foreground mt-8 mb-2">1. Verantwortlicher</h2>
-            <p>
-              [Name und Anschrift des Verantwortlichen]<br />
-              E-Mail: [E-Mail]
-            </p>
-          </section>
-          <section>
-            <h2 className="font-serif text-xl font-semibold text-foreground mt-8 mb-2">2. Erhebung und Speicherung personenbezogener Daten</h2>
-            <p>
-              Beim Besuch unserer Website werden durch den Browser automatisch Informationen an unseren Server gesendet (u. a. IP-Adresse, Datum und Uhrzeit, aufgerufene Seiten). Diese Daten werden ausschließlich zur Gewährleistung eines störungsfreien Betriebs ausgewertet und nicht an Dritte weitergegeben.
-            </p>
-            <p>
-              Bei einer Terminbuchung erheben wir Name, E-Mail-Adresse, ggf. Telefonnummer und Termindaten. Diese Daten werden nur zur Durchführung und Abwicklung der Buchung sowie zur Kommunikation mit Ihnen verwendet.
-            </p>
-          </section>
-          <section>
-            <h2 className="font-serif text-xl font-semibold text-foreground mt-8 mb-2">3. Rechtsgrundlage</h2>
-            <p>
-              Die Verarbeitung erfolgt auf Grundlage von Art. 6 Abs. 1 lit. b DSGVO (Vertragserfüllung) sowie Art. 6 Abs. 1 lit. f DSGVO (berechtigtes Interesse am Betrieb der Website).
-            </p>
-          </section>
-          <section>
-            <h2 className="font-serif text-xl font-semibold text-foreground mt-8 mb-2">4. Speicherdauer</h2>
-            <p>
-              Personenbezogene Daten werden nur so lange gespeichert, wie es für die Erfüllung des Vertragszwecks oder gesetzlicher Aufbewahrungsfristen erforderlich ist.
-            </p>
-          </section>
-          <section>
-            <h2 className="font-serif text-xl font-semibold text-foreground mt-8 mb-2">5. Ihre Rechte</h2>
-            <p>
-              Sie haben das Recht auf Auskunft, Berichtigung, Löschung, Einschränkung der Verarbeitung, Datenübertragbarkeit und Widerspruch. Beschwerden können Sie bei einer Aufsichtsbehörde für den Datenschutz einreichen.
-            </p>
-          </section>
-          <section>
-            <h2 className="font-serif text-xl font-semibold text-foreground mt-8 mb-2">6. Hosting / Drittanbieter</h2>
-            <p>
-              [Falls Sie Vercel, Railway o. Ä. nutzen: Kurze Angabe, dass Server in der EU/EWR liegen oder Auftragsverarbeitungsvertrag besteht.]
-            </p>
-          </section>
-        </div>
-        <p className="mt-10">
-          <Link href="/" className="text-primary hover:underline font-medium">← Zur Startseite</Link>
+    <SiteLayout>
+      <div className="mx-auto max-w-2xl px-4 py-12 sm:px-6">
+        <h1 className="font-display text-3xl text-[var(--color-text)]">
+          Datenschutzerklärung
+        </h1>
+        <p className="mt-2 text-sm text-[var(--color-muted)]">
+          Stand: [Datum einfügen]
         </p>
+
+        <section className="mt-8 space-y-8 text-[var(--color-text)]">
+          <div>
+            <h2 className="font-display text-lg text-[var(--color-text)]">
+              1. Verantwortlicher
+            </h2>
+            <p className="mt-2 text-[var(--color-muted)]">
+              Verantwortlich für die Datenverarbeitung auf dieser Website ist:
+              <br />
+              [Name und Anschrift des Verantwortlichen]
+              <br />
+              E-Mail: [Kontakt-E-Mail]
+            </p>
+          </div>
+
+          <div>
+            <h2 className="font-display text-lg text-[var(--color-text)]">
+              2. Erhebung und Speicherung personenbezogener Daten
+            </h2>
+            <p className="mt-2 text-[var(--color-muted)]">
+              Beim Aufruf unserer Website werden durch den Browser auf Ihrem
+              Endgerät automatisch Informationen an den Server gesendet. Diese
+              Informationen werden temporär in einem sogenannten Logfile
+              gespeichert. Erfasst werden u. a.: IP-Adresse, Datum und Uhrzeit
+              des Zugriffs, angeforderte Datei/URL, übertragene Datenmenge,
+              Browsertyp und -version, Betriebssystem, Referrer-URL. Die
+              Verarbeitung erfolgt zur Gewährleistung eines reibungslosen
+              Verbindungsaufbaus und zur Auswertung der Systemsicherheit und
+              -stabilität. Rechtsgrundlage ist Art. 6 Abs. 1 lit. f DSGVO. Die
+              Daten werden nach spätestens 7 Tagen gelöscht, sofern keine
+              Aufbewahrung zu Beweiszwecken erforderlich ist.
+            </p>
+          </div>
+
+          <div>
+            <h2 className="font-display text-lg text-[var(--color-text)]">
+              3. Buchungsanfragen
+            </h2>
+            <p className="mt-2 text-[var(--color-muted)]">
+              Wenn Sie über die Plattform eine Buchungsanfrage stellen, werden
+              die von Ihnen angegebenen Daten (Name, E-Mail, ggf. Telefon,
+              Terminwunsch) verarbeitet. Diese Daten werden zum Zweck der
+              Durchführung der Buchung, der Kommunikation mit Ihnen und der
+              Weitergabe an das jeweilige Unternehmen (Restaurant, Salon etc.)
+              genutzt. Rechtsgrundlage ist Art. 6 Abs. 1 lit. b DSGVO
+              (Vertragsanbahnung bzw. Vertragserfüllung). Die Speicherdauer
+              richtet sich nach den gesetzlichen Aufbewahrungspflichten und den
+              berechtigten Interessen des Anbieters.
+            </p>
+          </div>
+
+          <div>
+            <h2 className="font-display text-lg text-[var(--color-text)]">
+              4. Weitergabe von Daten
+            </h2>
+            <p className="mt-2 text-[var(--color-muted)]">
+              Eine Weitergabe Ihrer personenbezogenen Daten an Dritte zu anderen
+              als den im Folgenden genannten Zwecken erfolgt nicht. Wir geben
+              Ihre Daten nur weiter, wenn Sie Ihre Einwilligung erteilt haben
+              (Art. 6 Abs. 1 lit. a DSGVO), die Weitergabe zur Erfüllung eines
+              Vertrags erforderlich ist (Art. 6 Abs. 1 lit. b DSGVO), eine
+              gesetzliche Verpflichtung besteht (Art. 6 Abs. 1 lit. c DSGVO)
+              oder die Weitergabe zur Wahrung berechtigter Interessen erforderlich
+              ist (Art. 6 Abs. 1 lit. f DSGVO). Im Rahmen von Buchungen werden
+              Ihre Daten an das jeweilige gebuchte Unternehmen weitergegeben.
+            </p>
+          </div>
+
+          <div>
+            <h2 className="font-display text-lg text-[var(--color-text)]">
+              5. Ihre Rechte
+            </h2>
+            <p className="mt-2 text-[var(--color-muted)]">
+              Sie haben das Recht auf Auskunft (Art. 15 DSGVO), Berichtigung
+              (Art. 16 DSGVO), Löschung (Art. 17 DSGVO), Einschränkung der
+              Verarbeitung (Art. 18 DSGVO), Datenübertragbarkeit (Art. 20
+              DSGVO) und Widerspruch (Art. 21 DSGVO). Sie haben ferner das
+              Recht, sich bei einer Datenschutz-Aufsichtsbehörde zu beschweren
+              (Art. 77 DSGVO).
+            </p>
+          </div>
+
+          <div>
+            <h2 className="font-display text-lg text-[var(--color-text)]">
+              6. Hosting
+            </h2>
+            <p className="mt-2 text-[var(--color-muted)]">
+              Diese Website wird bei [Hosting-Anbieter, z. B. Vercel Inc.] gehostet.
+              Dabei können personenbezogene Daten (z. B. IP-Adresse, Zugriffszeiten)
+              an den Hoster übermittelt werden. Ein Auftragsverarbeitungsvertrag
+              wurde mit dem Hoster geschlossen.
+            </p>
+          </div>
+
+          <div>
+            <h2 className="font-display text-lg text-[var(--color-text)]">
+              7. Änderungen
+            </h2>
+            <p className="mt-2 text-[var(--color-muted)]">
+              Wir behalten uns vor, diese Datenschutzerklärung anzupassen, um
+              sie an geänderte Rechtslage oder bei Änderungen des Angebots
+              anzupassen. Die aktuelle Version finden Sie stets auf dieser
+              Seite.
+            </p>
+          </div>
+        </section>
       </div>
-    </main>
+    </SiteLayout>
   );
 }

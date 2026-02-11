@@ -1,17 +1,28 @@
-interface ErrorMessageProps {
+export function ErrorMessage({
+  title = "Etwas ist schiefgelaufen",
+  message,
+  onRetry,
+}: {
+  title?: string;
   message: string;
-  variant?: 'error' | 'warning';
-  className?: string;
-}
-
-export function ErrorMessage({ message, variant = 'error', className = '' }: ErrorMessageProps) {
-  const isWarning = variant === 'warning';
-  const bgClass = isWarning ? 'bg-amber-50 border-amber-200' : 'bg-red-50 border-red-200';
-  const textClass = isWarning ? 'text-amber-800' : 'text-red-700';
-
+  onRetry?: () => void;
+}) {
   return (
-    <div className={`rounded-lg border p-4 ${bgClass} ${className}`} role="alert">
-      <p className={textClass}>{message}</p>
+    <div
+      className="rounded-xl border border-red-200 bg-red-50 p-6 text-center"
+      role="alert"
+    >
+      <p className="font-medium text-red-800">{title}</p>
+      <p className="mt-1 text-sm text-red-700">{message}</p>
+      {onRetry && (
+        <button
+          type="button"
+          onClick={onRetry}
+          className="mt-4 text-sm font-medium text-red-700 underline hover:no-underline"
+        >
+          Erneut versuchen
+        </button>
+      )}
     </div>
   );
 }

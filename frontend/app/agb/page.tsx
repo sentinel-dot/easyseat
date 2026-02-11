@@ -1,55 +1,108 @@
-import type { Metadata } from 'next';
-import Link from 'next/link';
+import { SiteLayout } from "@/components/layout/site-layout";
 
-export const metadata: Metadata = {
-  title: 'AGB',
-  description: 'Allgemeine Geschäftsbedingungen für Terminbuchungen.',
+export const metadata = {
+  title: "AGB – easyseat",
+  description: "Allgemeine Geschäftsbedingungen der easyseat-Plattform.",
 };
 
 export default function AGBPage() {
   return (
-    <main className="min-h-screen bg-cream">
-      <div className="container mx-auto px-4 py-10 md:py-16 max-w-3xl">
-        <h1 className="font-serif text-3xl font-semibold text-foreground mb-8">Allgemeine Geschäftsbedingungen (AGB)</h1>
-        <div className="prose prose-neutral max-w-none text-foreground/90 space-y-6">
-          <p className="text-muted">
-            Bitte passen Sie diese AGB an Ihr Unternehmen und ggf. rechtliche Vorgaben an.
-          </p>
-          <section>
-            <h2 className="font-serif text-xl font-semibold text-foreground mt-8 mb-2">1. Geltungsbereich</h2>
-            <p>
-              Diese AGB gelten für alle Terminbuchungen über unsere Website. Mit der Buchung akzeptieren Sie diese Bedingungen.
-            </p>
-          </section>
-          <section>
-            <h2 className="font-serif text-xl font-semibold text-foreground mt-8 mb-2">2. Vertragsschluss</h2>
-            <p>
-              Die Buchung kommt zustande, sobald Sie den Buchungsbutton bestätigen und eine Bestätigung (per E-Mail bzw. auf der Website) erhalten. Wir behalten uns vor, Termine bei begründetem Anlass abzusagen.
-            </p>
-          </section>
-          <section>
-            <h2 className="font-serif text-xl font-semibold text-foreground mt-8 mb-2">3. Stornierung durch den Kunden</h2>
-            <p>
-              Stornierungen sind bis zu der auf der Buchungsseite bzw. in der Bestätigung angegebenen Frist (z. B. 24 Stunden vor Termin) kostenfrei möglich. Bei späterer Absage oder Nichterscheinen können wir eine Ausfallgebühr berechnen.
-            </p>
-          </section>
-          <section>
-            <h2 className="font-serif text-xl font-semibold text-foreground mt-8 mb-2">4. Preise und Zahlung</h2>
-            <p>
-              Die angezeigten Preise verstehen sich in Euro inkl. der gesetzlichen Mehrwertsteuer. Die Zahlung erfolgt vor Ort [oder wie bei Ihnen geregelt].
-            </p>
-          </section>
-          <section>
-            <h2 className="font-serif text-xl font-semibold text-foreground mt-8 mb-2">5. Sonstiges</h2>
-            <p>
-              Es gilt das Recht der Bundesrepublik Deutschland. Gerichtsstand ist [Ihr Ort], sofern gesetzlich zulässig.
-            </p>
-          </section>
-        </div>
-        <p className="mt-10">
-          <Link href="/" className="text-primary hover:underline font-medium">← Zur Startseite</Link>
+    <SiteLayout>
+      <div className="mx-auto max-w-2xl px-4 py-12 sm:px-6">
+        <h1 className="font-display text-3xl text-[var(--color-text)]">
+          Allgemeine Geschäftsbedingungen (AGB)
+        </h1>
+        <p className="mt-2 text-sm text-[var(--color-muted)]">
+          Für die Nutzung der Buchungsplattform easyseat
+          <br />
+          Stand: [Datum einfügen]
         </p>
+
+        <section className="mt-8 space-y-8 text-[var(--color-text)]">
+          <div>
+            <h2 className="font-display text-lg text-[var(--color-text)]">
+              § 1 Geltungsbereich
+            </h2>
+            <p className="mt-2 text-[var(--color-muted)]">
+              Diese AGB gelten für die Nutzung der Buchungsplattform easyseat
+              („Plattform“) und die über die Plattform angebahnten
+              Buchungsanfragen und Verträge zwischen Nutzern („Gäste“) und den
+              auf der Plattform gelisteten Betrieben („Anbieter“). Abweichende
+              Bedingungen des Gastes oder des Anbieters werden nicht anerkannt,
+              sofern nicht ausdrücklich zugestimmt wird.
+            </p>
+          </div>
+
+          <div>
+            <h2 className="font-display text-lg text-[var(--color-text)]">
+              § 2 Leistungsbeschreibung
+            </h2>
+            <p className="mt-2 text-[var(--color-muted)]">
+              Die Plattform ermöglicht es Gästen, Buchungsanfragen (z. B. für
+              Tischreservierungen oder Termine) an Anbieter zu richten. Der
+              Betreiber der Plattform vermittelt nur den Kontakt; der
+              Buchungsvertrag kommt zwischen Gast und Anbieter zustande. Der
+              Betreiber ist nicht Partei des Buchungsvertrags und haftet nicht
+              für die Erbringung der vom Anbieter geschuldeten Leistungen.
+            </p>
+          </div>
+
+          <div>
+            <h2 className="font-display text-lg text-[var(--color-text)]">
+              § 3 Buchungsanfrage und Vertragsschluss
+            </h2>
+            <p className="mt-2 text-[var(--color-muted)]">
+              Die Abgabe einer Buchungsanfrage über die Plattform stellt ein
+              unverbindliches Anfrageangebot des Gastes dar. Der Vertrag mit dem
+              Anbieter kommt erst zustande, wenn der Anbieter die Buchung
+              bestätigt (z. B. per E-Mail oder über die Plattform). Bis zur
+              Bestätigung besteht kein Anspruch auf den gewünschten Termin.
+            </p>
+          </div>
+
+          <div>
+            <h2 className="font-display text-lg text-[var(--color-text)]">
+              § 4 Stornierung durch den Gast
+            </h2>
+            <p className="mt-2 text-[var(--color-muted)]">
+              Stornierungsfristen und -bedingungen ergeben sich aus den
+              Angaben des jeweiligen Anbieters (z. B. auf der Buchungsseite
+              oder in der Bestätigungsmail). Der Gast ist verpflichtet,
+              Stornierungen fristgerecht vorzunehmen. Die Stornierung erfolgt
+              über die auf der Plattform bereitgestellte Funktion oder direkt
+              beim Anbieter.
+            </p>
+          </div>
+
+          <div>
+            <h2 className="font-display text-lg text-[var(--color-text)]">
+              § 5 Haftung
+            </h2>
+            <p className="mt-2 text-[var(--color-muted)]">
+              Der Betreiber der Plattform haftet unbeschadet der gesetzlichen
+              Haftung nur für Vorsatz und grobe Fahrlässigkeit sowie bei
+              Verletzung von Leben, Körper oder Gesundheit. Die Haftung für
+              leichte Fahrlässigkeit ist ausgeschlossen, soweit nicht
+              wesentliche Vertragspflichten verletzt werden. Die Haftung des
+              Anbieters gegenüber dem Gast richtet sich nach den mit dem
+              Anbieter vereinbarten bzw. gesetzlichen Bestimmungen.
+            </p>
+          </div>
+
+          <div>
+            <h2 className="font-display text-lg text-[var(--color-text)]">
+              § 6 Schlussbestimmungen
+            </h2>
+            <p className="mt-2 text-[var(--color-muted)]">
+              Es gilt das Recht der Bundesrepublik Deutschland unter
+              Ausschluss des UN-Kaufrechts. Gerichtsstand ist, soweit
+              gesetzlich zulässig, der Sitz des Betreibers. Sollten einzelne
+              Bestimmungen unwirksam sein, bleibt die Wirksamkeit der übrigen
+              Bestimmungen unberührt.
+            </p>
+          </div>
+        </section>
       </div>
-    </main>
+    </SiteLayout>
   );
 }

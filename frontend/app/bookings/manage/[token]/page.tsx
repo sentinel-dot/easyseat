@@ -1,164 +1,95 @@
-'use client';
+import Link from "next/link";
+import { notFound } from "next/navigation";
+import { getBookingByToken } from "@/lib/api/bookings";
+import { SiteLayout } from "@/components/layout/site-layout";
+import { ManageBookingActions } from "./manage-actions";
+import { getStatusLabel } from "@/lib/utils/bookingStatus";
 
-import { useParams } from 'next/navigation';
-import { useEffect, useState } from 'react';
-import Link from 'next/link';
-import { getBookingByToken } from '@/lib/api/bookings';
-import { isNetworkError, NETWORK_ERROR_MESSAGE } from '@/lib/api/client';
-import { getStatusColor, getStatusLabel } from '@/lib/utils/bookingStatus';
-import { ManagementActions } from './management-actions';
-import type { Booking } from '@/lib/types';
+type Props = { params: Promise<{ token: string }> };
 
-export default function ManageBookingPage() {
-  const params = useParams();
-  const token = typeof params.token === 'string' ? params.token : '';
-  const [booking, setBooking] = useState<Booking | null>(null);
-  const [loading, setLoading] = useState(!!token);
-  const [error, setError] = useState<string | null>(null);
+export async function generateMetadata({ params }: Props) {
+  const { token } = await params;
+  const res = await getBookingByToken(token);
+  if (!res.success || !res.data)
+    return { title: "Buchung verwalten – easyseat" };
+  return {
+    title: `Buchung ${res.data.venue_name ?? ""} – easyseat`,
+  };
+}
 
-  useEffect(() => {
-    if (!token) {
-      setLoading(false);
-      return;
-    }
-    getBookingByToken(token)
-      .then((res) => {
-        if (res.success && res.data) setBooking(res.data);
-        else setError('Buchung konnte nicht geladen werden.');
+export default async function ManageBookingPage({ params }: Props) {
+  const { token } = await params;
+  const res = await getBookingByToken(token);
+
+  if (!res.success || !res.data) notFound();
+  const b = res.data;
+
+  const dateDisplay = b.booking_date
+    ? new Date(b.booking_date + "T12:00:00").toLocaleDateString("de-DE", {
+        weekday: "long",
+        day: "numeric",
+        month: "long",
+        year: "numeric",
       })
-      .catch((err) => setError(isNetworkError(err) ? NETWORK_ERROR_MESSAGE : 'Buchung konnte nicht geladen werden.'))
-      .finally(() => setLoading(false));
-  }, [token]);
-
-  if (!token) {
-    return (
-      <main className="min-h-screen bg-cream">
-        <div className="container mx-auto px-4 py-16 text-center">
-          <h1 className="font-serif text-2xl font-semibold text-foreground mb-4">Link ungültig</h1>
-          <p className="text-muted mb-6">Dieser Link ist ungültig.</p>
-          <Link href="/" className="inline-block bg-primary text-white px-6 py-3 rounded-lg hover:bg-primary-dark transition">
-            Zur Startseite
-          </Link>
-        </div>
-      </main>
-    );
-  }
-
-  if (loading) {
-    return (
-      <main className="min-h-screen bg-cream">
-        <div className="container mx-auto px-4 py-16 text-center">
-          <div className="inline-block h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-          <p className="mt-4 text-muted">Buchung wird geladen …</p>
-        </div>
-      </main>
-    );
-  }
-
-  if (error || !booking) {
-    return (
-      <main className="min-h-screen bg-cream">
-        <div className="container mx-auto px-4 py-16 text-center">
-          <h1 className="font-serif text-2xl font-semibold text-foreground mb-4">Buchung nicht gefunden</h1>
-          <p className="text-muted mb-6">{error ?? 'Diese Buchung existiert nicht oder der Link ist abgelaufen.'}</p>
-          <Link href="/" className="inline-block bg-primary text-white px-6 py-3 rounded-lg hover:bg-primary-dark transition">
-            Zur Startseite
-          </Link>
-        </div>
-      </main>
-    );
-  }
-
-  const dateFormatted = new Date(booking.booking_date + 'T12:00:00').toLocaleDateString('de-DE', {
-    weekday: 'long',
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric',
-  });
-  const isCancelled = booking.status === 'cancelled';
-  const isCompleted = booking.status === 'completed';
-  const canCancel = !isCancelled && !isCompleted;
+    : "";
+  const timeDisplay =
+    b.start_time && b.end_time ? `${b.start_time} – ${b.end_time} Uhr` : "";
 
   return (
-    <main className="min-h-screen bg-cream">
-      <div className="container mx-auto px-4 py-16 max-w-xl">
-        <div className="bg-background border border-border rounded-xl p-6 sm:p-8 shadow-sm">
-          <h1 className="font-serif text-2xl sm:text-3xl font-semibold text-foreground mb-6">
-            Ihr Termin
-          </h1>
+    <SiteLayout>
+      <div className="mx-auto max-w-xl px-4 py-8 sm:px-6">
+        <h1 className="font-display text-2xl text-[var(--color-text)]">
+          Ihre Buchung
+        </h1>
 
-          {isCancelled && (
-            <div className="mb-6 rounded-lg bg-red-50 border border-red-200 p-4 text-red-800">
-              <p className="font-medium">Dieser Termin wurde storniert.</p>
-            </div>
+        <div className="mt-6 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-6">
+          {b.venue_name && (
+            <p className="font-medium text-[var(--color-text)]">
+              {b.venue_name}
+            </p>
           )}
-
-          <dl className="space-y-3">
-            {booking.service_name && (
-              <div>
-                <dt className="text-sm text-muted">Service</dt>
-                <dd className="font-medium text-foreground">{booking.service_name}</dd>
-              </div>
-            )}
-            {booking.staff_member_name && (
-              <div>
-                <dt className="text-sm text-muted">Mitarbeiter</dt>
-                <dd className="font-medium text-foreground">{booking.staff_member_name}</dd>
-              </div>
-            )}
-            <div>
-              <dt className="text-sm text-muted">Datum</dt>
-              <dd className="font-medium text-foreground">{dateFormatted}</dd>
-            </div>
-            <div>
-              <dt className="text-sm text-muted">Uhrzeit</dt>
-              <dd className="font-medium text-foreground">
-                {booking.start_time} – {booking.end_time} Uhr
-              </dd>
-            </div>
-            <div>
-              <dt className="text-sm text-muted">Name</dt>
-              <dd className="font-medium text-foreground">{booking.customer_name}</dd>
-            </div>
-            <div>
-              <dt className="text-sm text-muted">E-Mail</dt>
-              <dd className="font-medium text-foreground">{booking.customer_email}</dd>
-            </div>
-            <div>
-              <dt className="text-sm text-muted">Status</dt>
-              <dd>
-                <span className={`inline-flex px-2.5 py-1 rounded-full text-xs font-medium ${getStatusColor(booking.status)}`}>
-                  {getStatusLabel(booking.status)}
-                </span>
-              </dd>
-            </div>
-            {booking.customer_phone && (
-              <div>
-                <dt className="text-sm text-muted">Telefon</dt>
-                <dd className="font-medium text-foreground">{booking.customer_phone}</dd>
-              </div>
-            )}
-          </dl>
-
-          {canCancel && (
-            <div className="mt-8 pt-6 border-t border-border">
-              <ManagementActions
-                booking={booking}
-                onCancelled={(updated) => updated && setBooking(updated)}
-              />
-            </div>
+          {b.service_name && (
+            <p className="mt-1 text-sm text-[var(--color-muted)]">
+              {b.service_name}
+              {b.staff_member_name && ` · ${b.staff_member_name}`}
+            </p>
           )}
-
-          <div className="mt-8 pt-6 border-t border-border">
-            <Link
-              href="/"
-              className="text-primary hover:underline font-medium"
+          <p className="mt-2 text-[var(--color-text)]">{dateDisplay}</p>
+          <p className="text-[var(--color-text)]">{timeDisplay}</p>
+          <p className="mt-2 text-sm text-[var(--color-muted)]">
+            {b.customer_name} · {b.customer_email}
+          </p>
+          <p className="mt-3">
+            <span
+              className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                b.status === "confirmed"
+                  ? "bg-green-100 text-green-800"
+                  : b.status === "pending"
+                    ? "bg-yellow-100 text-yellow-800"
+                    : b.status === "cancelled"
+                      ? "bg-red-100 text-red-800"
+                      : b.status === "completed"
+                        ? "bg-blue-100 text-blue-800"
+                        : "bg-gray-100 text-gray-800"
+              }`}
             >
-              ← Zur Startseite
-            </Link>
-          </div>
+              {getStatusLabel(b.status)}
+            </span>
+          </p>
         </div>
+
+        <ManageBookingActions
+          token={token}
+          status={b.status}
+          cancellationHours={b.cancellation_hours ?? undefined}
+        />
+
+        <p className="mt-6 text-center text-sm text-[var(--color-muted)]">
+          <Link href="/venues" className="hover:text-[var(--color-accent)]">
+            ← Zurück zu den Orten
+          </Link>
+        </p>
       </div>
-    </main>
+    </SiteLayout>
   );
 }

@@ -1,418 +1,197 @@
-'use client';
+"use client";
 
-import { useEffect, useState, useCallback } from 'react';
-import { useSearchParams } from 'next/navigation';
-import { getBookings, updateBookingStatus, getServices } from '@/lib/api/admin';
-import type { BookingWithDetails, Service } from '@/lib/types';
+import { useEffect, useState, useCallback } from "react";
+import { useSearchParams } from "next/navigation";
+import { toast } from "sonner";
+import { getBookings, updateBookingStatus } from "@/lib/api/admin";
+import type { BookingWithDetails } from "@/lib/types";
+import { getStatusLabel, getStatusColor } from "@/lib/utils/bookingStatus";
+import { Button } from "@/components/shared/button";
+import { Card } from "@/components/shared/card";
+import { PageLoader } from "@/components/shared/loading-spinner";
+import { ErrorMessage } from "@/components/shared/error-message";
 
-function formatDate(dateString: string): string {
-    return new Date(dateString).toLocaleDateString('de-DE', {
-        weekday: 'short',
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric',
-    });
-}
-
-function formatCurrency(amount: number | null | undefined): string {
-    if (amount == null) return '-';
-    return new Intl.NumberFormat('de-DE', {
-        style: 'currency',
-        currency: 'EUR',
-    }).format(amount);
-}
-
-function getStatusColor(status: string): string {
-    switch (status) {
-        case 'confirmed':
-            return 'bg-green-100 text-green-800';
-        case 'pending':
-            return 'bg-yellow-100 text-yellow-800';
-        case 'cancelled':
-            return 'bg-red-100 text-red-800';
-        case 'completed':
-            return 'bg-blue-100 text-blue-800';
-        case 'no_show':
-            return 'bg-gray-100 text-gray-800';
-        default:
-            return 'bg-gray-100 text-gray-800';
-    }
-}
-
-function getStatusLabel(status: string): string {
-    switch (status) {
-        case 'confirmed':
-            return 'Bestätigt';
-        case 'pending':
-            return 'Ausstehend';
-        case 'cancelled':
-            return 'Storniert';
-        case 'completed':
-            return 'Abgeschlossen';
-        case 'no_show':
-            return 'Nicht erschienen';
-        default:
-            return status;
-    }
-}
+const STATUS_OPTIONS = [
+  { value: "", label: "Alle" },
+  { value: "pending", label: "Ausstehend" },
+  { value: "confirmed", label: "Bestätigt" },
+  { value: "cancelled", label: "Storniert" },
+  { value: "completed", label: "Abgeschlossen" },
+  { value: "no_show", label: "Nicht erschienen" },
+] as const;
 
 export default function AdminBookingsPage() {
-    const [bookings, setBookings] = useState<BookingWithDetails[]>([]);
-    const [services, setServices] = useState<Service[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState('');
-    const [total, setTotal] = useState(0);
+  const searchParams = useSearchParams();
+  const statusParam = searchParams.get("status") ?? "";
 
-    const searchParams = useSearchParams();
+  const [bookings, setBookings] = useState<BookingWithDetails[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [statusFilter, setStatusFilter] = useState(statusParam);
+  const [updatingId, setUpdatingId] = useState<number | null>(null);
 
-    // Filters (status can be pre-set via ?status=pending etc.)
-    const [search, setSearch] = useState('');
-    const [statusFilter, setStatusFilter] = useState(() => searchParams.get('status') || '');
-    const [serviceFilter, setServiceFilter] = useState('');
-    const [startDate, setStartDate] = useState('');
-    const [endDate, setEndDate] = useState('');
+  const loadBookings = useCallback(() => {
+    setLoading(true);
+    setError(null);
+    const params: { status?: string } = {};
+    if (statusFilter) params.status = statusFilter;
+    getBookings({ ...params, limit: 100 })
+      .then((res) => {
+        if (res.success && res.data) setBookings(res.data);
+        else setError(res.message ?? "Fehler beim Laden.");
+      })
+      .catch((e) => setError((e as Error).message))
+      .finally(() => setLoading(false));
+  }, [statusFilter]);
 
-    // Pagination
-    const [page, setPage] = useState(0);
-    const limit = 20;
+  useEffect(() => {
+    loadBookings();
+  }, [loadBookings]);
 
-    // Selected booking for status change
-    const [selectedBooking, setSelectedBooking] = useState<BookingWithDetails | null>(null);
-    const [newStatus, setNewStatus] = useState('');
-    const [statusReason, setStatusReason] = useState('');
-    const [statusLoading, setStatusLoading] = useState(false);
-
-    const loadBookings = useCallback(async () => {
-        setLoading(true);
-        setError('');
-
-        try {
-            const result = await getBookings({
-                search: search || undefined,
-                status: statusFilter || undefined,
-                serviceId: serviceFilter ? parseInt(serviceFilter) : undefined,
-                startDate: startDate || undefined,
-                endDate: endDate || undefined,
-                limit,
-                offset: page * limit,
-            });
-
-            if (result.success && result.data) {
-                setBookings(result.data);
-                setTotal(result.pagination?.total || 0);
-            } else {
-                setError(result.message || 'Fehler beim Laden der Buchungen');
-            }
-        } catch (err) {
-            setError((err as Error).message || 'Fehler beim Laden der Buchungen');
-        } finally {
-            setLoading(false);
-        }
-    }, [search, statusFilter, serviceFilter, startDate, endDate, page]);
-
-    const loadServices = async () => {
-        try {
-            const result = await getServices();
-            if (result.success && result.data) {
-                setServices(result.data);
-            }
-        } catch {
-            // Ignore error for services
-        }
-    };
-
-    useEffect(() => {
-        loadServices();
-    }, []);
-
-    useEffect(() => {
+  const handleStatusChange = async (
+    bookingId: number,
+    newStatus: string,
+    reason?: string
+  ) => {
+    setUpdatingId(bookingId);
+    try {
+      const res = await updateBookingStatus(bookingId, newStatus, reason);
+      if (res.success) {
+        toast.success("Status aktualisiert.");
         loadBookings();
-    }, [loadBookings]);
+      } else {
+        toast.error(res.message ?? "Aktualisierung fehlgeschlagen.");
+      }
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally {
+      setUpdatingId(null);
+    }
+  };
 
-    const handleStatusChange = async () => {
-        if (!selectedBooking || !newStatus) return;
+  const formatDate = (d: string) =>
+    new Date(d + "T12:00:00").toLocaleDateString("de-DE", {
+      weekday: "short",
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+    });
+  const formatTime = (t: string) => t;
 
-        setStatusLoading(true);
-        try {
-            const result = await updateBookingStatus(
-                selectedBooking.id,
-                newStatus,
-                newStatus === 'cancelled' ? statusReason : undefined
-            );
-
-            if (result.success) {
-                // Update booking in list
-                setBookings((prev) =>
-                    prev.map((b) =>
-                        b.id === selectedBooking.id ? { ...b, status: newStatus as BookingWithDetails['status'] } : b
-                    )
-                );
-                setSelectedBooking(null);
-                setNewStatus('');
-                setStatusReason('');
-            } else {
-                setError(result.message || 'Fehler beim Ändern des Status');
-            }
-        } catch (err) {
-            setError((err as Error).message || 'Fehler beim Ändern des Status');
-        } finally {
-            setStatusLoading(false);
-        }
-    };
-
-    const totalPages = Math.ceil(total / limit);
-
+  if (error) {
     return (
-        <div className="space-y-6">
-            {/* Header */}
-            <div>
-                <h1 className="text-2xl font-semibold text-gray-900">Buchungen</h1>
-                <p className="text-gray-600">Verwalten Sie alle Buchungen</p>
-            </div>
-
-            {/* Filters */}
-            <div className="bg-white rounded-xl border border-gray-200 p-4">
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-                    {/* Search */}
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Suche</label>
-                        <input
-                            type="text"
-                            value={search}
-                            onChange={(e) => { setSearch(e.target.value); setPage(0); }}
-                            placeholder="Name, E-Mail, Telefon..."
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
-                        />
-                    </div>
-
-                    {/* Status */}
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
-                        <select
-                            value={statusFilter}
-                            onChange={(e) => { setStatusFilter(e.target.value); setPage(0); }}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
-                        >
-                            <option value="">Alle</option>
-                            <option value="pending">Ausstehend</option>
-                            <option value="confirmed">Bestätigt</option>
-                            <option value="completed">Abgeschlossen</option>
-                            <option value="cancelled">Storniert</option>
-                            <option value="no_show">Nicht erschienen</option>
-                        </select>
-                    </div>
-
-                    {/* Service */}
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Service</label>
-                        <select
-                            value={serviceFilter}
-                            onChange={(e) => { setServiceFilter(e.target.value); setPage(0); }}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
-                        >
-                            <option value="">Alle Services</option>
-                            {services.map((service) => (
-                                <option key={service.id} value={service.id}>
-                                    {service.name}
-                                </option>
-                            ))}
-                        </select>
-                    </div>
-
-                    {/* Start Date */}
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Von</label>
-                        <input
-                            type="date"
-                            value={startDate}
-                            onChange={(e) => { setStartDate(e.target.value); setPage(0); }}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
-                        />
-                    </div>
-
-                    {/* End Date */}
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Bis</label>
-                        <input
-                            type="date"
-                            value={endDate}
-                            onChange={(e) => { setEndDate(e.target.value); setPage(0); }}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
-                        />
-                    </div>
-                </div>
-            </div>
-
-            {/* Error Message */}
-            {error && (
-                <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-red-700">
-                    {error}
-                    <button onClick={() => setError('')} className="ml-2 underline">Schließen</button>
-                </div>
-            )}
-
-            {/* Bookings Table */}
-            <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-                {loading ? (
-                    <div className="flex items-center justify-center h-64">
-                        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
-                    </div>
-                ) : bookings.length === 0 ? (
-                    <div className="p-8 text-center text-gray-500">
-                        Keine Buchungen gefunden
-                    </div>
-                ) : (
-                    <div className="overflow-x-auto">
-                        <table className="w-full">
-                            <thead className="bg-gray-50 border-b border-gray-200">
-                                <tr>
-                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Kunde</th>
-                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Service</th>
-                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Datum</th>
-                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Zeit</th>
-                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Preis</th>
-                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-                                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Aktionen</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-gray-100">
-                                {bookings.map((booking) => (
-                                    <tr key={booking.id} className="hover:bg-gray-50">
-                                        <td className="px-4 py-3">
-                                            <div>
-                                                <p className="font-medium text-gray-900">{booking.customer_name}</p>
-                                                <p className="text-sm text-gray-500">{booking.customer_email}</p>
-                                                {booking.customer_phone && (
-                                                    <p className="text-sm text-gray-500">{booking.customer_phone}</p>
-                                                )}
-                                            </div>
-                                        </td>
-                                        <td className="px-4 py-3">
-                                            <p className="text-gray-900">{booking.service_name}</p>
-                                            {booking.staff_member_name && (
-                                                <p className="text-sm text-gray-500">mit {booking.staff_member_name}</p>
-                                            )}
-                                        </td>
-                                        <td className="px-4 py-3 text-gray-900">
-                                            {formatDate(booking.booking_date)}
-                                        </td>
-                                        <td className="px-4 py-3 text-gray-900">
-                                            {booking.start_time} - {booking.end_time}
-                                        </td>
-                                        <td className="px-4 py-3 text-gray-900">
-                                            {formatCurrency(booking.total_amount)}
-                                        </td>
-                                        <td className="px-4 py-3">
-                                            <span className={`inline-flex px-2.5 py-1 rounded-full text-xs font-medium ${getStatusColor(booking.status)}`}>
-                                                {getStatusLabel(booking.status)}
-                                            </span>
-                                        </td>
-                                        <td className="px-4 py-3 text-right">
-                                            <button
-                                                onClick={() => {
-                                                    setSelectedBooking(booking);
-                                                    setNewStatus(booking.status);
-                                                }}
-                                                className="text-sm text-primary hover:underline"
-                                            >
-                                                Status ändern
-                                            </button>
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
-                )}
-
-                {/* Pagination */}
-                {totalPages > 1 && (
-                    <div className="flex items-center justify-between px-4 py-3 border-t border-gray-200">
-                        <p className="text-sm text-gray-500">
-                            {page * limit + 1} - {Math.min((page + 1) * limit, total)} von {total} Buchungen
-                        </p>
-                        <div className="flex gap-2">
-                            <button
-                                onClick={() => setPage((p) => Math.max(0, p - 1))}
-                                disabled={page === 0}
-                                className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
-                            >
-                                Zurück
-                            </button>
-                            <button
-                                onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
-                                disabled={page >= totalPages - 1}
-                                className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
-                            >
-                                Weiter
-                            </button>
-                        </div>
-                    </div>
-                )}
-            </div>
-
-            {/* Status Change Modal */}
-            {selectedBooking && (
-                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-                    <div className="bg-white rounded-xl max-w-md w-full p-6">
-                        <h3 className="text-lg font-semibold text-gray-900 mb-4">Status ändern</h3>
-                        <p className="text-sm text-gray-600 mb-4">
-                            Buchung von <strong>{selectedBooking.customer_name}</strong> am{' '}
-                            <strong>{formatDate(selectedBooking.booking_date)}</strong>
-                        </p>
-
-                        <div className="space-y-4">
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Neuer Status</label>
-                                <select
-                                    value={newStatus}
-                                    onChange={(e) => setNewStatus(e.target.value)}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
-                                >
-                                    <option value="pending">Ausstehend</option>
-                                    <option value="confirmed">Bestätigt</option>
-                                    <option value="completed">Abgeschlossen</option>
-                                    <option value="cancelled">Storniert</option>
-                                    <option value="no_show">Nicht erschienen</option>
-                                </select>
-                            </div>
-
-                            {newStatus === 'cancelled' && (
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Grund (optional)</label>
-                                    <textarea
-                                        value={statusReason}
-                                        onChange={(e) => setStatusReason(e.target.value)}
-                                        rows={2}
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
-                                        placeholder="Grund für die Stornierung..."
-                                    />
-                                </div>
-                            )}
-                        </div>
-
-                        <div className="flex gap-3 mt-6">
-                            <button
-                                onClick={() => {
-                                    setSelectedBooking(null);
-                                    setNewStatus('');
-                                    setStatusReason('');
-                                }}
-                                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
-                            >
-                                Abbrechen
-                            </button>
-                            <button
-                                onClick={handleStatusChange}
-                                disabled={statusLoading || newStatus === selectedBooking.status}
-                                className="flex-1 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark disabled:opacity-50 disabled:cursor-not-allowed"
-                            >
-                                {statusLoading ? 'Wird gespeichert...' : 'Speichern'}
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
-        </div>
+      <ErrorMessage message={error} onRetry={() => loadBookings()} />
     );
+  }
+
+  return (
+    <>
+      <h1 className="font-display text-2xl text-[var(--color-text)]">
+        Buchungen
+      </h1>
+      <p className="mt-1 text-sm text-[var(--color-muted)]">
+        Buchungsanfragen bestätigen oder Status ändern.
+      </p>
+
+      <div className="mt-4 flex flex-wrap items-center gap-4">
+        <label className="flex items-center gap-2 text-sm">
+          <span className="text-[var(--color-muted)]">Status:</span>
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-[var(--color-text)] focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
+          >
+            {STATUS_OPTIONS.map((o) => (
+              <option key={o.value || "all"} value={o.value}>
+                {o.label}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
+
+      {loading ? (
+        <PageLoader />
+      ) : bookings.length === 0 ? (
+        <p className="mt-8 text-center text-[var(--color-muted)]">
+          Keine Buchungen gefunden.
+        </p>
+      ) : (
+        <ul className="mt-6 space-y-4">
+          {bookings.map((b) => (
+            <li key={b.id}>
+              <Card className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                <div>
+                  <p className="font-medium text-[var(--color-text)]">
+                    {b.customer_name}
+                  </p>
+                  <p className="text-sm text-[var(--color-muted)]">
+                    {b.customer_email}
+                    {b.customer_phone && ` · ${b.customer_phone}`}
+                  </p>
+                  <p className="mt-1 text-sm text-[var(--color-text)]">
+                    {b.service_name}
+                    {b.staff_member_name && ` · ${b.staff_member_name}`}
+                  </p>
+                  <p className="text-sm text-[var(--color-muted)]">
+                    {formatDate(b.booking_date)} · {formatTime(b.start_time)}–
+                    {formatTime(b.end_time)}
+                    {b.party_size > 0 && ` · ${b.party_size} Pers.`}
+                  </p>
+                  <span
+                    className={`mt-2 inline-block rounded-full px-2.5 py-0.5 text-xs font-medium ${getStatusColor(b.status)}`}
+                  >
+                    {getStatusLabel(b.status)}
+                  </span>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {b.status === "pending" && (
+                    <Button
+                      size="sm"
+                      onClick={() => handleStatusChange(b.id, "confirmed")}
+                      disabled={updatingId === b.id}
+                      isLoading={updatingId === b.id}
+                    >
+                      Bestätigen
+                    </Button>
+                  )}
+                  {b.status === "pending" && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleStatusChange(b.id, "cancelled")}
+                      disabled={updatingId === b.id}
+                    >
+                      Ablehnen
+                    </Button>
+                  )}
+                  {b.status === "confirmed" && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleStatusChange(b.id, "completed")}
+                      disabled={updatingId === b.id}
+                    >
+                      Abgeschlossen
+                    </Button>
+                  )}
+                  {(b.status === "pending" || b.status === "confirmed") && (
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="text-red-600 hover:bg-red-50"
+                      onClick={() => handleStatusChange(b.id, "cancelled")}
+                      disabled={updatingId === b.id}
+                    >
+                      Stornieren
+                    </Button>
+                  )}
+                </div>
+              </Card>
+            </li>
+          ))}
+        </ul>
+      )}
+    </>
+  );
 }
