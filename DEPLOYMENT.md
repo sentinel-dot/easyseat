@@ -88,8 +88,9 @@ Unter **Settings** → **Environment Variables**:
 | Variable | Wert | Environments |
 |----------|------|----------------|
 | `NEXT_PUBLIC_API_URL` | `https://easyseat-backend.up.railway.app` | Production, Preview, Development (nach Bedarf) |
+| `NEXT_PUBLIC_SITE_URL` | `https://deine-app.vercel.app` | Für sitemap.xml und robots.txt (optional, sonst Fallback auf Vercel-URL) |
 
-Die URL muss **ohne** abschließenden Schrägstrich sein und mit der Railway-Backend-Domain übereinstimmen.
+Die API-URL muss **ohne** abschließenden Schrägstrich sein und mit der Railway-Backend-Domain übereinstimmen.
 
 ### 2.3 Deploy
 
@@ -107,18 +108,34 @@ Die URL muss **ohne** abschließenden Schrägstrich sein und mit der Railway-Bac
 
 ---
 
-## 4. Checkliste Produktionsreife
+## 4. Eigene Domain (optional)
+
+- **Vercel:** Unter **Settings** → **Domains** eigene Domain hinzufügen (z. B. `easyseat.de`). Danach `NEXT_PUBLIC_SITE_URL` und `FRONTEND_URL`/`FRONTEND_URLS` auf diese URL setzen.
+- **Railway:** Unter **Settings** → **Networking** eigene Domain für das Backend eintragen; `NEXT_PUBLIC_API_URL` im Frontend entsprechend anpassen.
+
+---
+
+## 5. Nach dem Deploy: Monitoring & Backup
+
+- **Monitoring:** Health-Check überwachen (z. B. [UptimeRobot](https://uptimerobot.com) auf `GET /health`). Optional: Error-Tracking z. B. mit [Sentry](https://sentry.io) für Backend/Frontend.
+- **Backup:** DB-Backups über Railway (oder den genutzten DB-Provider) einrichten; Intervall und Aufbewahrung nach Bedarf wählen.
+
+---
+
+## 6. Checkliste Deploy (Railway + Vercel)
 
 - [ ] Backend auf Railway mit `NODE_ENV=production`.
 - [ ] MySQL auf Railway angelegt, Schema (und optional Seed) ausgeführt.
 - [ ] `JWT_SECRET` stark und nur in Railway Variables gesetzt.
 - [ ] `FRONTEND_URL` / `FRONTEND_URLS` mit der exakten Vercel-URL (und ggf. Previews).
-- [ ] Frontend auf Vercel mit `NEXT_PUBLIC_API_URL` = Railway-Backend-URL.
+- [ ] Frontend auf Vercel mit `NEXT_PUBLIC_API_URL` = Railway-Backend-URL; bei eigener Domain `NEXT_PUBLIC_SITE_URL` setzen.
 - [ ] Beide Seiten getestet: Buchungsflow, Admin-Login, Health-Check (`GET /health`).
+- [ ] Monitoring (z. B. UptimeRobot) und DB-Backup eingerichtet.
+- [ ] Keine .env/Secrets im Repo; alle Secrets nur über Railway/Vercel Variables.
 
 ---
 
-## 5. Nützliche Befehle
+## 7. Nützliche Befehle
 
 - **JWT-Secret erzeugen:** `openssl rand -base64 32`
 - **Backend Health-Check:** `curl https://deine-backend-url.up.railway.app/health`
