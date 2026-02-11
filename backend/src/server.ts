@@ -10,15 +10,28 @@ import availabilityRoutes from './routes/availability.routes';
 import bookingRoutes from './routes/booking.routes';
 import authRoutes from './routes/auth.routes';
 import adminRoutes from './routes/admin.routes';
+import { assertSecureJwtSecret } from './services/auth.service';
 
 dotenv.config();
 
 const app = express();
-const PORT = process.env.PORT;
+const PORT = process.env.PORT || 5001;
 const logger = createLogger('backend.server');
 
+// CORS: eine Origin (FRONTEND_URL) oder mehrere komma-getrennt (FRONTEND_URLS), für Vercel + Previews
+const frontendUrls = process.env.FRONTEND_URLS
+    ? process.env.FRONTEND_URLS.split(',').map((u) => u.trim()).filter(Boolean)
+    : process.env.FRONTEND_URL
+        ? [process.env.FRONTEND_URL]
+        : [];
+const corsOrigin = frontendUrls.length > 0
+    ? (origin: string | undefined, cb: (err: Error | null, allow?: boolean) => void) => {
+        if (!origin || frontendUrls.includes(origin)) cb(null, true);
+        else cb(null, false);
+    }
+    : process.env.FRONTEND_URL || false;
 app.use(cors({
-    origin: process.env.FRONTEND_URL,
+    origin: corsOrigin,
     credentials: true,
 }));
 app.use(express.json());
@@ -93,6 +106,7 @@ const startServer = async() => {
     logger.info('Starting server...')
     try 
     {
+        assertSecureJwtSecret();
         // Teste Datenbankverbindung VOR dem Start
         const dbConnected = await testConnection();
         
@@ -108,7 +122,7 @@ const startServer = async() => {
         app.listen(PORT, () => {
             logger.info(`🚀 Backend-Server running on http://localhost:${PORT}`);
             logger.info(`🌍 Environment: ${process.env.NODE_ENV}`);
-            logger.info(`🔗 CORS enabled for: ${process.env.FRONTEND_URL}\n`);
+            logger.info(`🔗 CORS enabled for: ${frontendUrls.length ? frontendUrls.join(', ') : process.env.FRONTEND_URL || 'none'}\n`);
             logger.info('📚 Available endpoints:');
             logger.info('');
             logger.info('   ℹ️  General:');

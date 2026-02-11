@@ -7,17 +7,43 @@ dotenv.config({ path: '.env'});
 
 const logger = createLogger('database');
 
+/** Parst mysql://user:password@host:port/database (z. B. Railway MYSQL_URL / MYSQL_PRIVATE_URL). */
+function parseMysqlUrl(url: string): { host: string; port: number; user: string; password: string; database: string } | null {
+    try {
+        const u = new URL(url);
+        if (!u.protocol.startsWith('mysql')) return null;
+        const [user, password] = u.username ? [u.username, decodeURIComponent(u.password || '')] : ['', ''];
+        const database = (u.pathname || '/').replace(/^\/+/, '') || undefined;
+        const port = u.port ? parseInt(u.port, 10) : 3306;
+        return {
+            host: u.hostname,
+            port: Number.isNaN(port) ? 3306 : port,
+            user,
+            password,
+            database: database || '',
+        };
+    } catch {
+        return null;
+    }
+}
+
+const mysqlUrl = process.env.MYSQL_PRIVATE_URL || process.env.MYSQL_URL || process.env.DATABASE_URL;
+const fromUrl = mysqlUrl ? parseMysqlUrl(mysqlUrl) : null;
+
 // Railway (und andere Cloud-Hosts) erwarten TCP (Host + Port), kein Unix-Socket.
 // Lokal kann weiterhin das Socket genutzt werden.
 const poolConfig: mariadb.PoolConfig = {
-    user: process.env.DB_USER,
-    password: process.env.DB_PASSWORD,
-    database: process.env.DB_NAME,
+    user: fromUrl?.user ?? process.env.DB_USER,
+    password: fromUrl?.password ?? process.env.DB_PASSWORD,
+    database: fromUrl?.database ?? process.env.DB_NAME,
     connectionLimit: 10,
     dateStrings: true,
 };
 
-if (process.env.DB_HOST) {
+if (fromUrl) {
+    poolConfig.host = fromUrl.host;
+    poolConfig.port = fromUrl.port;
+} else if (process.env.DB_HOST) {
     poolConfig.host = process.env.DB_HOST;
     poolConfig.port = parseInt(process.env.DB_PORT ?? '3306', 10);
 } else {
