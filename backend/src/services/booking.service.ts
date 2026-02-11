@@ -381,7 +381,7 @@ import { randomUUID } from 'crypto';
             if (conn)
             {
                 conn.release();
-                logger.debug('Database conncetion released');
+                logger.debug('Database connection released');
             } 
         }
     }
@@ -664,7 +664,7 @@ import { randomUUID } from 'crypto';
 
             if (bookings.length === 0)
             {
-                logger.warn('Booking bot found');
+                logger.warn('Booking not found');
                 throw new Error('Booking not found');
             }
 

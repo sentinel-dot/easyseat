@@ -28,6 +28,7 @@ import {
     ApiResponse
 } from '../config/utils/types';
 import { getTokenPrefix, validateBookingToken } from '../config/utils/helper';
+import { authenticateToken, requireRole } from '../middleware/auth.middleware';
 
 const router = express.Router();
 const logger = createLogger('booking.routes');
@@ -180,7 +181,7 @@ router.post('/', async (req: Request, res: Response) =>
 
         return res.status(400).json({
             success: false,
-            message: 'Party size must be betweem 1 and 50'
+            message: 'Party size must be between 1 and 50'
         } as ApiResponse<void>);
     }
 
@@ -1000,7 +1001,7 @@ router.post('/manage/:token/cancel', async (req: Request<{ token: string }>, res
  * - 403: Forbidden (falls Auth-Middleware aktiv und kein Admin)
  * - 500: Serverfehler
  */
-router.delete('/:id', async (req: Request<{ id: string }>, res: Response) => 
+router.delete('/:id', authenticateToken, requireRole('owner', 'admin'), async (req: Request<{ id: string }>, res: Response) => 
 {
     logger.separator();
     logger.info('Received Request - DELETE /bookings/:id');
@@ -1025,23 +1026,7 @@ router.delete('/:id', async (req: Request<{ id: string }>, res: Response) =>
         } as ApiResponse<void>);
     }
 
-    // ========================================================================
-    // AUTH-CHECK (TODO für Production!)
-    // ========================================================================
-    // TODO: Hier sollte später Auth-Middleware prüfen ob Admin
-    // Beispiel-Code (nicht aktiv):
-    // 
-    // if (!req.user || req.user.role !== 'admin') {
-    //     logger.warn('Unauthorized DELETE attempt', { 
-    //         user: req.user?.email,
-    //         booking_id: bookingId 
-    //     });
-    //     
-    //     return res.status(403).json({
-    //         success: false,
-    //         message: 'Forbidden: Admin privileges required'
-    //     } as ApiResponse<void>);
-    // }
+    // Auth: authenticateToken + requireRole('owner', 'admin') sind oben an der Route registriert.
 
     // ========================================================================
     // HARD DELETE DURCHFÜHREN

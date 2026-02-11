@@ -43,6 +43,10 @@ async function proxy(
 ): Promise<NextResponse> {
   const pathStr = path.join("/");
   const url = new URL(pathStr, `${BACKEND_URL}/`);
+  // Query-Parameter der Anfrage an das Backend weiterleiten (z. B. ?status=pending&limit=100)
+  request.nextUrl.searchParams.forEach((value, key) => {
+    url.searchParams.append(key, value);
+  });
   const cookie = request.headers.get("cookie");
 
   const headers: HeadersInit = {

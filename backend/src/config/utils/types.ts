@@ -7,10 +7,10 @@ export interface ApiResponse<T> {
 }
 
 
-// Service Types
+// Service Types (DB/API verwenden venue_id)
 export interface Service {
   id: number;
-  business_id: number;
+  venue_id: number;
   name: string;
   description?: string;
   duration_minutes: number;
@@ -23,10 +23,10 @@ export interface Service {
 }
 
 
-// Staff-Member Types
+// Staff-Member Types (DB/API verwenden venue_id)
 export interface StaffMember {
   id: number;
-  business_id: number;
+  venue_id: number;
   name: string;
   email?: string;
   phone?: string;

@@ -101,10 +101,10 @@ export async function getBookings(filters?: {
     if (filters?.startDate) params.append('startDate', filters.startDate);
     if (filters?.endDate) params.append('endDate', filters.endDate);
     if (filters?.status) params.append('status', filters.status);
-    if (filters?.serviceId) params.append('serviceId', filters.serviceId.toString());
+    if (filters?.serviceId != null) params.append('serviceId', String(filters.serviceId));
     if (filters?.search) params.append('search', filters.search);
-    if (filters?.limit) params.append('limit', filters.limit.toString());
-    if (filters?.offset) params.append('offset', filters.offset.toString());
+    if (filters?.limit != null) params.append('limit', String(filters.limit));
+    if (filters?.offset != null) params.append('offset', String(filters.offset));
 
     const queryString = params.toString();
     return adminApiClient<BookingWithDetails[]>(`/admin/bookings${queryString ? `?${queryString}` : ''}`);

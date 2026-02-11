@@ -13,7 +13,7 @@ export function isNetworkError(error: unknown): boolean {
 export async function apiClient<T>(
     endpoint: String,
     options?: RequestInit
-): Promise<{ success: Boolean; data?: T; message?: string; error?: string }>
+): Promise<{ success: boolean; data?: T; message?: string; error?: string }>
 {
     try 
     {

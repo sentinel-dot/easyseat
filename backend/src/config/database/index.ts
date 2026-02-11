@@ -61,7 +61,7 @@ export async function getConnection(): Promise<PoolConnection>
     try 
     {
         const conn = await pool.getConnection();
-        logger.debug('Database connection aquired from pool');
+        logger.debug('Database connection acquired from pool');
         return conn;
     } 
     catch (error) 

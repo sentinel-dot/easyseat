@@ -144,15 +144,21 @@ export function requireVenueAccess(req: Request, res: Response, next: NextFuncti
         return;
     }
     
-    const requestedVenueId = parseInt(req.params.venueId || req.body.venue_id);
-    
-    if (req.jwtPayload.venueId && requestedVenueId !== req.jwtPayload.venueId) {
+    const raw = req.params.venueId ?? req.body?.venue_id;
+    const requestedVenueId = typeof raw === 'number' ? raw : parseInt(String(raw), 10);
+    if (!Number.isInteger(requestedVenueId) || requestedVenueId < 1) {
+        res.status(400).json({
+            success: false,
+            message: 'Ungültige oder fehlende Venue-ID'
+        });
+        return;
+    }
+    if (req.jwtPayload.venueId !== null && requestedVenueId !== req.jwtPayload.venueId) {
         res.status(403).json({
             success: false,
             message: 'Kein Zugriff auf diese Venue'
         });
         return;
     }
-    
     next();
 }

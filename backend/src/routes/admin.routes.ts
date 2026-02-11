@@ -189,7 +189,22 @@ router.patch('/services/:id', requireRole('owner', 'admin'), async (req: Request
     logger.info(`PATCH /admin/services/${serviceId}`);
 
     try {
-        const { name, description, duration_minutes, price, is_active } = req.body;
+        const { name, description, duration_minutes: rawDuration, price: rawPrice, is_active } = req.body;
+        // Zahlen aus JSON parsen (können als string ankommen)
+        const duration_minutes = rawDuration !== undefined && rawDuration !== null
+            ? (typeof rawDuration === 'number' ? rawDuration : Number(rawDuration))
+            : undefined;
+        const price = rawPrice !== undefined && rawPrice !== null
+            ? (typeof rawPrice === 'number' ? rawPrice : Number(rawPrice))
+            : undefined;
+        if (duration_minutes !== undefined && (Number.isNaN(duration_minutes) || duration_minutes < 1)) {
+            res.status(400).json({ success: false, message: 'duration_minutes muss eine positive Zahl sein' });
+            return;
+        }
+        if (price !== undefined && Number.isNaN(price)) {
+            res.status(400).json({ success: false, message: 'price muss eine gültige Zahl sein' });
+            return;
+        }
 
         const service = await AdminService.updateService(serviceId, {
             name,
@@ -421,27 +436,31 @@ router.patch('/venue/settings', requireRole('owner', 'admin'), async (req: Reque
             return;
         }
 
-        const { booking_advance_hours, cancellation_hours } = req.body;
+        const { booking_advance_hours: rawAdvance, cancellation_hours: rawCancel } = req.body;
 
-        // Validate values if provided
-        if (booking_advance_hours !== undefined) {
-            if (typeof booking_advance_hours !== 'number' || booking_advance_hours < 0) {
-                res.status(400).json({
-                    success: false,
-                    message: 'booking_advance_hours muss eine positive Zahl sein'
-                });
-                return;
-            }
+        // Zahlen parsen (JSON kann number oder string liefern)
+        const parseNonNegativeNumber = (v: unknown): number | undefined => {
+            if (v === undefined || v === null) return undefined;
+            const n = typeof v === 'number' ? v : Number(v);
+            if (Number.isNaN(n) || n < 0) return undefined;
+            return n;
+        };
+        const booking_advance_hours = parseNonNegativeNumber(rawAdvance);
+        const cancellation_hours = parseNonNegativeNumber(rawCancel);
+
+        if (rawAdvance !== undefined && rawAdvance !== null && booking_advance_hours === undefined) {
+            res.status(400).json({
+                success: false,
+                message: 'booking_advance_hours muss eine positive Zahl sein'
+            });
+            return;
         }
-
-        if (cancellation_hours !== undefined) {
-            if (typeof cancellation_hours !== 'number' || cancellation_hours < 0) {
-                res.status(400).json({
-                    success: false,
-                    message: 'cancellation_hours muss eine positive Zahl sein'
-                });
-                return;
-            }
+        if (rawCancel !== undefined && rawCancel !== null && cancellation_hours === undefined) {
+            res.status(400).json({
+                success: false,
+                message: 'cancellation_hours muss eine positive Zahl sein'
+            });
+            return;
         }
 
         await AdminService.updateVenueSettings(venueId, {
