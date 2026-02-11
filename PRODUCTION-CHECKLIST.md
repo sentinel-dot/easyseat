@@ -10,3 +10,4 @@
 - [ ] **Tests:** Buchungsflow + Admin-Login manuell durchspielen; optional E2E-Tests
 - [ ] **DB:** Schema (und optional Seed) auf Production-DB ausgeführt
 - [ ] **EMAIL:** E-Mail Service
+- [ ] **Superadmin:** Superadmin dashboard for me (dev)
