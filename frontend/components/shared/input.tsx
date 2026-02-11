@@ -7,7 +7,8 @@ type InputProps = React.InputHTMLAttributes<HTMLInputElement> & {
 
 export const Input = forwardRef<HTMLInputElement, InputProps>(
   ({ label, error, className = "", id, ...props }, ref) => {
-    const inputId = id ?? (label ? label.replace(/\s/g, "-").toLowerCase() : undefined);
+    const inputId =
+      id ?? (label ? label.replace(/\s/g, "-").toLowerCase() : undefined);
     return (
       <div className="w-full">
         {label && (
@@ -21,13 +22,15 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
         <input
           ref={ref}
           id={inputId}
-          className={`w-full h-11 rounded-lg border bg-[var(--color-surface)] px-3 text-[var(--color-text)] placeholder:text-[var(--color-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] focus:ring-offset-0 ${
-            error ? "border-red-500" : "border-[var(--color-border)]"
+          className={`w-full h-11 rounded-xl border bg-[var(--color-surface)] px-3.5 text-[var(--color-text)] placeholder:text-[var(--color-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] focus:ring-offset-0 transition-shadow ${
+            error
+              ? "border-[var(--color-error)] focus:border-[var(--color-error)]"
+              : "border-[var(--color-border)]"
           } ${className}`}
           {...props}
         />
         {error && (
-          <p className="mt-1 text-sm text-red-600" role="alert">
+          <p className="mt-1.5 text-sm text-[var(--color-error)]" role="alert">
             {error}
           </p>
         )}

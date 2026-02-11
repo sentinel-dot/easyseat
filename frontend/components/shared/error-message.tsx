@@ -1,3 +1,5 @@
+import { Button } from "./button";
+
 export function ErrorMessage({
   title = "Etwas ist schiefgelaufen",
   message,
@@ -9,19 +11,15 @@ export function ErrorMessage({
 }) {
   return (
     <div
-      className="rounded-xl border border-red-200 bg-red-50 p-6 text-center"
+      className="rounded-xl border border-[var(--color-error)]/30 bg-[var(--color-error-muted)] p-6 text-center shadow-[var(--shadow-sm)]"
       role="alert"
     >
-      <p className="font-medium text-red-800">{title}</p>
-      <p className="mt-1 text-sm text-red-700">{message}</p>
+      <p className="font-semibold text-[var(--color-text)]">{title}</p>
+      <p className="mt-1 text-sm text-[var(--color-muted)]">{message}</p>
       {onRetry && (
-        <button
-          type="button"
-          onClick={onRetry}
-          className="mt-4 text-sm font-medium text-red-700 underline hover:no-underline"
-        >
+        <Button variant="outline" size="sm" onClick={onRetry} className="mt-4">
           Erneut versuchen
-        </button>
+        </Button>
       )}
     </div>
   );

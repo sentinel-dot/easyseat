@@ -37,12 +37,12 @@ export default async function ManageBookingPage({ params }: Props) {
 
   return (
     <SiteLayout>
-      <div className="mx-auto max-w-xl px-4 py-8 sm:px-6">
-        <h1 className="font-display text-2xl text-[var(--color-text)]">
+      <div className="mx-auto max-w-xl px-4 py-10 sm:px-6 sm:py-12">
+        <h1 className="font-display text-2xl font-semibold text-[var(--color-text)] sm:text-3xl">
           Ihre Buchung
         </h1>
 
-        <div className="mt-6 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-6">
+        <div className="mt-6 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-6 shadow-[var(--shadow-sm)]">
           {b.venue_name && (
             <p className="font-medium text-[var(--color-text)]">
               {b.venue_name}
@@ -61,16 +61,16 @@ export default async function ManageBookingPage({ params }: Props) {
           </p>
           <p className="mt-3">
             <span
-              className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium ${
+              className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold ${
                 b.status === "confirmed"
-                  ? "bg-green-100 text-green-800"
+                  ? "bg-[var(--color-success-muted)] text-[var(--color-success)]"
                   : b.status === "pending"
-                    ? "bg-yellow-100 text-yellow-800"
+                    ? "bg-[var(--color-accent-muted)] text-[var(--color-accent-strong)]"
                     : b.status === "cancelled"
-                      ? "bg-red-100 text-red-800"
+                      ? "bg-[var(--color-error-muted)] text-[var(--color-error)]"
                       : b.status === "completed"
-                        ? "bg-blue-100 text-blue-800"
-                        : "bg-gray-100 text-gray-800"
+                        ? "bg-[var(--color-accent-muted)] text-[var(--color-accent-strong)]"
+                        : "bg-[var(--color-border)] text-[var(--color-muted)]"
               }`}
             >
               {getStatusLabel(b.status)}
@@ -84,9 +84,15 @@ export default async function ManageBookingPage({ params }: Props) {
           cancellationHours={b.cancellation_hours ?? undefined}
         />
 
-        <p className="mt-6 text-center text-sm text-[var(--color-muted)]">
-          <Link href="/venues" className="hover:text-[var(--color-accent)]">
-            ← Zurück zu den Orten
+        <p className="mt-8 text-center">
+          <Link
+            href="/venues"
+            className="inline-flex items-center gap-1.5 text-sm font-medium text-[var(--color-accent)] transition-colors hover:text-[var(--color-accent-hover)]"
+          >
+            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+            </svg>
+            Zurück zu den Orten
           </Link>
         </p>
       </div>

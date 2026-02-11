@@ -13,11 +13,16 @@ export default async function ConfirmationPage({ searchParams }: Props) {
 
   return (
     <SiteLayout>
-      <div className="mx-auto max-w-xl px-4 py-16 text-center sm:px-6">
-        <h1 className="font-display text-3xl text-[var(--color-text)]">
+      <div className="mx-auto max-w-xl px-4 py-20 text-center sm:px-6">
+        <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-[var(--color-success-muted)] text-[var(--color-success)]" aria-hidden>
+          <svg className="h-8 w-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+          </svg>
+        </div>
+        <h1 className="mt-6 font-display text-3xl font-semibold text-[var(--color-text)] sm:text-4xl">
           Vielen Dank
         </h1>
-        <p className="mt-4 text-[var(--color-muted)]">
+        <p className="mt-4 leading-relaxed text-[var(--color-text-soft)]">
           Ihre Buchungsanfrage wurde gesendet. Das Unternehmen wird Sie
           zeitnah per E-Mail bestätigen oder bei Rückfragen kontaktieren.
         </p>
@@ -30,18 +35,21 @@ export default async function ConfirmationPage({ searchParams }: Props) {
           <div className="mt-4">
             <Link
               href={`/bookings/manage/${token}`}
-              className="inline-flex h-11 items-center justify-center rounded-lg bg-[var(--color-accent)] px-5 text-sm font-medium text-white hover:bg-[var(--color-accent-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent)] focus-visible:ring-offset-2"
+              className="btn-primary inline-flex h-11 items-center justify-center rounded-xl bg-[var(--color-accent)] px-6 text-sm font-semibold text-white hover:bg-[var(--color-accent-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent)] focus-visible:ring-offset-2"
             >
               Meine Buchung anzeigen
             </Link>
           </div>
         )}
-        <div className="mt-8">
+        <div className="mt-10">
           <Link
             href="/venues"
-            className="text-sm font-medium text-[var(--color-accent)] hover:underline"
+            className="inline-flex items-center gap-2 text-sm font-semibold text-[var(--color-accent)] transition-colors hover:text-[var(--color-accent-hover)]"
           >
-            ← Weitere Orte finden
+            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+            </svg>
+            Weitere Orte finden
           </Link>
         </div>
       </div>
