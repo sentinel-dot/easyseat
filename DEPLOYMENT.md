@@ -54,6 +54,13 @@ In **Variables** des Backend-Services setzen:
 | **Sicherheit** | | |
 | `JWT_SECRET` | *(starkes Geheimnis)* | **Pflicht in Production.** z. B. `openssl rand -base64 32` |
 | `JWT_EXPIRES_IN` | `24h` | Optional |
+| **E-Mail (optional)** | | Ohne SMTP werden E-Mails nur geloggt. |
+| `SMTP_HOST` | `smtp-relay.brevo.com` | Brevo (empfohlen) |
+| `SMTP_PORT` | `587` | |
+| `SMTP_USER` / `SMTP_PASS` | Brevo-Login-E-Mail / SMTP-Schlüssel (nicht API-Key) | Unter Brevo: E-Mail → SMTP & API → SMTP |
+| `MAIL_FROM` | `noreply@ihredomain.de` | Absender in E-Mails |
+| `PUBLIC_APP_URL` | `https://easyseat.vercel.app` | Für Manage-Link in Mails (sonst Fallback auf FRONTEND_URL) |
+| `REMINDER_HOURS` | `24` | Erinnerungs-Mail X Stunden vor Termin |
 
 **Hinweis:** Ohne gesetztes, starkes `JWT_SECRET` startet das Backend in Production nicht (Sicherheitscheck).
 

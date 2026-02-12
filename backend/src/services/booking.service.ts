@@ -126,7 +126,28 @@ import { randomUUID } from 'crypto';
                 throw new Error('Failed to retrieve newly created booking');
             }
 
-            // Confirmation E-Mail -> "${frontendUrl}/booking/manage/${bookingToken}"
+            // E-Mail „Buchung eingegangen“ (Status pending): Vielen Dank – wir prüfen und bestätigen in Kürze
+            try {
+                const withDetails = await this.getBookingByIdWithDetails(result.insertId);
+                if (withDetails) {
+                    const { sendBookingReceived } = await import('./email.service');
+                    await sendBookingReceived({
+                        id: withDetails.id,
+                        customer_name: withDetails.customer_name,
+                        customer_email: withDetails.customer_email,
+                        booking_date: withDetails.booking_date,
+                        start_time: withDetails.start_time,
+                        end_time: withDetails.end_time,
+                        special_requests: withDetails.special_requests,
+                        venue_name: withDetails.venue_name,
+                        service_name: withDetails.service_name,
+                        staff_member_name: withDetails.staff_member_name,
+                        booking_token: withDetails.booking_token,
+                    });
+                }
+            } catch (emailErr) {
+                logger.error('Email after booking creation failed (booking already created)', emailErr);
+            }
 
             return newBooking;
         } 
@@ -194,8 +215,26 @@ import { randomUUID } from 'crypto';
         }
     }
 
-
-
+    /**
+     * Buchung mit Venue-/Service-/Mitarbeiter-Namen (für E-Mails, Dashboard-Details).
+     */
+    static async getBookingByIdWithDetails(bookingId: number): Promise<(Booking & { venue_name?: string; service_name?: string; staff_member_name?: string }) | null> {
+        let conn;
+        try {
+            conn = await getConnection();
+            const rows = await conn.query(`
+                SELECT b.*, v.name as venue_name, s.name as service_name, sm.name as staff_member_name
+                FROM bookings b
+                LEFT JOIN venues v ON b.venue_id = v.id
+                LEFT JOIN services s ON b.service_id = s.id
+                LEFT JOIN staff_members sm ON b.staff_member_id = sm.id
+                WHERE b.id = ?
+            `, [bookingId]) as Array<Booking & { venue_name?: string; service_name?: string; staff_member_name?: string }>;
+            return rows.length ? rows[0] : null;
+        } finally {
+            if (conn) conn.release();
+        }
+    }
 
     /**
      * ========================================================================
@@ -765,8 +804,28 @@ import { randomUUID } from 'crypto';
                 throw new Error('Failed to retrieve cancelled booking');
             }
 
-            // TODO: Sobald SMTP ready ist, Stornierungsmail senden
-            // await EmailService.sendCancellationEmail(cancelledBooking);
+            // Stornierungsmail an Kunden (gemäß Doku 1.5)
+            try {
+                const withDetails = await this.getBookingByIdWithDetails(booking.id);
+                if (withDetails) {
+                    const { sendCancellation } = await import('./email.service');
+                    await sendCancellation({
+                        id: withDetails.id,
+                        customer_name: withDetails.customer_name,
+                        customer_email: withDetails.customer_email,
+                        booking_date: withDetails.booking_date,
+                        start_time: withDetails.start_time,
+                        end_time: withDetails.end_time,
+                        special_requests: withDetails.special_requests,
+                        venue_name: withDetails.venue_name,
+                        service_name: withDetails.service_name,
+                        staff_member_name: withDetails.staff_member_name,
+                        booking_token: withDetails.booking_token,
+                    });
+                }
+            } catch (emailErr) {
+                logger.error('Email after cancel failed (booking already cancelled)', emailErr);
+            }
 
             return cancelledBooking;
         } 
@@ -825,11 +884,11 @@ import { randomUUID } from 'crypto';
             await conn.query(`
                 UPDATE bookings
                 SET status = 'confirmed',
-                    confirmation_sent_at = NOW(),
                     updated_at = NOW()
                 WHERE id = ?`,
                 [bookingId]
             );
+            // confirmation_sent_at wird vom E-Mail-Service nach Versand der Bestätigungsmail gesetzt
 
             logger.info(`Booking confirmed`);
 
@@ -838,6 +897,32 @@ import { randomUUID } from 'crypto';
             if (!confirmedBooking)
             {
                 throw new Error('Failed to retrieve confirmed booking');
+            }
+
+            // Bestätigungsmail (inkl. Reaktivierung falls vorher cancelled)
+            try {
+                const withDetails = await this.getBookingByIdWithDetails(bookingId);
+                if (withDetails) {
+                    const { sendConfirmation } = await import('./email.service');
+                    await sendConfirmation(
+                        {
+                            id: withDetails.id,
+                            customer_name: withDetails.customer_name,
+                            customer_email: withDetails.customer_email,
+                            booking_date: withDetails.booking_date,
+                            start_time: withDetails.start_time,
+                            end_time: withDetails.end_time,
+                            special_requests: withDetails.special_requests,
+                            venue_name: withDetails.venue_name,
+                            service_name: withDetails.service_name,
+                            staff_member_name: withDetails.staff_member_name,
+                            booking_token: withDetails.booking_token,
+                        },
+                        booking.status === 'cancelled'
+                    );
+                }
+            } catch (emailErr) {
+                logger.error('Email after confirm failed (booking already confirmed)', emailErr);
             }
 
             return confirmedBooking;

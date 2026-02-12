@@ -2434,8 +2434,9 @@
 									"    pm.expect(response.data.status).to.equal('confirmed');",
 									"});",
 									"",
-									"pm.test('Confirmation timestamp set', function() {",
-									"    pm.expect(response.data.confirmation_sent_at).to.exist;",
+									"pm.test('Confirmation response valid', function() {",
+									"    pm.expect(response.data.status).to.equal('confirmed');",
+									"    // confirmation_sent_at wird vom E-Mail-Service nach Versand gesetzt, kann bis dahin null sein",
 									"});"
 								],
 								"type": "text/javascript"

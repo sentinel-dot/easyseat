@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { getBookingByToken } from "@/lib/api/bookings";
 import { SiteLayout } from "@/components/layout/site-layout";
 import { ManageBookingActions } from "./manage-actions";
+import { ManageBookingNotes } from "./manage-notes";
 import { getStatusLabel } from "@/lib/utils/bookingStatus";
 
 type Props = { params: Promise<{ token: string }> };
@@ -56,6 +57,12 @@ export default async function ManageBookingPage({ params }: Props) {
           )}
           <p className="mt-2 text-[var(--color-text)]">{dateDisplay}</p>
           <p className="text-[var(--color-text)]">{timeDisplay}</p>
+          {b.special_requests && (
+            <p className="mt-2 text-sm text-[var(--color-text)]">
+              <span className="font-medium text-[var(--color-muted)]">Notizen: </span>
+              {b.special_requests}
+            </p>
+          )}
           <p className="mt-2 text-sm text-[var(--color-muted)]">
             {b.customer_name} · {b.customer_email}
           </p>
@@ -78,6 +85,11 @@ export default async function ManageBookingPage({ params }: Props) {
           </p>
         </div>
 
+        <ManageBookingNotes
+          token={token}
+          specialRequests={b.special_requests ?? ""}
+          status={b.status}
+        />
         <ManageBookingActions
           token={token}
           status={b.status}

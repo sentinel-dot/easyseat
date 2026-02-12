@@ -350,7 +350,15 @@ export default function AdminBookingsPage() {
                         onClick={() =>
                           openReasonDialog(b.id, "completed", "Abgeschlossen")
                         }
-                        disabled={updatingId === b.id}
+                        disabled={
+                          updatingId === b.id ||
+                          new Date(`${b.booking_date}T${b.end_time}`).getTime() > Date.now()
+                        }
+                        title={
+                          new Date(`${b.booking_date}T${b.end_time}`).getTime() > Date.now()
+                            ? "Nur für vergangene Termine"
+                            : undefined
+                        }
                       >
                         Abgeschlossen
                       </Button>

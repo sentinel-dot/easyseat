@@ -15,6 +15,7 @@ import authRoutes from './routes/auth.routes';
 import adminRoutes from './routes/admin.routes';
 import dashboardRoutes from './routes/dashboard.routes';
 import { assertSecureJwtSecret } from './services/auth.service';
+import { startReminderCron } from './jobs/reminder.job';
 
 dotenv.config();
 
@@ -151,6 +152,7 @@ const startServer = async() => {
 
 
         app.listen(PORT, () => {
+            startReminderCron();
             logger.info(`🚀 Backend-Server running on http://localhost:${PORT}`);
             logger.info(`🌍 Environment: ${process.env.NODE_ENV}`);
             logger.info(`🔗 CORS enabled for: ${frontendUrls.length ? frontendUrls.join(', ') : process.env.FRONTEND_URL || 'none'}\n`);

@@ -60,7 +60,7 @@ router.patch('/bookings/:id/status', async (req: Request, res: Response) => {
         const msg = (error as Error).message;
         if (msg === 'Booking not found') res.status(404).json({ success: false, message: 'Buchung nicht gefunden' });
         else if (msg === 'Grund ist erforderlich') res.status(400).json({ success: false, message: 'Grund ist erforderlich' });
-        else if (msg.startsWith('Für vergangene Buchungen')) res.status(400).json({ success: false, message: msg });
+        else if (msg.startsWith('Für vergangene Buchungen') || msg.startsWith('Ein zukünftiger Termin')) res.status(400).json({ success: false, message: msg });
         else res.status(500).json({ success: false, message: 'Fehler beim Aktualisieren des Status' });
     }
 });

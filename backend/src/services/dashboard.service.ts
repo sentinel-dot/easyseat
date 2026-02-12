@@ -8,6 +8,8 @@ import { createLogger } from '../config/utils/logger';
 import { Booking, Service } from '../config/utils/types';
 import { BookingService } from './booking.service';
 import { logBookingAction } from './audit.service';
+import { sendConfirmation, sendCancellation } from './email.service';
+import type { BookingForEmail } from './email.service';
 
 const logger = createLogger('dashboard.service');
 
@@ -122,8 +124,13 @@ export class DashboardService {
 
             // Vergangene Buchungen: nur completed, no_show, cancelled erlauben (kein pending/confirmed)
             const endDateTime = new Date(`${booking.booking_date}T${booking.end_time}`);
-            if (endDateTime < new Date() && (status === 'pending' || status === 'confirmed')) {
+            const now = new Date();
+            if (endDateTime < now && (status === 'pending' || status === 'confirmed')) {
                 throw new Error('Für vergangene Buchungen kann der Status nur auf „Abgeschlossen“, „No-Show“ oder „Storniert“ gesetzt werden.');
+            }
+            // Zukünftige Termine: completed/no_show erst nach Terminende erlauben
+            if (endDateTime > now && (status === 'completed' || status === 'no_show')) {
+                throw new Error('Ein zukünftiger Termin kann nicht als „Abgeschlossen“ oder „Nicht erschienen“ markiert werden.');
             }
 
             const isPendingToConfirmed = currentStatus === 'pending' && status === 'confirmed';
@@ -131,7 +138,8 @@ export class DashboardService {
             let updateQuery = `UPDATE bookings SET status = ?, updated_at = NOW()`;
             const params: (string | number | null)[] = [status];
             if (status === 'cancelled') { updateQuery += ', cancelled_at = NOW(), cancellation_reason = ?'; params.push(reason || null); }
-            if (status === 'confirmed') updateQuery += ', confirmation_sent_at = NOW()';
+            if (currentStatus === 'cancelled' && status !== 'cancelled') { updateQuery += ', cancelled_at = NULL, cancellation_reason = NULL'; }
+            // confirmation_sent_at wird ausschließlich vom E-Mail-Service nach Versand der Bestätigungsmail gesetzt
             updateQuery += ' WHERE id = ?';
             params.push(bookingId);
             await conn.query(updateQuery, params);
@@ -147,6 +155,32 @@ export class DashboardService {
                     actorType: auditContext.actorType,
                     adminUserId: auditContext.adminUserId,
                 });
+            }
+            // E-Mails gemäß Doku: nur bei → confirmed oder → cancelled
+            try {
+                const forEmail = await BookingService.getBookingByIdWithDetails(bookingId);
+                if (forEmail) {
+                    const bookingForEmail: BookingForEmail = {
+                        id: forEmail.id,
+                        customer_name: forEmail.customer_name,
+                        customer_email: forEmail.customer_email,
+                        booking_date: forEmail.booking_date,
+                        start_time: forEmail.start_time,
+                        end_time: forEmail.end_time,
+                        special_requests: forEmail.special_requests,
+                        venue_name: forEmail.venue_name,
+                        service_name: forEmail.service_name,
+                        staff_member_name: forEmail.staff_member_name,
+                        booking_token: forEmail.booking_token,
+                    };
+                    if (status === 'confirmed') {
+                        await sendConfirmation(bookingForEmail, currentStatus === 'cancelled');
+                    } else if (status === 'cancelled') {
+                        await sendCancellation(bookingForEmail);
+                    }
+                }
+            } catch (emailErr) {
+                logger.error('Dashboard: Email after status update failed (booking updated)', emailErr);
             }
             return updated[0];
         } catch (error) {

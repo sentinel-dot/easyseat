@@ -51,6 +51,9 @@ export function BookingDetailModal({
 
   if (!open) return null;
 
+  const isPast =
+    booking &&
+    new Date(`${booking.booking_date}T${booking.end_time}`).getTime() <= Date.now();
   const reasonRequired =
     booking &&
     status !== booking.status &&
@@ -176,11 +179,25 @@ export function BookingDetailModal({
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
                   <select
                     value={status}
-                    onChange={(e) => setStatus(e.target.value)}
+                    onChange={(e) => {
+                      const newStatus = e.target.value;
+                      setStatus(newStatus);
+                      setStatusReason(
+                        newStatus === "cancelled"
+                          ? (booking?.cancellation_reason ?? "")
+                          : ""
+                      );
+                    }}
                     className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-[var(--color-text)] focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] sm:flex-1"
                   >
                     {STATUS_OPTIONS.map((o) => (
-                      <option key={o.value} value={o.value}>
+                      <option
+                        key={o.value}
+                        value={o.value}
+                        disabled={
+                          !isPast && (o.value === "completed" || o.value === "no_show")
+                        }
+                      >
                         {o.label}
                       </option>
                     ))}
@@ -199,6 +216,12 @@ export function BookingDetailModal({
                 </div>
               </div>
 
+              {booking?.status === "cancelled" && status !== "cancelled" && (
+                <p className="text-sm text-[var(--color-accent)] bg-[var(--color-accent)]/10 rounded-lg px-3 py-2">
+                  Stornierung aufheben – die Buchung wird reaktiviert. Bitte Grund angeben (z. B. Kunde kommt doch).
+                </p>
+              )}
+
               {reasonRequired && (
                 <div>
                   <Input
@@ -212,7 +235,9 @@ export function BookingDetailModal({
                     placeholder={
                       status === "cancelled"
                         ? "z. B. Kunde hat abgesagt"
-                        : "z. B. Termin durchgeführt, Kunde nicht erschienen"
+                        : booking?.status === "cancelled"
+                          ? "z. B. Kunde kommt doch"
+                          : "z. B. Termin durchgeführt, Kunde nicht erschienen"
                     }
                   />
                 </div>
