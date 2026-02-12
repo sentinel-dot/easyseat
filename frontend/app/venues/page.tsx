@@ -6,21 +6,18 @@ import { PageLoader } from "@/components/shared/loading-spinner";
 export const metadata = {
   title: "Orte finden – easyseat",
   description:
-    "Restaurants, Friseure und weitere Betriebe – buchen Sie Ihren Termin.",
+    "Restaurants und weitere Betriebe – Termin direkt buchen.",
 };
 
 export default function VenuesPage() {
   return (
     <SiteLayout>
-      <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6 sm:py-12">
-        <p className="text-sm font-medium uppercase tracking-wider text-[var(--color-accent)]">
-          Buchbare Orte
-        </p>
-        <h1 className="mt-2 font-display text-3xl font-semibold text-[var(--color-text)] sm:text-4xl">
-          Orte finden
+      <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 sm:py-10">
+        <h1 className="text-2xl font-bold text-[var(--color-text)] sm:text-3xl">
+          Restaurants & Orte
         </h1>
-        <p className="mt-2 text-[var(--color-text-soft)]">
-          Wählen Sie eine Kategorie oder durchsuchen Sie alle Orte.
+        <p className="mt-1 text-sm text-[var(--color-muted)]">
+          Wählen Sie einen Ort und buchen Sie Ihren Termin.
         </p>
         <Suspense fallback={<PageLoader />}>
           <VenuesContent />

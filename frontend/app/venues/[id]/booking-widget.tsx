@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import type { VenueWithStaff, Service, TimeSlot } from "@/lib/types";
@@ -27,13 +27,20 @@ const STEPS: { key: Step; label: string }[] = [
 
 const DEFAULT_PARTY_SIZE = 2;
 
-export function BookingWidget({ venue }: { venue: VenueWithStaff }) {
+type BookingWidgetProps = {
+  venue: VenueWithStaff;
+  initialDate?: string;
+  initialTime?: string;
+  initialPartySize?: number;
+};
+
+export function BookingWidget({ venue, initialDate, initialTime, initialPartySize }: BookingWidgetProps) {
   const router = useRouter();
   const services = (venue.services ?? []).filter((s) => s.is_active !== false);
 
   const [step, setStep] = useState<Step>("service");
   const [service, setService] = useState<Service | null>(null);
-  const [date, setDate] = useState("");
+  const [date, setDate] = useState(initialDate ?? "");
   const [slots, setSlots] = useState<TimeSlot[]>([]);
   const [selectedSlot, setSelectedSlot] = useState<TimeSlot | null>(null);
   const [loadingSlots, setLoadingSlots] = useState(false);
@@ -42,7 +49,9 @@ export function BookingWidget({ venue }: { venue: VenueWithStaff }) {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
-  const [partySize, setPartySize] = useState(DEFAULT_PARTY_SIZE);
+  const [partySize, setPartySize] = useState(
+    initialPartySize != null ? Math.min(20, Math.max(1, initialPartySize)) : DEFAULT_PARTY_SIZE
+  );
   const [specialRequests, setSpecialRequests] = useState("");
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
@@ -53,6 +62,36 @@ export function BookingWidget({ venue }: { venue: VenueWithStaff }) {
 
   const showPartySize = venue.type === "restaurant";
   const currentStepIndex = STEPS.findIndex((s) => s.key === step);
+
+  useEffect(() => {
+    if (!initialTime || slots.length === 0) return;
+    const target =
+      initialTime.length === 5 ? initialTime : `${initialTime.slice(0, 2)}:${initialTime.slice(2, 4)}`;
+    const match = slots.find((s) => s.start_time === target);
+    if (match) setSelectedSlot(match);
+    else {
+      const parts = target.split(":");
+      const th = parseInt(parts[0], 10);
+      const tm = parseInt(parts[1], 10) || 0;
+      const targetMins = th * 60 + tm;
+      let best = slots[0];
+      let bestDiff = Infinity;
+      for (const s of slots) {
+        const [h, m] = s.start_time.split(":").map((x) => parseInt(x, 10));
+        const diff = Math.abs(h * 60 + m - targetMins);
+        if (diff < bestDiff) {
+          bestDiff = diff;
+          best = s;
+        }
+      }
+      setSelectedSlot(best);
+    }
+  }, [initialTime, slots]);
+
+  useEffect(() => {
+    if (step !== "date" || !date || !service) return;
+    loadSlotsForDate(date);
+  }, [step, date, service]);
 
   const loadSlotsForDate = async (dateValue: string) => {
     if (!service || !dateValue) return;
@@ -120,7 +159,7 @@ export function BookingWidget({ venue }: { venue: VenueWithStaff }) {
 
   if (services.length === 0) {
     return (
-      <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-page)] p-5 text-center">
+      <div className="rounded-md border border-[var(--color-border)] bg-[var(--color-page)] p-5 text-center">
         <p className="text-sm text-[var(--color-muted)]">
           Derzeit sind keine buchbaren Leistungen hinterlegt.
         </p>
@@ -172,7 +211,7 @@ export function BookingWidget({ venue }: { venue: VenueWithStaff }) {
 
       {/* Zusammenfassung ab Schritt 2 */}
       {(step !== "service" && service) && (
-        <div className="rounded-xl bg-[var(--color-page)] px-4 py-3 text-sm">
+        <div className="rounded-md bg-[var(--color-page)] px-4 py-3 text-sm">
           <span className="font-medium text-[var(--color-text)]">{service.name}</span>
           {service.duration_minutes > 0 && (
             <span className="text-[var(--color-muted)]"> · {service.duration_minutes} Min.</span>
@@ -209,7 +248,7 @@ export function BookingWidget({ venue }: { venue: VenueWithStaff }) {
                     setSelectedSlot(null);
                     setStep("date");
                   }}
-                  className="flex w-full items-center justify-between gap-3 rounded-xl border-2 border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-4 text-left transition-all hover:border-[var(--color-accent)] hover:bg-[var(--color-accent-muted)]/30 hover:shadow-[var(--shadow-sm)] focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] focus:ring-offset-2"
+                  className="flex w-full items-center justify-between gap-3 rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-3.5 text-left transition-colors hover:border-[var(--color-accent)] hover:bg-[var(--color-accent-muted)]/30 focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] focus:ring-offset-2"
                 >
                   <span className="font-semibold text-[var(--color-text)]">{s.name}</span>
                   <span className="flex shrink-0 items-center gap-2 text-sm text-[var(--color-muted)]">
@@ -249,7 +288,7 @@ export function BookingWidget({ venue }: { venue: VenueWithStaff }) {
                 setDate(newDate);
                 if (newDate) loadSlotsForDate(newDate);
               }}
-              className="w-full rounded-xl border-2 border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-3 text-[var(--color-text)] focus:border-[var(--color-accent)] focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] focus:ring-offset-0"
+              className="w-full rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-3 text-[var(--color-text)] focus:border-[var(--color-accent)] focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] focus:ring-offset-0"
             />
           </div>
           <Button
@@ -274,12 +313,12 @@ export function BookingWidget({ venue }: { venue: VenueWithStaff }) {
             {date && formatDateDisplay(date)} – wählen Sie eine freie Uhrzeit.
           </p>
           {loadingSlots ? (
-            <div className="flex flex-col items-center justify-center rounded-xl border border-[var(--color-border)] bg-[var(--color-page)] py-10">
+            <div className="flex flex-col items-center justify-center rounded-md border border-[var(--color-border)] bg-[var(--color-page)] py-10">
               <div className="h-8 w-8 animate-spin rounded-full border-2 border-[var(--color-border)] border-t-[var(--color-accent)]" aria-hidden />
               <p className="mt-3 text-sm text-[var(--color-muted)]">Verfügbare Zeiten werden geladen…</p>
             </div>
           ) : slots.length === 0 ? (
-            <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-page)] p-6 text-center">
+            <div className="rounded-md border border-[var(--color-border)] bg-[var(--color-page)] p-6 text-center">
               <p className="font-medium text-[var(--color-text)]">Keine freien Zeiten an diesem Tag</p>
               <p className="mt-1 text-sm text-[var(--color-muted)]">
                 Bitte wählen Sie ein anderes Datum.
@@ -314,10 +353,10 @@ export function BookingWidget({ venue }: { venue: VenueWithStaff }) {
                         setSelectedSlot(slot);
                         setStep("details");
                       }}
-                      className={`rounded-xl py-3 text-sm font-semibold transition-all ${
+                      className={`rounded-md py-2.5 text-sm font-semibold transition-colors ${
                         isSelected
-                          ? "border-2 border-[var(--color-accent)] bg-[var(--color-accent)] text-white shadow-[var(--shadow-sm)]"
-                          : "border-2 border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-text)] hover:border-[var(--color-accent)] hover:bg-[var(--color-accent-muted)]/40"
+                          ? "border border-[var(--color-accent)] bg-[var(--color-accent)] text-white"
+                          : "border border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-text)] hover:border-[var(--color-accent)] hover:bg-[var(--color-accent-muted)]/40"
                       }`}
                     >
                       {formatTimeDisplay(slot.start_time)}
@@ -346,7 +385,7 @@ export function BookingWidget({ venue }: { venue: VenueWithStaff }) {
       {step === "details" && service && selectedSlot && (
         <div className="space-y-5">
           {/* Zusammenfassung der Auswahl */}
-          <div className="rounded-xl border-2 border-[var(--color-accent-muted)] bg-[var(--color-accent-muted)]/40 px-4 py-3">
+          <div className="rounded-md border border-[var(--color-accent-muted)] bg-[var(--color-accent-muted)]/40 px-4 py-3">
             <p className="text-xs font-semibold uppercase tracking-wide text-[var(--color-accent-strong)]">
               Ihre Auswahl
             </p>
@@ -402,7 +441,7 @@ export function BookingWidget({ venue }: { venue: VenueWithStaff }) {
                 <select
                   value={partySize}
                   onChange={(e) => setPartySize(Number(e.target.value))}
-                  className="w-full h-11 rounded-xl border-2 border-[var(--color-border)] bg-[var(--color-surface)] px-3.5 text-[var(--color-text)] focus:border-[var(--color-accent)] focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] focus:ring-offset-0"
+                  className="w-full h-11 rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-3.5 text-[var(--color-text)] focus:border-[var(--color-accent)] focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] focus:ring-offset-0"
                 >
                   {Array.from({ length: 20 }, (_, i) => i + 1).map((n) => (
                     <option key={n} value={n}>
@@ -426,7 +465,7 @@ export function BookingWidget({ venue }: { venue: VenueWithStaff }) {
                 onChange={(e) => setSpecialRequests(e.target.value)}
                 placeholder="z. B. Allergien, Wünsche zum Tisch …"
                 rows={3}
-                className="w-full rounded-xl border-2 border-[var(--color-border)] bg-[var(--color-surface)] px-3.5 py-2.5 text-[var(--color-text)] placeholder:text-[var(--color-muted)] focus:border-[var(--color-accent)] focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] focus:ring-offset-0"
+                className="w-full rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-3.5 py-2.5 text-[var(--color-text)] placeholder:text-[var(--color-muted)] focus:border-[var(--color-accent)] focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] focus:ring-offset-0"
               />
             </div>
           </div>

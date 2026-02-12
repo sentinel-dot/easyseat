@@ -5,7 +5,10 @@ import { getVenueTypeLabel } from "@/lib/utils/venueType";
 import { SiteLayout } from "@/components/layout/site-layout";
 import { BookingWidget } from "./booking-widget";
 
-type Props = { params: Promise<{ id: string }> };
+type Props = {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+};
 
 export async function generateMetadata({ params }: Props) {
   const { id } = await params;
@@ -17,8 +20,15 @@ export async function generateMetadata({ params }: Props) {
   };
 }
 
-export default async function VenuePage({ params }: Props) {
+export default async function VenuePage({ params, searchParams }: Props) {
   const { id } = await params;
+  const search = (await searchParams) ?? {};
+  const initialDate = typeof search.date === "string" ? search.date : undefined;
+  const initialTime = typeof search.time === "string" ? search.time : undefined;
+  const initialPartySize =
+    typeof search.party_size === "string" && /^\d+$/.test(search.party_size)
+      ? Math.min(20, Math.max(1, Number(search.party_size)))
+      : undefined;
   const venueId = Number(id);
   if (Number.isNaN(venueId)) notFound();
 
@@ -44,7 +54,7 @@ export default async function VenuePage({ params }: Props) {
     <SiteLayout>
       {/* Breadcrumb */}
       <div className="border-b border-[var(--color-border)] bg-[var(--color-surface)]">
-        <div className="mx-auto max-w-6xl px-4 py-3 sm:px-6">
+        <div className="mx-auto max-w-6xl px-4 py-2.5 sm:px-6">
           <nav aria-label="Breadcrumb" className="flex items-center gap-2 text-sm">
             <Link
               href="/venues"
@@ -60,18 +70,18 @@ export default async function VenuePage({ params }: Props) {
         </div>
       </div>
 
-      {/* Hero: Name, Kategorie, Adresse */}
-      <header className="border-b border-[var(--color-border)] bg-[var(--color-page)]">
-        <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 sm:py-10">
-          <span className="inline-block rounded-full bg-[var(--color-accent-muted)] px-3 py-1 text-xs font-semibold uppercase tracking-wide text-[var(--color-accent-strong)]">
+      {/* Header: Name, Kategorie, Adresse */}
+      <header className="border-b border-[var(--color-border)] bg-[var(--color-surface)]">
+        <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-8">
+          <span className="text-xs font-medium uppercase tracking-wide text-[var(--color-muted)]">
             {getVenueTypeLabel(venue.type)}
           </span>
-          <h1 className="mt-3 font-display text-3xl font-semibold tracking-tight text-[var(--color-text)] sm:text-4xl">
+          <h1 className="mt-1 text-2xl font-bold text-[var(--color-text)] sm:text-3xl">
             {venue.name}
           </h1>
           {(venue.address || venue.city) && (
-            <p className="mt-3 flex items-center gap-2 text-[var(--color-muted)]">
-              <svg className="h-5 w-5 shrink-0 text-[var(--color-accent)]" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
+            <p className="mt-2 flex items-center gap-2 text-sm text-[var(--color-muted)]">
+              <svg className="h-4 w-4 shrink-0 text-[var(--color-accent)]" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
               </svg>
@@ -86,15 +96,14 @@ export default async function VenuePage({ params }: Props) {
       </header>
 
       <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 sm:py-10">
-        <div className="grid gap-10 lg:grid-cols-3 lg:gap-12">
-          {/* Hauptinhalt: Über uns, Öffnungszeiten */}
-          <div className="space-y-10 lg:col-span-2">
+        <div className="grid gap-8 lg:grid-cols-3 lg:gap-10">
+          <div className="space-y-8 lg:col-span-2">
             {venue.description && (
               <section aria-labelledby="about-heading">
-                <h2 id="about-heading" className="font-display text-xl font-semibold text-[var(--color-text)]">
+                <h2 id="about-heading" className="text-lg font-semibold text-[var(--color-text)]">
                   Über uns
                 </h2>
-                <p className="mt-3 leading-relaxed text-[var(--color-text-soft)]">
+                <p className="mt-2 text-[var(--color-text-soft)] leading-relaxed">
                   {venue.description}
                 </p>
               </section>
@@ -102,17 +111,17 @@ export default async function VenuePage({ params }: Props) {
 
             {venue.opening_hours && venue.opening_hours.length > 0 && (
               <section aria-labelledby="hours-heading">
-                <h2 id="hours-heading" className="font-display text-xl font-semibold text-[var(--color-text)]">
+                <h2 id="hours-heading" className="text-lg font-semibold text-[var(--color-text)]">
                   Öffnungszeiten
                 </h2>
-                <div className="mt-4 overflow-hidden rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-[var(--shadow-sm)]">
+                <div className="mt-3 overflow-hidden rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)]">
                   <ul className="divide-y divide-[var(--color-border)]">
                     {[1, 2, 3, 4, 5, 6, 0].map((d) => {
                       const isToday = d === todayDay;
                       return (
                         <li
                           key={d}
-                          className={`flex items-center justify-between px-4 py-3.5 text-sm ${isToday ? "bg-[var(--color-accent-muted)]/30 font-medium text-[var(--color-text)]" : "text-[var(--color-muted)]"}`}
+                          className={`flex items-center justify-between px-4 py-3 text-sm ${isToday ? "bg-[var(--color-accent-muted)]/40 font-medium text-[var(--color-text)]" : "text-[var(--color-muted)]"}`}
                         >
                           <span className="flex items-center gap-2">
                             <span className="w-24 text-[var(--color-text-soft)]">
@@ -136,22 +145,26 @@ export default async function VenuePage({ params }: Props) {
             )}
           </div>
 
-          {/* Buchungs-Widget: sticky, klarer Kasten */}
           <div className="lg:col-span-1">
             <aside
-              className="sticky top-24 rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-[var(--shadow-md)]"
+              className="sticky top-20 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] shadow-[var(--shadow-sm)]"
               aria-label="Termin buchen"
             >
-              <div className="border-b border-[var(--color-border)] px-5 py-4">
-                <h2 className="font-display text-lg font-semibold text-[var(--color-text)]">
-                  Termin buchen
+              <div className="border-b border-[var(--color-border)] px-4 py-3">
+                <h2 className="text-lg font-semibold text-[var(--color-text)]">
+                  Tisch reservieren
                 </h2>
                 <p className="mt-0.5 text-sm text-[var(--color-muted)]">
-                  Leistung wählen, Datum & Uhrzeit festlegen – in wenigen Schritten.
+                  Datum, Uhrzeit und Gästeanzahl wählen.
                 </p>
               </div>
-              <div className="p-5">
-                <BookingWidget venue={venue} />
+              <div className="p-4">
+                <BookingWidget
+                venue={venue}
+                initialDate={initialDate}
+                initialTime={initialTime}
+                initialPartySize={initialPartySize}
+              />
               </div>
             </aside>
           </div>
