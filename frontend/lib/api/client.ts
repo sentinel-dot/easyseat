@@ -1,4 +1,8 @@
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001';
+/** In browser use same-origin /api (Next.js proxy); on server use backend URL. */
+function getApiBase(): string {
+  if (typeof window !== "undefined") return "/api";
+  return process.env.NEXT_PUBLIC_API_URL || "http://localhost:5001";
+}
 
 /** Für Kunden sichtbare Meldung bei Netzwerkfehlern (kein "Failed to fetch" in Production). */
 export const NETWORK_ERROR_MESSAGE =
@@ -17,7 +21,7 @@ export async function apiClient<T>(
 {
     try 
     {
-        const response = await fetch(`${API_URL}${endpoint}`, {
+        const response = await fetch(`${getApiBase()}${endpoint}`, {
             ...options,
             headers: {
                 'Content-Type': 'application/json',
