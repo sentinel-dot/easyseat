@@ -419,18 +419,26 @@ export class AvailabilityService
 
 
     /** 
-     * Holt alle verfügbaren Zeitslots für einen Service an einem bestimmten Datum
+     * Holt alle verfügbaren Zeitslots für einen Service an einem bestimmten Datum.
+     * Optional: partySize (nur Slots mit remaining_capacity >= partySize),
+     * timeWindowStart/timeWindowEnd (nur Slots in diesem Zeitfenster).
      */
     static async getAvailableSlots(
-        venueId: number,            // ID des Geschäfts
-        serviceId: number,          // ID des Services
-        date: string                // Datum im Format YYYY-MM-DD
+        venueId: number,
+        serviceId: number,
+        date: string,
+        options?: { partySize?: number; timeWindowStart?: string; timeWindowEnd?: string }
     ): Promise<DayAvailability>
     {
+        const partySize = options?.partySize ?? 1;
         logger.info('Getting available slots...', {
             venue_id: venueId,
             service_id: serviceId,
-            date: date
+            date,
+            partySize,
+            timeWindow: options?.timeWindowStart && options?.timeWindowEnd
+                ? `${options.timeWindowStart}-${options.timeWindowEnd}`
+                : undefined
         });
 
         let conn;
@@ -650,14 +658,15 @@ export class AvailabilityService
                     }
                 }        
 
-                // Für kapazitätsbasierte Services: Prüfe, ob Kapazität überschritten wird
+                // Für kapazitätsbasierte Services: nur verfügbar wenn genug Plätze für partySize
                 if (!service.requires_staff)
                 {
                     const remainingCapacity = service.capacity - totalOccupancy;
+                    const hasEnoughCapacity = remainingCapacity >= partySize;
                     return {
                         ...slot,
-                        available: remainingCapacity > 0,
-                        remaining_capacity: Math.max(0, remainingCapacity)   // für Frontend
+                        available: hasEnoughCapacity,
+                        remaining_capacity: Math.max(0, remainingCapacity)
                     }
                 }
 
@@ -693,17 +702,22 @@ export class AvailabilityService
             // Filter Slots basierend auf Mindestvorlaufzeit (booking_advance_hours)
             const now = new Date();
             uniqueSlots = uniqueSlots.filter(slot => {
-                // Erstelle DateTime-Objekt für den Slot
                 const [hours, minutes] = slot.start_time.split(':').map(Number);
                 const slotDateTime = new Date(date);
                 slotDateTime.setHours(hours, minutes, 0, 0);
-
-                // Berechne Stunden bis zum Slot
                 const hoursUntilSlot = (slotDateTime.getTime() - now.getTime()) / (1000 * 60 * 60);
-
-                // Slot muss mindestens booking_advance_hours in der Zukunft liegen
                 return hoursUntilSlot >= bookingAdvanceHours;
             });
+
+            // Optional: nur Slots im Zeitfenster (z.B. 18:00–20:00 für Suche "ca. 19:00")
+            if (options?.timeWindowStart && options?.timeWindowEnd) {
+                const windowStartMins = this.timeStringToMinutes(options.timeWindowStart);
+                const windowEndMins = this.timeStringToMinutes(options.timeWindowEnd);
+                uniqueSlots = uniqueSlots.filter(slot => {
+                    const slotMins = this.timeStringToMinutes(slot.start_time);
+                    return slotMins >= windowStartMins && slotMins <= windowEndMins;
+                });
+            }
 
             const available_slots = uniqueSlots.filter(s => s.available).length;
             const total_slots = uniqueSlots.length;

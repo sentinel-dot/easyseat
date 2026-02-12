@@ -100,7 +100,18 @@ export function BookingWidget({ venue, initialDate, initialTime, initialPartySiz
     setSelectedSlot(null);
     setStep("time");
     try {
-      const data = await getAvailableSlots(venue.id, service.id, dateValue);
+      const slotOptions: { partySize?: number; timeWindowStart?: string; timeWindowEnd?: string } = {};
+      if (showPartySize) slotOptions.partySize = partySize;
+      else slotOptions.partySize = 1;
+      if (initialTime && initialTime.length >= 4) {
+        const [h, m] = initialTime.length === 5 ? initialTime.split(":") : [initialTime.slice(0, 2), initialTime.slice(2, 4) || "0"];
+        const centerMins = parseInt(h, 10) * 60 + parseInt(m || "0", 10);
+        const startMins = Math.max(0, centerMins - 60);
+        const endMins = Math.min(24 * 60 - 1, centerMins + 60);
+        slotOptions.timeWindowStart = `${Math.floor(startMins / 60)}:${String(startMins % 60).padStart(2, "0")}`;
+        slotOptions.timeWindowEnd = `${Math.floor(endMins / 60)}:${String(endMins % 60).padStart(2, "0")}`;
+      }
+      const data = await getAvailableSlots(venue.id, service.id, dateValue, slotOptions);
       const available = (data.time_slots ?? []).filter((s) => s.available);
       setSlots(available);
     } catch (e) {

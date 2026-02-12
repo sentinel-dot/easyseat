@@ -1,47 +1,120 @@
 import dotenv from 'dotenv';
 
 import { createLogger } from '../config/utils/logger';
-import { 
-    Venue, 
-    VenueWithStaff, 
-    Service, 
-    StaffMember 
+import {
+    Venue,
+    VenueWithStaff,
+    Service,
+    StaffMember
 } from '../config/utils/types';
 import { getConnection } from '../config/database';
+import { AvailabilityService } from './availability.service';
 
 const logger = createLogger('venue.service');
 
 dotenv.config({ path: '.env' });
 
-export class VenueService 
+export class VenueService
 {
     /**
-     * Holt alle aktiven Venues
+     * Holt alle aktiven Venues, optional gefiltert nach Typ und Verfügbarkeit (Datum, party_size, Zeitfenster).
+     * Wenn date gesetzt ist, werden nur Venues zurückgegeben, die an dem Tag mindestens einen buchbaren Slot haben.
      */
-    static async getAllVenues(): Promise<Venue[]>
-    {   
-        logger.info('Fetching all venues...');
+    static async getAllVenues(options?: {
+        type?: Venue['type'];
+        date?: string;
+        party_size?: number;
+        timeWindowStart?: string;
+        timeWindowEnd?: string;
+    }): Promise<Venue[]>
+    {
+        const typeFilter = options?.type;
+        const filterByAvailability = !!options?.date;
+        logger.info('Fetching all venues...', {
+            type: typeFilter,
+            filterByAvailability,
+            date: options?.date
+        });
 
         let conn;
-        try 
+        try
         {
             conn = await getConnection();
             logger.debug('Database connection established');
 
-            const venues = await conn.query(`
+            let query = `
                 SELECT id, name, type, email, phone, address, city, postal_code, country,
                     description, website_url, booking_advance_days, booking_advance_hours, cancellation_hours,
                     require_phone, require_deposit, deposit_amount, is_active, created_at, updated_at
                 FROM venues
                 WHERE is_active = true
-                ORDER BY name ASC`
-            ) as Venue[];
-        
-            logger.info(`${venues.length} Venues fetched successfully`);
-        
+            `;
+            const params: (Venue['type'] | number)[] = [];
+            if (typeFilter) {
+                query += ' AND type = ?';
+                params.push(typeFilter);
+            }
+            query += ' ORDER BY name ASC';
+
+            let venues = await conn.query(query, params) as Venue[];
+
+            if (filterByAvailability && venues.length > 0) {
+                const date = options!.date!;
+                const partySize = options?.party_size != null && options.party_size >= 1 ? options.party_size : 1;
+                const slotOptions = {
+                    partySize,
+                    timeWindowStart: options?.timeWindowStart,
+                    timeWindowEnd: options?.timeWindowEnd
+                };
+
+                const venueIds = venues.map(v => v.id);
+                const servicesByVenue = await conn.query(`
+                    SELECT venue_id, id
+                    FROM services
+                    WHERE venue_id IN (${venueIds.map(() => '?').join(',')})
+                    AND is_active = true
+                `, venueIds) as { venue_id: number; id: number }[];
+
+                const venueToServiceIds = new Map<number, number[]>();
+                for (const row of servicesByVenue) {
+                    const list = venueToServiceIds.get(row.venue_id) ?? [];
+                    list.push(row.id);
+                    venueToServiceIds.set(row.venue_id, list);
+                }
+                conn.release();
+                conn = null!;
+
+                const venueIdsWithAvailability = new Set<number>();
+                await Promise.all(venues.map(async (venue) => {
+                    const serviceIds = venueToServiceIds.get(venue.id) ?? [];
+                    for (const serviceId of serviceIds) {
+                        try {
+                            const dayAvailability = await AvailabilityService.getAvailableSlots(
+                                venue.id,
+                                serviceId,
+                                date,
+                                slotOptions
+                            );
+                            const hasSlot = (dayAvailability.time_slots ?? []).some(s => s.available);
+                            if (hasSlot) {
+                                venueIdsWithAvailability.add(venue.id);
+                                return;
+                            }
+                        } catch {
+                            // Einzelner Service-Fehler ignorieren, nächsten versuchen
+                        }
+                    }
+                }));
+
+                venues = venues.filter(v => venueIdsWithAvailability.has(v.id));
+                logger.info(`${venues.length} Venues with availability on ${date}`);
+            } else {
+                logger.info(`${venues.length} Venues fetched successfully`);
+            }
+
             return venues;
-        } 
-        catch (error) 
+        }
+        catch (error)
         {
             logger.error('Error fetching venues', error);
             throw error;

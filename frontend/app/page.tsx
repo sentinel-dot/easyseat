@@ -7,13 +7,13 @@ export default function HomePage() {
     <SiteLayout>
       {/* Hero: Such-Fokus wie OpenTable */}
       <section className="hero-pattern border-b border-[var(--color-border)]">
-        <div className="mx-auto max-w-3xl px-4 pt-12 pb-14 sm:px-6 sm:pt-16 sm:pb-20">
+        <div className="mx-auto max-w-4xl px-4 pt-12 pb-14 sm:px-6 sm:pt-16 sm:pb-20">
           <div className="text-center">
             <h1 className="text-3xl font-bold tracking-tight text-[var(--color-text)] sm:text-4xl">
-              Finden Sie den richtigen Tisch
+              Finden Sie den richtigen Termin
             </h1>
             <p className="mt-3 text-base text-[var(--color-muted)]">
-              Restaurants und Betriebe in Ihrer Nähe – Termin direkt buchen.
+              Restaurants, Friseure, Kosmetik und mehr – Termin direkt buchen.
             </p>
             <HeroSearch />
           </div>

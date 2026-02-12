@@ -7,18 +7,61 @@ import { BookingService } from '../services/booking.service';
 const router = express.Router();
 const logger = createLogger('venue.routes');
 
+const VALID_VENUE_TYPES = ['restaurant', 'hair_salon', 'beauty_salon', 'massage', 'other'] as const;
+
+/** Zeitfenster ±1h um gewünschte Uhrzeit (HH:MM) für Suche "ca. 19:00" */
+function timeWindowAround(timeStr: string): { timeWindowStart: string; timeWindowEnd: string } | undefined {
+    if (!timeStr || typeof timeStr !== 'string') return undefined;
+    const match = timeStr.match(/^(\d{1,2}):?(\d{2})?$/);
+    if (!match) return undefined;
+    const h = parseInt(match[1], 10);
+    const m = parseInt(match[2] ?? '0', 10);
+    if (h < 0 || h > 23 || m < 0 || m > 59) return undefined;
+    const centerMins = h * 60 + m;
+    const startMins = Math.max(0, centerMins - 60);
+    const endMins = Math.min(24 * 60 - 1, centerMins + 60);
+    return {
+        timeWindowStart: `${String(Math.floor(startMins / 60)).padStart(2, '0')}:${String(startMins % 60).padStart(2, '0')}`,
+        timeWindowEnd: `${String(Math.floor(endMins / 60)).padStart(2, '0')}:${String(endMins % 60).padStart(2, '0')}`
+    };
+}
+
 /**
  * GET /venues
- * Liste aller aktiven Venues
+ * Liste aller aktiven Venues.
+ * Query: type (optional), date (YYYY-MM-DD, optional), party_size (optional), time (HH:MM, optional).
+ * Wenn date gesetzt: nur Venues mit mindestens einem freien Slot an dem Tag (und optional im Zeitfenster um time).
  */
 router.get('/', async (req, res) => 
 {
     logger.separator();
     logger.info('Received request - GET /venues');
     
+    const typeParam = req.query.type as string | undefined;
+    const type = typeParam && VALID_VENUE_TYPES.includes(typeParam as typeof VALID_VENUE_TYPES[number])
+        ? (typeParam as typeof VALID_VENUE_TYPES[number])
+        : undefined;
+    const date = (req.query.date as string | undefined)?.trim() || undefined;
+    const partySizeParam = req.query.party_size as string | undefined;
+    const party_size = partySizeParam != null && partySizeParam !== ''
+        ? parseInt(partySizeParam, 10)
+        : undefined;
+    const time = (req.query.time as string | undefined)?.trim() || undefined;
+    const timeWindow = time ? timeWindowAround(time) : undefined;
+
+    const opts: Parameters<typeof VenueService.getAllVenues>[0] = {};
+    if (type) opts.type = type;
+    if (date) opts.date = date;
+    if (party_size != null && !isNaN(party_size) && party_size >= 1) opts.party_size = party_size;
+    if (timeWindow) {
+        opts.timeWindowStart = timeWindow.timeWindowStart;
+        opts.timeWindowEnd = timeWindow.timeWindowEnd;
+    }
+    const hasFilters = Object.keys(opts).length > 0;
+
     try 
     {
-        const venues = await VenueService.getAllVenues();
+        const venues = await VenueService.getAllVenues(hasFilters ? opts : undefined);
 
         res.json({
             success: true,

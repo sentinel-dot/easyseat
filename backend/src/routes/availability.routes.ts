@@ -13,17 +13,16 @@ const logger = createLogger('availability.routes');
 
 /**
  * GET /availability/slots
- * Hole alle verfügbaren Zeitslots für einen bestimmten Tag
- * Query params: venueId, serviceId, date (YYYY-MM-DD)
+ * Hole alle verfügbaren Zeitslots für einen bestimmten Tag.
+ * Query: venueId, serviceId, date (YYYY-MM-DD), optional partySize, timeWindowStart, timeWindowEnd (HH:MM).
  */
 router.get('/slots', async (req, res) =>     
 {
     logger.separator();
     logger.info('Received Request - GET /availability/slots');  
 
-    const { venueId, serviceId, date} = req.query;  
+    const { venueId, serviceId, date, partySize, timeWindowStart, timeWindowEnd } = req.query;  
 
-    // Validierung
     if (!venueId || !serviceId || !date)
     {
         logger.warn('Missing one or more required parameters: venueId, serviceId, date');
@@ -35,12 +34,22 @@ router.get('/slots', async (req, res) =>
         } as ApiResponse<void>);
     }
 
+    const partySizeNum = partySize != null && partySize !== '' ? parseInt(String(partySize), 10) : undefined;
+    const opts: { partySize?: number; timeWindowStart?: string; timeWindowEnd?: string } = {};
+    if (partySizeNum != null && !isNaN(partySizeNum) && partySizeNum >= 1) opts.partySize = partySizeNum;
+    if (timeWindowStart && timeWindowEnd) {
+        opts.timeWindowStart = timeWindowStart as string;
+        opts.timeWindowEnd = timeWindowEnd as string;
+    }
+    const options = Object.keys(opts).length > 0 ? opts : undefined;
+
     try {
 
         const dayAvailability = await AvailabilityService.getAvailableSlots(
             Number(venueId),
             Number(serviceId),
-            date as string
+            date as string,
+            options
         );
 
         res.json({

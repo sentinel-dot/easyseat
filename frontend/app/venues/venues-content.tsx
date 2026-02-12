@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import { getVenues } from "@/lib/api/venues";
 import type { Venue } from "@/lib/types";
 import {
@@ -11,27 +11,59 @@ import {
 } from "@/lib/utils/venueType";
 import { ErrorMessage } from "@/components/shared/error-message";
 
+const VALID_VENUE_TYPES: Venue["type"][] = ["restaurant", "hair_salon", "beauty_salon", "massage", "other"];
+
+function typeFromParam(param: string | null): Venue["type"] | "all" {
+  if (!param) return "all";
+  return VALID_VENUE_TYPES.includes(param as Venue["type"]) ? (param as Venue["type"]) : "all";
+}
+
 export function VenuesContent() {
   const searchParams = useSearchParams();
+  const router = useRouter();
   const [venues, setVenues] = useState<Venue[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [filter, setFilter] = useState<Venue["type"] | "all">("all");
+
+  const filter = useMemo(() => typeFromParam(searchParams.get("type")), [searchParams]);
+
+  const setFilter = (newFilter: Venue["type"] | "all") => {
+    const params = new URLSearchParams(searchParams.toString());
+    if (newFilter === "all") params.delete("type");
+    else params.set("type", newFilter);
+    const q = params.toString();
+    router.push(q ? `/venues?${q}` : "/venues", { scroll: false });
+  };
 
   const queryString = [
     searchParams.get("date") && `date=${encodeURIComponent(searchParams.get("date")!)}`,
     searchParams.get("time") && `time=${encodeURIComponent(searchParams.get("time")!)}`,
     searchParams.get("party_size") && `party_size=${encodeURIComponent(searchParams.get("party_size")!)}`,
+    searchParams.get("type") && `type=${encodeURIComponent(searchParams.get("type")!)}`,
   ]
     .filter(Boolean)
     .join("&");
   const venueQuery = queryString ? `?${queryString}` : "";
 
+  const dateParam = searchParams.get("date");
+  const timeParam = searchParams.get("time");
+  const partySizeParam = searchParams.get("party_size");
+  const partySizeNum =
+    partySizeParam != null && partySizeParam !== "" && /^\d+$/.test(partySizeParam)
+      ? Math.min(20, Math.max(1, parseInt(partySizeParam, 10)))
+      : undefined;
+
   useEffect(() => {
     let cancelled = false;
+    setLoading(true);
     (async () => {
       try {
-        const res = await getVenues();
+        const params: Parameters<typeof getVenues>[0] = {};
+        if (filter !== "all") params.type = filter;
+        if (dateParam) params.date = dateParam;
+        if (timeParam) params.time = timeParam;
+        if (partySizeNum != null) params.party_size = partySizeNum;
+        const res = await getVenues(Object.keys(params).length > 0 ? params : undefined);
         if (!cancelled && res.success && res.data) {
           setVenues(Array.isArray(res.data) ? res.data : []);
         } else if (!res.success && res.message) {
@@ -46,7 +78,7 @@ export function VenuesContent() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [filter, dateParam, timeParam, partySizeNum]);
 
   if (loading) {
     return (
@@ -71,12 +103,9 @@ export function VenuesContent() {
     );
   }
 
-  const filtered =
-    filter === "all" ? venues : venues.filter((v) => v.type === filter);
-
   return (
     <div className="mt-8">
-      {/* Filter-Pills wie OpenTable */}
+      {/* Filter-Pills – wechseln aktualisiert URL und lädt gefilterte Liste vom Server */}
       <div className="mb-6 flex flex-wrap gap-2">
         <button
           type="button"
@@ -105,7 +134,7 @@ export function VenuesContent() {
         ))}
       </div>
 
-      {filtered.length === 0 ? (
+      {venues.length === 0 ? (
         <div className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] py-16 text-center">
           <p className="text-[var(--color-muted)]">
             {filter === "all"
@@ -115,7 +144,7 @@ export function VenuesContent() {
         </div>
       ) : (
         <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {filtered.map((venue) => (
+          {venues.map((venue) => (
             <li key={venue.id} className="flex">
               <Link
                 href={`/venues/${venue.id}${venueQuery}`}
@@ -141,7 +170,7 @@ export function VenuesContent() {
                     {venue.description ?? "\u00A0"}
                   </p>
                   <span className="mt-4 inline-flex shrink-0 items-center gap-1.5 text-sm font-semibold text-[var(--color-accent)]">
-                    Tisch reservieren
+                    {venue.type === "restaurant" ? "Tisch reservieren" : "Termin buchen"}
                     <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
                     </svg>
