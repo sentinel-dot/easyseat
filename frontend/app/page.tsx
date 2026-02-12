@@ -1,8 +1,19 @@
 import Link from "next/link";
 import { SiteLayout } from "@/components/layout/site-layout";
 import { HeroSearch } from "@/components/layout/hero-search";
+import { getPublicStats } from "@/lib/api/venues";
+import { VENUE_TYPES_ORDER, getVenueTypeLabel } from "@/lib/utils/venueType";
+import type { Venue } from "@/lib/types";
 
-export default function HomePage() {
+export default async function HomePage() {
+  let stats: { venueCount: number; bookingCountThisMonth: number } | null = null;
+  try {
+    const res = await getPublicStats();
+    if (res.success && res.data) stats = res.data;
+  } catch {
+    // Stats optional – Seite bleibt nutzbar
+  }
+
   return (
     <SiteLayout>
       {/* Hero: Such-Fokus wie OpenTable */}
@@ -16,7 +27,36 @@ export default function HomePage() {
               Restaurants, Friseure, Kosmetik und mehr – Termin direkt buchen.
             </p>
             <HeroSearch />
+            {stats && (
+              <p className="mt-4 text-sm text-[var(--color-muted)]" aria-live="polite">
+                Über <span className="font-semibold text-[var(--color-text-soft)]">{stats.venueCount}</span> Orte buchbar
+                {stats.bookingCountThisMonth > 0 && (
+                  <> · <span className="font-semibold text-[var(--color-text-soft)]">{stats.bookingCountThisMonth}</span> Buchungen diesen Monat</>
+                )}
+              </p>
+            )}
           </div>
+        </div>
+      </section>
+
+      {/* Beliebte Kategorien – Quick-Links */}
+      <section className="border-b border-[var(--color-border)] bg-[var(--color-surface)]">
+        <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6 sm:py-8">
+          <h2 className="mb-4 text-center text-sm font-medium text-[var(--color-muted)]">
+            Beliebte Kategorien
+          </h2>
+          <ul className="flex flex-wrap justify-center gap-3">
+            {(VENUE_TYPES_ORDER as Venue["type"][]).map((type) => (
+              <li key={type}>
+                <Link
+                  href={`/venues?type=${type}`}
+                  className="inline-flex items-center rounded-full border border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-2.5 text-sm font-medium text-[var(--color-text)] shadow-[var(--shadow-sm)] transition-colors hover:border-[var(--color-accent)] hover:bg-[var(--color-accent-muted)] hover:text-[var(--color-accent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent)] focus-visible:ring-offset-2"
+                >
+                  {getVenueTypeLabel(type)}
+                </Link>
+              </li>
+            ))}
+          </ul>
         </div>
       </section>
 

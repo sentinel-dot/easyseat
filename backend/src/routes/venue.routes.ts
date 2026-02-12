@@ -49,6 +49,10 @@ router.get('/', async (req, res) =>
     const time = (req.query.time as string | undefined)?.trim() || undefined;
     const timeWindow = time ? timeWindowAround(time) : undefined;
 
+    const location = (req.query.location as string | undefined)?.trim() || undefined;
+    const sortParam = req.query.sort as string | undefined;
+    const sort = sortParam === 'distance' ? 'distance' : 'name';
+
     const opts: Parameters<typeof VenueService.getAllVenues>[0] = {};
     if (type) opts.type = type;
     if (date) opts.date = date;
@@ -57,6 +61,8 @@ router.get('/', async (req, res) =>
         opts.timeWindowStart = timeWindow.timeWindowStart;
         opts.timeWindowEnd = timeWindow.timeWindowEnd;
     }
+    if (location) opts.location = location;
+    if (sort) opts.sort = sort;
     const hasFilters = Object.keys(opts).length > 0;
 
     try 
@@ -79,6 +85,28 @@ router.get('/', async (req, res) =>
     }
     finally
     {
+        logger.info('Response sent');
+        logger.separator();
+    }
+});
+
+/**
+ * GET /venues/stats
+ * Öffentliche Statistiken für Homepage: venueCount, bookingCountThisMonth
+ */
+router.get('/stats', async (req, res) => {
+    logger.separator();
+    logger.info('Received request - GET /venues/stats');
+    try {
+        const stats = await VenueService.getPublicStats();
+        res.json({ success: true, data: stats } as ApiResponse<{ venueCount: number; bookingCountThisMonth: number }>);
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: 'Failed to retrieve stats',
+            error: process.env.NODE_ENV === 'development' ? String(error) : undefined
+        } as ApiResponse<void>);
+    } finally {
         logger.info('Response sent');
         logger.separator();
     }

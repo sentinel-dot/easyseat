@@ -17,8 +17,9 @@ dotenv.config({ path: '.env' });
 export class VenueService
 {
     /**
-     * Holt alle aktiven Venues, optional gefiltert nach Typ und Verfügbarkeit (Datum, party_size, Zeitfenster).
-     * Wenn date gesetzt ist, werden nur Venues zurückgegeben, die an dem Tag mindestens einen buchbaren Slot haben.
+     * Holt alle aktiven Venues, optional gefiltert nach Typ, Ort/PLZ und Verfügbarkeit (Datum, party_size, Zeitfenster).
+     * location: Ort oder PLZ – bei nur Ziffern wird postal_code Prefix-Match, sonst city LIKE verwendet.
+     * sort: 'name' (default) oder 'distance' (bei gesetztem location: gleiche Stadt/PLZ zuerst).
      */
     static async getAllVenues(options?: {
         type?: Venue['type'];
@@ -26,14 +27,20 @@ export class VenueService
         party_size?: number;
         timeWindowStart?: string;
         timeWindowEnd?: string;
+        location?: string;
+        sort?: 'name' | 'distance';
     }): Promise<Venue[]>
     {
         const typeFilter = options?.type;
         const filterByAvailability = !!options?.date;
+        const location = (options?.location ?? '').trim();
+        const sort = options?.sort ?? 'name';
         logger.info('Fetching all venues...', {
             type: typeFilter,
             filterByAvailability,
-            date: options?.date
+            date: options?.date,
+            location: location || undefined,
+            sort
         });
 
         let conn;
@@ -49,12 +56,34 @@ export class VenueService
                 FROM venues
                 WHERE is_active = true
             `;
-            const params: (Venue['type'] | number)[] = [];
+            const params: (string | number | Venue['type'])[] = [];
             if (typeFilter) {
                 query += ' AND type = ?';
                 params.push(typeFilter);
             }
-            query += ' ORDER BY name ASC';
+            if (location) {
+                const isNumeric = /^\d+$/.test(location);
+                if (isNumeric) {
+                    query += ' AND (postal_code LIKE ? OR city LIKE ?)';
+                    params.push(`${location}%`, `%${location}%`);
+                } else {
+                    query += ' AND (city LIKE ? OR postal_code LIKE ?)';
+                    const term = `%${location}%`;
+                    params.push(term, term);
+                }
+            }
+            if (sort === 'distance' && location) {
+                const isNumeric = /^\d+$/.test(location);
+                if (isNumeric) {
+                    query += ' ORDER BY (postal_code = ?) DESC, (postal_code LIKE ?) DESC, name ASC';
+                    params.push(location, `${location}%`);
+                } else {
+                    query += ' ORDER BY (city = ?) DESC, (city LIKE ?) DESC, name ASC';
+                    params.push(location, `${location}%`);
+                }
+            } else {
+                query += ' ORDER BY name ASC';
+            }
 
             let venues = await conn.query(query, params) as Venue[];
 
@@ -439,6 +468,32 @@ export class VenueService
             return venues.length > 0 ? venues[0] : null;
         } catch (error) {
             logger.error('Error fetching venue for admin', error);
+            throw error;
+        } finally {
+            if (conn) conn.release();
+        }
+    }
+
+    /**
+     * Öffentliche Statistiken für Homepage (Social Proof): Anzahl aktiver Venues, Buchungen diesen Monat.
+     */
+    static async getPublicStats(): Promise<{ venueCount: number; bookingCountThisMonth: number }> {
+        let conn;
+        try {
+            conn = await getConnection();
+            const startOfMonth = new Date();
+            startOfMonth.setDate(1);
+            startOfMonth.setHours(0, 0, 0, 0);
+            const startStr = startOfMonth.toISOString().slice(0, 19).replace('T', ' ');
+            const [venueRows, bookingRows] = (await Promise.all([
+                conn.query('SELECT COUNT(*) AS c FROM venues WHERE is_active = true'),
+                conn.query('SELECT COUNT(*) AS c FROM bookings WHERE created_at >= ? AND status != ?', [startStr, 'cancelled'])
+            ])) as { c: number | bigint }[][];
+            const venueCount = Number(venueRows[0]?.c ?? 0);
+            const bookingCountThisMonth = Number(bookingRows[0]?.c ?? 0);
+            return { venueCount, bookingCountThisMonth };
+        } catch (error) {
+            logger.error('Error fetching public stats', error);
             throw error;
         } finally {
             if (conn) conn.release();

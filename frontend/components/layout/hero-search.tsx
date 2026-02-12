@@ -27,6 +27,7 @@ function getDefaultTime(): string {
 
 export function HeroSearch() {
   const router = useRouter();
+  const [location, setLocation] = useState("");
   const [date, setDate] = useState(getDefaultDate());
   const [time, setTime] = useState(getDefaultTime());
   const [partySize, setPartySize] = useState(DEFAULT_PARTY_SIZE);
@@ -37,10 +38,12 @@ export function HeroSearch() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const params = new URLSearchParams();
+    if (location.trim()) params.set("location", location.trim());
     if (date) params.set("date", date);
     if (time) params.set("time", time);
     if (showPartySize && partySize > 0) params.set("party_size", String(partySize));
     if (venueType && venueType !== "all") params.set("type", venueType);
+    if (location.trim()) params.set("sort", "distance");
     const query = params.toString();
     router.push(query ? `/venues?${query}` : "/venues");
   };
@@ -51,10 +54,23 @@ export function HeroSearch() {
       className="mx-auto mt-8 max-w-4xl rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] p-4 shadow-[var(--shadow-sm)] sm:flex sm:flex-wrap sm:items-end sm:gap-3 sm:p-4"
       aria-label="Suche nach Termin"
     >
-      <div className={`grid gap-4 sm:flex-1 sm:gap-3 ${showPartySize ? "sm:grid-cols-4" : "sm:grid-cols-3"}`}>
+      <div className={`grid gap-4 sm:flex-1 sm:gap-3 ${showPartySize ? "sm:grid-cols-5" : "sm:grid-cols-4"}`}>
+        <div>
+          <label htmlFor="hero-location" className="mb-1 block text-xs font-medium text-[var(--color-muted)]">
+            Ort oder PLZ
+          </label>
+          <input
+            id="hero-location"
+            type="text"
+            value={location}
+            onChange={(e) => setLocation(e.target.value)}
+            placeholder="z. B. Frankfurt"
+            className="w-full rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2.5 text-sm text-[var(--color-text)] placeholder:text-[var(--color-muted)] focus:border-[var(--color-accent)] focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] focus:ring-offset-0"
+          />
+        </div>
         <div>
           <label htmlFor="hero-type" className="mb-1 block text-xs font-medium text-[var(--color-muted)]">
-            Was suchen Sie?
+            Kategorie
           </label>
           <select
             id="hero-type"
@@ -62,7 +78,7 @@ export function HeroSearch() {
             onChange={(e) => setVenueType(e.target.value as VenueTypeOrAll)}
             className="w-full rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2.5 text-sm text-[var(--color-text)] focus:border-[var(--color-accent)] focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] focus:ring-offset-0"
           >
-            <option value="all">Alle Kategorien</option>
+            <option value="all">Beliebig</option>
             {VENUE_TYPES_ORDER.map((type) => (
               <option key={type} value={type}>
                 {getVenueTypeLabel(type)}
