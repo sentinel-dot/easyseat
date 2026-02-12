@@ -31,11 +31,11 @@ ALTER TABLE bookings AUTO_INCREMENT = 1;
 
 
 
--- Insert venues
-INSERT INTO venues (name, type, email, phone, address, city, postal_code, description, created_at, updated_at) VALUES
-('Bella Vista Restaurant', 'restaurant', 'bella@vista.com', '+49 30 12345678', 'Hauptstraße 123', 'Berlin', '10115', 'Authentische italienische Küche im Herzen Berlins', NOW(), NOW()),
-('Salon Schmidt', 'hair_salon', 'info@salon-schmidt.com', '+49 30 87654321', 'Friedrichstraße 456', 'Berlin', '10117', 'Moderner Friseursalon mit erfahrenen Stylisten', NOW(), NOW()),
-('Leloluxee Lashes', 'beauty_salon', 'lea@leloluxee-lashes.de', NULL, 'Theodor-Heuss-Straße 6', 'Egelsbach', '63229', 'Wimpern & Brauen – Lashlifting, Browlifting, Zahnschmuck. Deine Ansprechpartnerin: Lea.', NOW(), NOW());
+-- Insert venues (image_url: passende Stock-Bilder von Unsplash)
+INSERT INTO venues (name, type, email, phone, address, city, postal_code, description, image_url, created_at, updated_at) VALUES
+('Bella Vista Restaurant', 'restaurant', 'bella@vista.com', '+49 30 12345678', 'Hauptstraße 123', 'Berlin', '10115', 'Authentische italienische Küche im Herzen Berlins', 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=800', NOW(), NOW()),
+('Salon Schmidt', 'hair_salon', 'info@salon-schmidt.com', '+49 30 87654321', 'Friedrichstraße 456', 'Berlin', '10117', 'Moderner Friseursalon mit erfahrenen Stylisten', 'https://images.unsplash.com/photo-1560066984-138dadb4c035?w=800', NOW(), NOW()),
+('Leloluxee Lashes', 'beauty_salon', 'lea@leloluxee-lashes.de', NULL, 'Theodor-Heuss-Straße 6', 'Egelsbach', '63229', 'Wimpern & Brauen – Lashlifting, Browlifting, Zahnschmuck. Deine Ansprechpartnerin: Lea.', 'https://images.unsplash.com/photo-1570172619644-dfd03ed5d881?w=800', NOW(), NOW());
 
 -- Insert admin users
 -- Default password: admin123 (bcrypt hash with 10 rounds)

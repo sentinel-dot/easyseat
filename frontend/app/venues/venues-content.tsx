@@ -150,8 +150,20 @@ export function VenuesContent() {
                 href={`/venues/${venue.id}${venueQuery}`}
                 className="card-hover flex h-full w-full flex-col overflow-hidden rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)]"
               >
-                {/* Bild-Platzhalter (OpenTable-Style: Bild oben) */}
-                <div className="h-36 shrink-0 bg-[var(--color-page)]" aria-hidden />
+                {/* Venue-Bild oder Platzhalter */}
+                {venue.image_url ? (
+                  <div className="relative h-36 w-full shrink-0 overflow-hidden bg-[var(--color-page)]">
+                    <img
+                      src={venue.image_url}
+                      alt=""
+                      className="h-full w-full object-cover"
+                      loading="lazy"
+                      sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                    />
+                  </div>
+                ) : (
+                  <div className="h-36 shrink-0 bg-[var(--color-page)]" aria-hidden />
+                )}
                 <div className="flex min-h-0 flex-1 flex-col p-4">
                   <span className="text-xs font-medium uppercase tracking-wide text-[var(--color-muted)]">
                     {getVenueTypeLabel(venue.type)}

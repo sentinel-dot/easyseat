@@ -44,7 +44,7 @@ export class VenueService
 
             let query = `
                 SELECT id, name, type, email, phone, address, city, postal_code, country,
-                    description, website_url, booking_advance_days, booking_advance_hours, cancellation_hours,
+                    description, image_url, website_url, booking_advance_days, booking_advance_hours, cancellation_hours,
                     require_phone, require_deposit, deposit_amount, is_active, created_at, updated_at
                 FROM venues
                 WHERE is_active = true
@@ -145,7 +145,7 @@ export class VenueService
             // Venue abrufen
             const venues = await conn.query(`
                 SELECT id, name, type, email, phone, address, city, postal_code, country,
-                       description, website_url, booking_advance_days, booking_advance_hours, cancellation_hours,
+                       description, image_url, website_url, booking_advance_days, booking_advance_hours, cancellation_hours,
                        require_phone, require_deposit, deposit_amount, is_active, created_at, updated_at
                 FROM venues
                 WHERE id = ?
@@ -252,7 +252,7 @@ export class VenueService
             conn = await getConnection();
             const venues = await conn.query(`
                 SELECT id, name, type, email, phone, address, city, postal_code, country,
-                    description, website_url, booking_advance_days, booking_advance_hours, cancellation_hours,
+                    description, image_url, website_url, booking_advance_days, booking_advance_hours, cancellation_hours,
                     require_phone, require_deposit, deposit_amount, is_active, created_at, updated_at
                 FROM venues
                 ORDER BY name ASC
@@ -280,6 +280,7 @@ export class VenueService
         postal_code?: string;
         country?: string;
         description?: string;
+        image_url?: string;
         website_url?: string;
         booking_advance_days?: number;
         booking_advance_hours?: number;
@@ -296,9 +297,9 @@ export class VenueService
             const result = await conn.query(
                 `INSERT INTO venues (
                     name, type, email, phone, address, city, postal_code, country,
-                    description, website_url, booking_advance_days, booking_advance_hours, cancellation_hours,
+                    description, image_url, website_url, booking_advance_days, booking_advance_hours, cancellation_hours,
                     require_phone, require_deposit, deposit_amount, is_active
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
                 [
                     data.name,
                     data.type,
@@ -309,6 +310,7 @@ export class VenueService
                     data.postal_code ?? null,
                     data.country ?? 'DE',
                     data.description ?? null,
+                    data.image_url ?? null,
                     data.website_url ?? null,
                     data.booking_advance_days ?? 30,
                     data.booking_advance_hours ?? 48,
@@ -322,7 +324,7 @@ export class VenueService
             const insertResult = result as { insertId: number };
             const id = insertResult.insertId;
             const rows = await conn.query(
-                'SELECT id, name, type, email, phone, address, city, postal_code, country, description, website_url, booking_advance_days, booking_advance_hours, cancellation_hours, require_phone, require_deposit, deposit_amount, is_active, created_at, updated_at FROM venues WHERE id = ?',
+                'SELECT id, name, type, email, phone, address, city, postal_code, country, description, image_url, website_url, booking_advance_days, booking_advance_hours, cancellation_hours, require_phone, require_deposit, deposit_amount, is_active, created_at, updated_at FROM venues WHERE id = ?',
                 [id]
             ) as Venue[];
             return rows[0];
@@ -349,6 +351,7 @@ export class VenueService
             postal_code?: string;
             country?: string;
             description?: string;
+            image_url?: string;
             website_url?: string;
             booking_advance_days?: number;
             booking_advance_hours?: number;
@@ -379,6 +382,7 @@ export class VenueService
                 postal_code: updates.postal_code,
                 country: updates.country,
                 description: updates.description,
+                image_url: updates.image_url,
                 website_url: updates.website_url,
                 booking_advance_days: updates.booking_advance_days,
                 booking_advance_hours: updates.booking_advance_hours,
@@ -396,7 +400,7 @@ export class VenueService
             }
             if (fields.length === 0) {
                 const rows = await conn.query(
-                    'SELECT id, name, type, email, phone, address, city, postal_code, country, description, website_url, booking_advance_days, booking_advance_hours, cancellation_hours, require_phone, require_deposit, deposit_amount, is_active, created_at, updated_at FROM venues WHERE id = ?',
+                    'SELECT id, name, type, email, phone, address, city, postal_code, country, description, image_url, website_url, booking_advance_days, booking_advance_hours, cancellation_hours, require_phone, require_deposit, deposit_amount, is_active, created_at, updated_at FROM venues WHERE id = ?',
                     [venueId]
                 ) as Venue[];
                 return rows[0];
@@ -407,7 +411,7 @@ export class VenueService
                 values
             );
             const rows = await conn.query(
-                'SELECT id, name, type, email, phone, address, city, postal_code, country, description, website_url, booking_advance_days, booking_advance_hours, cancellation_hours, require_phone, require_deposit, deposit_amount, is_active, created_at, updated_at FROM venues WHERE id = ?',
+                'SELECT id, name, type, email, phone, address, city, postal_code, country, description, image_url, website_url, booking_advance_days, booking_advance_hours, cancellation_hours, require_phone, require_deposit, deposit_amount, is_active, created_at, updated_at FROM venues WHERE id = ?',
                 [venueId]
             ) as Venue[];
             return rows[0];
@@ -428,7 +432,7 @@ export class VenueService
             conn = await getConnection();
             const venues = await conn.query(`
                 SELECT id, name, type, email, phone, address, city, postal_code, country,
-                    description, website_url, booking_advance_days, booking_advance_hours, cancellation_hours,
+                    description, image_url, website_url, booking_advance_days, booking_advance_hours, cancellation_hours,
                     require_phone, require_deposit, deposit_amount, is_active, created_at, updated_at
                 FROM venues WHERE id = ?
             `, [venueId]) as Venue[];

@@ -18,6 +18,7 @@ CREATE TABLE venues (
     postal_code VARCHAR(20),
     country VARCHAR(3) DEFAULT 'DE',
     description TEXT,
+    image_url VARCHAR(500),
     website_url VARCHAR(500),
     booking_advance_days INT DEFAULT 30,
     cancellation_hours INT DEFAULT 24,

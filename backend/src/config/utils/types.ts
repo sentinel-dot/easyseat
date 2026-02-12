@@ -49,6 +49,7 @@ export interface Venue {
     postal_code?: string;
     country: string;
     description?: string;
+    image_url?: string;
     website_url?: string;
     booking_advance_days: number;
     booking_advance_hours: number;         // Mindestvorlaufzeit für Kundenbuchungen (z.B. 48 Stunden)

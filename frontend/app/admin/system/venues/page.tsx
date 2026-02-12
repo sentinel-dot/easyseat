@@ -40,6 +40,7 @@ export default function SystemVenuesPage() {
     postal_code: "",
     country: "DE",
     description: "",
+    image_url: "",
     website_url: "",
     booking_advance_days: 30,
     booking_advance_hours: 48,
@@ -75,6 +76,7 @@ export default function SystemVenuesPage() {
       postal_code: "",
       country: "DE",
       description: "",
+      image_url: "",
       website_url: "",
       booking_advance_days: 30,
       booking_advance_hours: 48,
@@ -97,6 +99,7 @@ export default function SystemVenuesPage() {
       postal_code: v.postal_code ?? "",
       country: v.country ?? "DE",
       description: v.description ?? "",
+      image_url: v.image_url ?? "",
       website_url: v.website_url ?? "",
       booking_advance_days: v.booking_advance_days ?? 30,
       booking_advance_hours: v.booking_advance_hours ?? 48,
@@ -121,6 +124,7 @@ export default function SystemVenuesPage() {
           postal_code: form.postal_code || undefined,
           country: form.country,
           description: form.description || undefined,
+          image_url: form.image_url || undefined,
           website_url: form.website_url || undefined,
           booking_advance_days: form.booking_advance_days,
           booking_advance_hours: form.booking_advance_hours,
@@ -143,6 +147,7 @@ export default function SystemVenuesPage() {
           postal_code: form.postal_code || undefined,
           country: form.country,
           description: form.description || undefined,
+          image_url: form.image_url || undefined,
           website_url: form.website_url || undefined,
           booking_advance_days: form.booking_advance_days,
           booking_advance_hours: form.booking_advance_hours,
@@ -287,6 +292,13 @@ export default function SystemVenuesPage() {
                 label="Land"
                 value={form.country}
                 onChange={(e) => setForm((f) => ({ ...f, country: e.target.value }))}
+              />
+              <Input
+                label="Bild-URL"
+                type="url"
+                value={form.image_url}
+                onChange={(e) => setForm((f) => ({ ...f, image_url: e.target.value }))}
+                placeholder="https://…"
               />
               <Input
                 label="Website"

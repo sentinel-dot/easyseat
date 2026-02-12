@@ -185,7 +185,7 @@ router.patch('/venue/settings', requireRole('owner', 'staff'), async (req: Reque
         res.status(403).json({ success: false, message: 'Kein Venue zugewiesen' });
         return;
     }
-    const { booking_advance_hours: rawAdvance, cancellation_hours: rawCancel } = req.body;
+    const { booking_advance_hours: rawAdvance, cancellation_hours: rawCancel, image_url } = req.body;
     const parseNonNegative = (v: unknown): number | undefined => {
         if (v === undefined || v === null) return undefined;
         const n = typeof v === 'number' ? v : Number(v);
@@ -193,6 +193,7 @@ router.patch('/venue/settings', requireRole('owner', 'staff'), async (req: Reque
     };
     const booking_advance_hours = parseNonNegative(rawAdvance);
     const cancellation_hours = parseNonNegative(rawCancel);
+    const imageUrl = image_url === undefined ? undefined : (typeof image_url === 'string' ? image_url : image_url === null ? null : undefined);
     if (rawAdvance !== undefined && rawAdvance !== null && booking_advance_hours === undefined) {
         res.status(400).json({ success: false, message: 'booking_advance_hours muss eine positive Zahl sein' });
         return;
@@ -202,7 +203,7 @@ router.patch('/venue/settings', requireRole('owner', 'staff'), async (req: Reque
         return;
     }
     try {
-        await DashboardService.updateVenueSettings(venueId, { booking_advance_hours, cancellation_hours });
+        await DashboardService.updateVenueSettings(venueId, { booking_advance_hours, cancellation_hours, image_url: imageUrl });
         res.json({ success: true, message: 'Einstellungen erfolgreich aktualisiert' });
     } catch (error) {
         res.status(500).json({ success: false, message: 'Fehler beim Aktualisieren der Einstellungen' });

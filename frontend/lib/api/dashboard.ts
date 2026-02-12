@@ -166,6 +166,7 @@ export async function getVenueSettings(): Promise<{
 export async function updateVenueSettings(updates: {
   booking_advance_hours?: number;
   cancellation_hours?: number;
+  image_url?: string | null;
 }): Promise<{ success: boolean; message?: string }> {
   return dashboardApiClient("/dashboard/venue/settings", {
     method: "PATCH",

@@ -70,6 +70,18 @@ export default async function VenuePage({ params, searchParams }: Props) {
         </div>
       </div>
 
+      {/* Hero-Bild (falls vorhanden) */}
+      {venue.image_url && (
+        <div className="relative h-48 w-full overflow-hidden bg-[var(--color-page)] sm:h-56 md:h-64">
+          <img
+            src={venue.image_url}
+            alt=""
+            className="h-full w-full object-cover object-center"
+            sizes="(max-width: 768px) 100vw, 1152px"
+          />
+        </div>
+      )}
+
       {/* Header: Name, Kategorie, Adresse */}
       <header className="border-b border-[var(--color-border)] bg-[var(--color-surface)]">
         <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-8">

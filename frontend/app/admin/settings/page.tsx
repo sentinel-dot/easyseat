@@ -22,6 +22,7 @@ export default function AdminSettingsPage() {
   const [venueForm, setVenueForm] = useState({
     booking_advance_hours: 48,
     cancellation_hours: 24,
+    image_url: "",
   });
   const [passwordForm, setPasswordForm] = useState({
     currentPassword: "",
@@ -40,6 +41,7 @@ export default function AdminSettingsPage() {
           setVenueForm({
             booking_advance_hours: res.data.booking_advance_hours ?? 48,
             cancellation_hours: res.data.cancellation_hours ?? 24,
+            image_url: res.data.image_url ?? "",
           });
         } else setError(res.message ?? "Fehler beim Laden.");
       })
@@ -58,6 +60,7 @@ export default function AdminSettingsPage() {
       const res = await updateVenueSettings({
         booking_advance_hours: venueForm.booking_advance_hours,
         cancellation_hours: venueForm.cancellation_hours,
+        image_url: venueForm.image_url || null,
       });
       if (res.success) {
         toast.success("Einstellungen gespeichert.");
@@ -160,6 +163,18 @@ export default function AdminSettingsPage() {
           />
           <p className="text-xs text-[var(--color-muted)]">
             Kunden können bis zu dieser Stunde vor dem Termin kostenfrei stornieren.
+          </p>
+          <Input
+            label="Bild-URL (Cover für Ihren Ort)"
+            type="url"
+            value={venueForm.image_url}
+            onChange={(e) =>
+              setVenueForm((f) => ({ ...f, image_url: e.target.value }))
+            }
+            placeholder="https://…"
+          />
+          <p className="text-xs text-[var(--color-muted)]">
+            Optional. Wird auf der Orteseite und in der Übersicht angezeigt.
           </p>
           <Button type="submit" isLoading={venueSaving}>
             Buchungsregeln speichern
