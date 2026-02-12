@@ -194,7 +194,7 @@ router.post('/validate', async (req, res) =>
     } = req.body;
 
 
-    if (
+    if     (
         venueId == null ||           // Prüft null UND undefined
         serviceId == null || 
         bookingDate == null || 
@@ -203,10 +203,10 @@ router.post('/validate', async (req, res) =>
         partySize == null            // ← Erlaubt jetzt 0!
     )
     {
-        logger.warn('Missing one or more required fiels', partySize);
+        logger.warn('Missing one or more required fields', { partySize });
         return res.status(400).json({
             success: false,
-            message: 'Missing one or more required fiels: venueId, serviceId, bookingDate, startTime, endTime, partySize'
+            message: 'Missing one or more required fields: venueId, serviceId, bookingDate, startTime, endTime, partySize'
         } as ApiResponse<void>);
     }
 
@@ -242,7 +242,7 @@ router.post('/validate', async (req, res) =>
     } 
     catch (error) 
     {
-        logger.error('Error validating booking request');
+        logger.error('Error validating booking request', error);
         res.status(500).json({
             success: false, 
             message: 'Failed to validate booking',

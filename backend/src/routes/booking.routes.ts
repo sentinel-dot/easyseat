@@ -228,7 +228,7 @@ router.post('/', async (req: Request, res: Response) =>
 
         // ALLGEMEINER SERVERFEHLER
         // 500 Internal Server Error = Etwas ist auf dem Server schiefgelaufen
-        res.status(500).json({
+        return res.status(500).json({
             success: false,
             message: 'Failed to create booking',
             error: process.env.NODE_ENV === 'development' ? String(error) : undefined

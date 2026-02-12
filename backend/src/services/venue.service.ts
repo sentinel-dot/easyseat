@@ -1,5 +1,3 @@
-import dotenv from 'dotenv';
-
 import { createLogger } from '../config/utils/logger';
 import {
     Venue,
@@ -11,8 +9,6 @@ import { getConnection } from '../config/database';
 import { AvailabilityService } from './availability.service';
 
 const logger = createLogger('venue.service');
-
-dotenv.config({ path: '.env' });
 
 export class VenueService
 {

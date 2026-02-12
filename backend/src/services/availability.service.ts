@@ -1,5 +1,3 @@
-import dotenv from 'dotenv';
-
 import { createLogger } from '../config/utils/logger';
 import { getConnection } from '../config/database';
 
@@ -12,20 +10,20 @@ import {
 
 const logger = createLogger('availability.service');
 
-dotenv.config({ path: '.env' });
-
-
 export class AvailabilityService 
 {
     /*
-     * Konvertiert Zeitstring (HH:MM) in Minuten seit Mitternacht
+     * Konvertiert Zeitstring (HH:MM) in Minuten seit Mitternacht.
+     * Ungültiges Format (z. B. "12", "12:30:00") führt zu NaN – Aufrufer sollten HH:MM validieren.
      */
     static timeStringToMinutes(timeStr: string): number
     {
-        // Splittet Zeit in Stunden und Minuten
-        const [hours, minutes] = timeStr.split(':').map(Number);
-
-        // Gibt die Gesamtminuten zurück
+        if (!timeStr || typeof timeStr !== 'string') return NaN;
+        const match = timeStr.trim().match(/^(\d{1,2}):(\d{2})$/);
+        if (!match) return NaN;
+        const hours = parseInt(match[1], 10);
+        const minutes = parseInt(match[2], 10);
+        if (hours < 0 || hours > 23 || minutes < 0 || minutes > 59) return NaN;
         return hours * 60 + minutes;
     }
 
@@ -1191,7 +1189,7 @@ export class AvailabilityService
             });
         }
 
-        // Return Vailidierungs-Ergebnis
+        // Return Validierungs-Ergebnis
         return {
             valid: errors.length === 0,
             errors

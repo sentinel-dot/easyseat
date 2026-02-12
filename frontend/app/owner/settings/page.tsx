@@ -2,11 +2,8 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { toast } from "sonner";
-import {
-  getVenueSettings,
-  updateVenueSettings,
-  changePassword,
-} from "@/lib/api/owner";
+import { getVenueSettings, updateVenueSettings } from "@/lib/api/owner";
+import { changePassword } from "@/lib/api/auth";
 import type { Venue } from "@/lib/types";
 import { Card, CardTitle } from "@/components/shared/card";
 import { Button } from "@/components/shared/button";

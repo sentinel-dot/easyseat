@@ -118,7 +118,8 @@ app.use((req, res) => {
     });
 });
 
-// Error Handler (MUSS nach allen anderen Routes kommen)
+// Error Handler (MUSS nach allen anderen Routes kommen).
+// Express 5 leitet abgelehnte Promises aus async-Route-Handlern automatisch an next(err) weiter.
 app.use(errorLogger);
 
 const startServer = async() => {
@@ -200,12 +201,12 @@ const startServer = async() => {
             logger.info('   PATCH  /owner/availability/:id - Update availability rule');
             logger.info('   GET    /owner/venue/settings - Get venue settings');
             logger.info('   PATCH  /owner/venue/settings - Update venue settings');
-            logger.info('   PATCH  /owner/me/password - Change password');
+            logger.info('   (Passwort ändern: PATCH /auth/me/password für alle Rollen)');
             logger.separator();
         });
     } catch (error) {
         logger.error('Failed to start server:', error);
-        process.exit();
+        process.exit(1);
     }
 };
 

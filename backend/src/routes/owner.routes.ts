@@ -2,7 +2,6 @@ import { Router, Request, Response } from 'express';
 import { authenticateAndLoadUser, requireRole } from '../middleware/auth.middleware';
 import { OwnerService } from '../services/owner.service';
 import { getAuditLogForBooking } from '../services/audit.service';
-import { changePassword } from '../services/auth.service';
 import { BookingService } from '../services/booking.service';
 import { VenueService } from '../services/venue.service';
 import { createLogger } from '../config/utils/logger';
@@ -258,8 +257,11 @@ router.get('/venue/settings', async (req: Request, res: Response) => {
     }
     try {
         const venue = await VenueService.getVenueById(venueId);
-        if (!venue) res.status(404).json({ success: false, message: 'Venue nicht gefunden' });
-        else res.json({ success: true, data: venue });
+        if (!venue) {
+            res.status(404).json({ success: false, message: 'Venue nicht gefunden' });
+            return;
+        }
+        res.json({ success: true, data: venue });
     } catch (error) {
         logger.error('Error fetching venue settings', error);
         res.status(500).json({ success: false, message: 'Fehler beim Laden der Einstellungen' });
@@ -295,25 +297,6 @@ router.patch('/venue/settings', async (req: Request, res: Response) => {
     } catch (error) {
         res.status(500).json({ success: false, message: 'Fehler beim Aktualisieren der Einstellungen' });
     }
-});
-
-router.patch('/me/password', async (req: Request, res: Response) => {
-    const userId = req.jwtPayload?.userId;
-    if (!userId) {
-        res.status(401).json({ success: false, message: 'Nicht authentifiziert' });
-        return;
-    }
-    const { currentPassword, newPassword } = req.body;
-    if (!currentPassword || !newPassword) {
-        res.status(400).json({ success: false, message: 'Aktuelles Passwort und neues Passwort sind erforderlich' });
-        return;
-    }
-    const result = await changePassword(userId, currentPassword, newPassword);
-    if (!result.success) {
-        res.status(400).json({ success: false, message: result.message });
-        return;
-    }
-    res.json({ success: true, message: result.data?.message || 'Passwort erfolgreich geändert' });
 });
 
 export default router;

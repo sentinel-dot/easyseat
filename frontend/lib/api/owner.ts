@@ -197,12 +197,3 @@ export async function updateVenueSettings(updates: {
   });
 }
 
-export async function changePassword(
-  currentPassword: string,
-  newPassword: string
-): Promise<{ success: boolean; message?: string }> {
-  return ownerApiClient("/owner/me/password", {
-    method: "PATCH",
-    body: JSON.stringify({ currentPassword, newPassword }),
-  });
-}

@@ -81,6 +81,8 @@ export interface TimeSlot {
   end_time: string;
   available: boolean;
   staff_member_id?: number;
+  /** Nur bei kapazitätsbasierten Services (z. B. Restaurant) gesetzt */
+  remaining_capacity?: number;
 }
 
 export interface DayAvailability {

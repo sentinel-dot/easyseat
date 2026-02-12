@@ -3,6 +3,7 @@ import { createLogger } from '../config/utils/logger';
 import { VenueService } from '../services/venue.service';
 import { Venue, VenueWithStaff, ApiResponse, Booking } from '../config/utils/types';
 import { BookingService } from '../services/booking.service';
+import { authenticateToken, requireVenueAccess } from '../middleware/auth.middleware';
 
 const router = express.Router();
 const logger = createLogger('venue.routes');
@@ -74,7 +75,7 @@ router.get('/', async (req, res) =>
     } 
     catch (error) 
     {     
-        res.status(500).json({
+        return res.status(500).json({
             success: false,
             message: 'Failed to retrieve venues',
             error: process.env.NODE_ENV === 'development' ? String(error) : undefined
@@ -91,7 +92,7 @@ router.get('/stats', async (req, res) => {
         const stats = await VenueService.getPublicStats();
         res.json({ success: true, data: stats } as ApiResponse<{ venueCount: number; bookingCountThisMonth: number }>);
     } catch (error) {
-        res.status(500).json({
+        return res.status(500).json({
             success: false,
             message: 'Failed to retrieve stats',
             error: process.env.NODE_ENV === 'development' ? String(error) : undefined
@@ -137,7 +138,7 @@ router.get('/:id', async (req, res) =>
     catch (error) 
     {
         logger.error('Failed to retrieve venue details', error);
-        res.status(500).json({
+        return res.status(500).json({
             success: false,
             message: 'Failed to retrieve venue',
             error: process.env.NODE_ENV === 'development' ? String(error) : undefined
@@ -178,7 +179,7 @@ router.get('/:id', async (req, res) =>
  *      data: [...array von bookings]
  * }
  */
-router.get('/:venueId/bookings', async (req: Request<{ venueId: string }>, res: Response) => 
+router.get('/:venueId/bookings', authenticateToken, requireVenueAccess, async (req: Request<{ venueId: string }>, res: Response) => 
 {
     const venueId = parseInt(req.params.venueId);
 
@@ -237,7 +238,7 @@ router.get('/:venueId/bookings', async (req: Request<{ venueId: string }>, res: 
     catch (error) 
     {
         logger.error('Error fetching venue bookings', error);
-        res.status(500).json({
+        return res.status(500).json({
             success: false,
             message: 'Failed to fetch bookings',
             error: process.env.NODE_ENV === 'development' ? String(error) : undefined
