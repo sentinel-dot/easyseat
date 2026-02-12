@@ -390,7 +390,7 @@ export class AvailabilityService
                 }
             }
 
-            // Alles ok - Slot verfügbarValidating isTimeSlotAvailable...
+            // Alles ok – Slot verfügbar
             logger.info('Time slot availability check passed');
 
             return {
@@ -510,14 +510,14 @@ export class AvailabilityService
                             //,service.buffer_after_minutes || 0                    // ];   
                         );
 
-                        // Erstelle ein neuen Array und füge staff_member_id zu jedem Slot hinzu
+                        // Erstelle einen neuen Array und füge staff_member_id zu jedem Slot hinzu
                         const slotsWithStaff = staffSlots.map(slot => ({            // So würde das Array danach aussehen
                             ...slot, // Kopiert alle Properties von staffSlots      // const slotsWithStaff = [
                             staff_member_id: staffId                                //   { start_time: '09:00', end_time: '09:30', duration_minutes: 30, staff_member_id: 5 }
                         }));                                                        // ];
 
                         // Füge alle Slots zum Gesamtarray hinzu
-                        availableSlots.push(...slotsWithStaff);                     // Ohne dem ... würde ich ein Array in ein Array pushen. So wird davor das Array 'entpackt'
+                        availableSlots.push(...slotsWithStaff);                     // Ohne das ... würde ich ein Array in ein Array pushen. So wird davor das Array 'entpackt'
                     }
                 }
             }

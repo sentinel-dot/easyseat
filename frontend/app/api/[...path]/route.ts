@@ -37,11 +37,20 @@ export async function DELETE(
   return proxy(request, await params);
 }
 
+const ALLOWED_PREFIXES = ["admin", "auth"];
+
 async function proxy(
   request: NextRequest,
   { path }: { path: string[] }
 ): Promise<NextResponse> {
-  const pathStr = path.join("/");
+  const pathStr = path.join("/").replace(/\/+/g, "/");
+  const prefix = path[0]?.toLowerCase();
+  if (!path.length || !prefix || !ALLOWED_PREFIXES.includes(prefix)) {
+    return new NextResponse(
+      JSON.stringify({ success: false, message: "Proxy only allows /admin and /auth" }),
+      { status: 403, headers: { "Content-Type": "application/json" } }
+    );
+  }
   const url = new URL(pathStr, `${BACKEND_URL}/`);
   // Query-Parameter der Anfrage an das Backend weiterleiten (z. B. ?status=pending&limit=100)
   request.nextUrl.searchParams.forEach((value, key) => {

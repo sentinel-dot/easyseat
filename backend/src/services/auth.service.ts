@@ -10,10 +10,23 @@ const DEFAULT_JWT_SECRET = 'easyseat-admin-secret-key-change-in-production';
 const JWT_SECRET = process.env.JWT_SECRET || DEFAULT_JWT_SECRET;
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '24h';
 
-/** In Production darf kein Default-Secret verwendet werden. */
+/** Bekannte schwache/Beispiel-Secrets – in Production verboten */
+const WEAK_JWT_SECRETS = new Set([
+    '',
+    'change-me',
+    'change-me-in-production',
+    'secret',
+    'jwt-secret',
+    'your-256-bit-secret',
+    DEFAULT_JWT_SECRET,
+]);
+
+/** In Production darf kein Default- oder schwaches Secret verwendet werden. */
 export function assertSecureJwtSecret(): void {
-    if (process.env.NODE_ENV === 'production' && (!process.env.JWT_SECRET || process.env.JWT_SECRET === DEFAULT_JWT_SECRET)) {
-        logger.error('Production requires a strong JWT_SECRET. Set JWT_SECRET in your environment (e.g. openssl rand -base64 32).');
+    if (process.env.NODE_ENV !== 'production') return;
+    const secret = process.env.JWT_SECRET?.trim() ?? '';
+    if (!secret || secret.length < 32 || WEAK_JWT_SECRETS.has(secret)) {
+        logger.error('Production requires a strong JWT_SECRET (min. 32 Zeichen). Set JWT_SECRET in your environment (e.g. openssl rand -base64 32).');
         process.exit(1);
     }
 }

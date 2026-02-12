@@ -1,12 +1,12 @@
 /**
  * BOOKING SERVICE
  * 
- * Dieser Service ist verantortlich für alle Buchungsoperationen:
+ * Dieser Service ist verantwortlich für alle Buchungsoperationen:
  * - Erstellen neuer Buchungen
  * - Abrufen von Buchungen (nach ID, Venue, Kunde)
- * - Aktualisieren von Buchungen (token/mail benötigt)
- * - Stornieren von Buchungen (was ist benötigt?)
- * - Verwalten von Buchungsstatus (email benötigt oder?)
+ * - Aktualisieren von Buchungen (Token-basiert)
+ * - Stornieren von Buchungen (Token-basiert)
+ * - Verwalten von Buchungsstatus (Dashboard/Admin)
  */
 
 import { getConnection } from "../config/database";
@@ -467,7 +467,7 @@ import { randomUUID } from 'crypto';
             
             // LEFT JOIN ist hier technisch nicht nötig (venue_id und service_id sind NOT NULL in der DB), 
             // aber defensiver: Falls durch Bugs Daten fehlen, crasht die Query nicht 
-            // sondern gibt venue_name = NULL zurück statt gar nichts.Retry
+            // sondern gibt venue_name = NULL zurück statt gar nichts.
             let query = `
                 SELECT b.*,
                     v.name as venue_name,

@@ -81,12 +81,16 @@ app.get('/', (req, res) => {
 app.get('/health', (req, res) => {
     logger.separator();
     logger.info('Received Request - GET /health');
-    res.json({
+    const payload: { status: string; timestamp: string; uptime: number; environment?: string } = {
         status: 'HEALTHY',
         timestamp: new Date().toISOString(),
         uptime: process.uptime(),
-        environment: process.env.NODE_ENV
-    });
+    };
+    // In Production keine Umgebungsinfos preisgeben
+    if (process.env.NODE_ENV !== 'production') {
+        payload.environment = process.env.NODE_ENV;
+    }
+    res.json(payload);
     logger.separator();
 });
 

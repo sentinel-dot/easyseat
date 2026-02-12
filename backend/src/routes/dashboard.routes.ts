@@ -11,6 +11,11 @@ import { CreateBookingData } from '../config/utils/types';
 const router = Router();
 const logger = createLogger('dashboard.routes');
 
+/** Max-Längen für Buchungsfelder (wie in booking.routes) */
+const MAX_CUSTOMER_NAME = 200;
+const MAX_CUSTOMER_PHONE = 50;
+const MAX_SPECIAL_REQUESTS = 500;
+
 router.use(authenticateAndLoadUser);
 
 function getVenueId(req: Request): number | null {
@@ -204,6 +209,18 @@ router.post('/bookings', async (req: Request, res: Response) => {
     const missingFields = requiredFields.filter(field => !bookingData[field as keyof CreateBookingData]);
     if (missingFields.length > 0) {
         res.status(400).json({ success: false, message: `Fehlende Felder: ${missingFields.join(', ')}` });
+        return;
+    }
+    if (String(bookingData.customer_name ?? '').length > MAX_CUSTOMER_NAME) {
+        res.status(400).json({ success: false, message: `customer_name darf maximal ${MAX_CUSTOMER_NAME} Zeichen haben` });
+        return;
+    }
+    if (bookingData.customer_phone != null && String(bookingData.customer_phone).length > MAX_CUSTOMER_PHONE) {
+        res.status(400).json({ success: false, message: `customer_phone darf maximal ${MAX_CUSTOMER_PHONE} Zeichen haben` });
+        return;
+    }
+    if (bookingData.special_requests != null && String(bookingData.special_requests).length > MAX_SPECIAL_REQUESTS) {
+        res.status(400).json({ success: false, message: `special_requests darf maximal ${MAX_SPECIAL_REQUESTS} Zeichen haben` });
         return;
     }
     try {

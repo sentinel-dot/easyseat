@@ -33,6 +33,11 @@ import { authenticateToken, requireRole } from '../middleware/auth.middleware';
 const router = express.Router();
 const logger = createLogger('booking.routes');
 
+/** Max-Längen für Buchungsfelder (Missbrauch/Speicher begrenzen) */
+const MAX_CUSTOMER_NAME = 200;
+const MAX_CUSTOMER_PHONE = 50;
+const MAX_SPECIAL_REQUESTS = 500;
+
 
 
 
@@ -182,6 +187,27 @@ router.post('/', async (req: Request, res: Response) =>
         return res.status(400).json({
             success: false,
             message: 'Party size must be between 1 and 50'
+        } as ApiResponse<void>);
+    }
+
+    // SCHRITT 5b: LÄNGEN-LIMITS (customer_name, customer_phone, special_requests)
+    const nameLen = String(bookingData.customer_name ?? '').length;
+    if (nameLen > MAX_CUSTOMER_NAME) {
+        return res.status(400).json({
+            success: false,
+            message: `customer_name darf maximal ${MAX_CUSTOMER_NAME} Zeichen haben`
+        } as ApiResponse<void>);
+    }
+    if (bookingData.customer_phone != null && String(bookingData.customer_phone).length > MAX_CUSTOMER_PHONE) {
+        return res.status(400).json({
+            success: false,
+            message: `customer_phone darf maximal ${MAX_CUSTOMER_PHONE} Zeichen haben`
+        } as ApiResponse<void>);
+    }
+    if (bookingData.special_requests != null && String(bookingData.special_requests).length > MAX_SPECIAL_REQUESTS) {
+        return res.status(400).json({
+            success: false,
+            message: `special_requests darf maximal ${MAX_SPECIAL_REQUESTS} Zeichen haben`
         } as ApiResponse<void>);
     }
 
@@ -558,6 +584,12 @@ router.patch('/manage/:token', async (req: Request<{ token: string }>, res: Resp
         } as ApiResponse<void>);
     }
 
+    if (updates.special_requests !== undefined && String(updates.special_requests).length > MAX_SPECIAL_REQUESTS) {
+        return res.status(400).json({
+            success: false,
+            message: `special_requests darf maximal ${MAX_SPECIAL_REQUESTS} Zeichen haben`
+        } as ApiResponse<void>);
+    }
 
     // ========================================================================
     // UPDATE DURCHFÜHREN
@@ -765,20 +797,17 @@ router.post('/:id/confirm', async (req: Request<{ id: string }>, res: Response) 
  * 
  * REQUEST BODY:
  * {
- *   reason?: string,              // Optional: Stornierungsgrund
- *   bypassPolicy?: boolean        // Optional: Nur für Admin (ignoriert Frist)
+ *   reason?: string   // Optional: Stornierungsgrund
  * }
- * 
+ *
+ * Admin-Storno (ohne Frist) erfolgt über Dashboard: PATCH /dashboard/bookings/:id/status.
+ *
  * STORNIERUNGSRICHTLINIE:
- * - Standard: Stornierung nur bis X Stunden vor Termin erlaubt
+ * - Stornierung nur bis X Stunden vor Termin erlaubt
  * - X wird in venues.cancellation_hours definiert (z.B. 24 Stunden)
- * - Admin kann mit bypassPolicy=true die Frist ignorieren
- * 
+ *
  * BEISPIEL:
- * {
- *   "reason": "Krankheit",
- *   "bypassPolicy": false
- * }
+ * { "reason": "Krankheit" }
  * 
  * WAS PASSIERT BEI STORNIERUNG:
  * - Status → 'cancelled'
@@ -811,13 +840,14 @@ router.post('/manage/:token/cancel', async (req: Request<{ token: string }>, res
     logger.info('Received Request - POST /manage/:token/cancel');
 
     const { token } = req.params;
-    const { reason, bypassPolicy } = req.body;
+    const { reason } = req.body;
 
     // ========================================================================
     // VALIDIERUNG
     // ========================================================================
-    
-    // Token-Format-Validierung
+    // bypassPolicy wird auf dieser öffentlichen Route NICHT akzeptiert – nur Admins
+    // dürfen die Stornierungsfrist umgehen (z. B. über Dashboard/Admin-API).
+
     if (!validateBookingToken(token)) {
         logger.warn('Invalid booking token format');
         logger.separator();
@@ -833,16 +863,11 @@ router.post('/manage/:token/cancel', async (req: Request<{ token: string }>, res
     // ========================================================================
     try 
     {
-        // Service-Aufruf mit allen Parametern
-        // Der Service prüft:
-        // 1. Existiert die Buchung?
-        // 2. Stimmt die Email?
-        // 3. Ist sie schon storniert?
-        // 4. Ist die Stornierungsfrist eingehalten? (außer bypassPolicy=true)
+        // Service-Aufruf: bypassPolicy immer false – Kunden müssen Stornierungsfrist einhalten
         const cancelledBooking = await BookingService.cancelBooking(
             token,
-            reason,                         // Optional: Stornierungsgrund
-            bypassPolicy || false           // Default: false (Frist gilt!)
+            reason,   // Optional: Stornierungsgrund
+            false    // Öffentliche Route: Frist wird nie umgangen
         );
 
         logger.info('Booking cancelled successfully', { booking_id: cancelledBooking.id });
