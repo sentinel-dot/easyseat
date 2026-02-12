@@ -107,6 +107,14 @@ router.patch('/bookings/:id/status', async (req: Request, res: Response) => {
             return;
         }
 
+        if ((error as Error).message === 'Grund ist erforderlich') {
+            res.status(400).json({
+                success: false,
+                message: 'Grund ist erforderlich'
+            });
+            return;
+        }
+
         res.status(500).json({
             success: false,
             message: 'Fehler beim Aktualisieren des Status'

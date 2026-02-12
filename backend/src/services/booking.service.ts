@@ -246,19 +246,7 @@ import { randomUUID } from 'crypto';
 
             let booking = bookings[0] as Booking;
 
-            // Wenn Terminzeit (Datum + Endzeit) vorbei ist und Status noch pending/confirmed → auf 'completed' setzen
-            if (booking.status === 'pending' || booking.status === 'confirmed')
-            {
-                const endDateTime = new Date(`${booking.booking_date}T${booking.end_time}`);
-                if (endDateTime.getTime() <= Date.now())
-                {
-                    await conn.query(`
-                        UPDATE bookings SET status = 'completed', updated_at = NOW() WHERE id = ?
-                    `, [booking.id]);
-                    booking = { ...booking, status: 'completed' };
-                    logger.info('Booking auto-marked as completed (appointment time passed)', { booking_id: booking.id });
-                }
-            }
+            await this.markPastBookingsCompleted(conn, [booking]);
 
             logger.info('Booking found', { 
                 booking_id: booking.id,
@@ -283,6 +271,28 @@ import { randomUUID } from 'crypto';
     }
 
 
+    /**
+     * Vergangene Termine (pending/confirmed) in der DB und im Array auf 'completed' setzen.
+     * Wird von getBookingByToken, getBookingsByVenue, getBookingsByEmail und Admin getBookings genutzt.
+     */
+    static async markPastBookingsCompleted<T extends { id: number; booking_date: string; end_time: string; status: string }>(
+        conn: Awaited<ReturnType<typeof getConnection>>,
+        bookings: T[]
+    ): Promise<T[]> {
+        const now = Date.now();
+        for (const b of bookings) {
+            if (b.status !== 'pending' && b.status !== 'confirmed') continue;
+            const endDateTime = new Date(`${b.booking_date}T${b.end_time}`);
+            if (endDateTime.getTime() > now) continue;
+            await conn.query(
+                `UPDATE bookings SET status = 'completed', updated_at = NOW() WHERE id = ?`,
+                [b.id]
+            );
+            (b as { status: string }).status = 'completed';
+            logger.info('Booking auto-marked as completed (appointment time passed)', { booking_id: b.id });
+        }
+        return bookings;
+    }
 
 
 
@@ -368,6 +378,8 @@ import { randomUUID } from 'crypto';
 
             const bookings = await conn.query(query, params) as Booking[];
 
+            await this.markPastBookingsCompleted(conn, bookings);
+
             logger.info(`Found ${bookings.length} bookings for venue ${venueId}`);
             return bookings;
         } 
@@ -437,6 +449,8 @@ import { randomUUID } from 'crypto';
             query += ' ORDER BY b.booking_date DESC, b.start_time DESC';
 
             const bookings = await conn.query(query, params) as Booking[];
+
+            await this.markPastBookingsCompleted(conn, bookings);
 
             logger.info(`Found ${bookings.length} bookings for customer`);
             

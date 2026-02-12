@@ -11,6 +11,7 @@
 import { getConnection } from '../config/database';
 import { createLogger } from '../config/utils/logger';
 import { Booking, Service } from '../config/utils/types';
+import { BookingService } from './booking.service';
 
 const logger = createLogger('admin.service');
 
@@ -156,6 +157,8 @@ export class AdminService {
 
             const total = Number(countResult[0]?.total || 0);
 
+            await BookingService.markPastBookingsCompleted(conn, bookings);
+
             logger.info(`Admin: Found ${bookings.length} bookings (total: ${total})`);
 
             return { bookings, total };
@@ -191,6 +194,15 @@ export class AdminService {
                 throw new Error('Booking not found');
             }
 
+            const currentStatus = existing[0].status;
+            const isPendingToConfirmed = currentStatus === 'pending' && status === 'confirmed';
+            if (!isPendingToConfirmed) {
+                const hasReason = reason != null && String(reason).trim().length > 0;
+                if (!hasReason) {
+                    throw new Error('Grund ist erforderlich');
+                }
+            }
+
             // Update status
             let updateQuery = `
                 UPDATE bookings 
@@ -218,7 +230,11 @@ export class AdminService {
                 [bookingId]
             ) as Booking[];
 
-            logger.info(`Admin: Booking ${bookingId} status updated to ${status}`);
+            if (reason?.trim()) {
+                logger.info(`Admin: Booking ${bookingId} status updated to ${status}`, { reason: reason.trim() });
+            } else {
+                logger.info(`Admin: Booking ${bookingId} status updated to ${status}`);
+            }
 
             return updated[0];
         } catch (error) {
