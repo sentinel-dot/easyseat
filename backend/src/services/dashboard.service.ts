@@ -135,7 +135,7 @@ export class DashboardService {
         bookingId: number,
         status: 'pending' | 'confirmed' | 'cancelled' | 'completed' | 'no_show',
         reason?: string,
-        auditContext?: { adminUserId: number; actorType: 'admin' | 'owner' | 'staff' }
+        auditContext?: { userId: number; actorType: 'admin' | 'owner' | 'staff' }
     ): Promise<Booking> {
         logger.info(`Dashboard: Updating booking ${bookingId} status to ${status}`);
         let conn;
@@ -178,7 +178,7 @@ export class DashboardService {
                     newStatus: status,
                     reason: reason ?? null,
                     actorType: auditContext.actorType,
-                    adminUserId: auditContext.adminUserId,
+                    userId: auditContext.userId,
                 });
             }
             // E-Mails gemäß Doku: nur bei → confirmed oder → cancelled

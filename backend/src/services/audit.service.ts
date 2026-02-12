@@ -20,7 +20,7 @@ export interface LogBookingActionParams {
     newStatus?: string | null;
     reason?: string | null;
     actorType: AuditActorType;
-    adminUserId?: number | null;
+    userId?: number | null;
     customerIdentifier?: string | null;
 }
 
@@ -37,7 +37,7 @@ export async function logBookingAction(params: LogBookingActionParams): Promise<
         newStatus = null,
         reason = null,
         actorType,
-        adminUserId = null,
+        userId = null,
         customerIdentifier = null,
     } = params;
 
@@ -46,7 +46,7 @@ export async function logBookingAction(params: LogBookingActionParams): Promise<
         conn = await getConnection();
         await conn.query(
             `INSERT INTO booking_audit_log
-             (booking_id, venue_id, action, old_status, new_status, reason, actor_type, admin_user_id, customer_identifier)
+             (booking_id, venue_id, action, old_status, new_status, reason, actor_type, user_id, customer_identifier)
              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             [
                 bookingId,
@@ -56,7 +56,7 @@ export async function logBookingAction(params: LogBookingActionParams): Promise<
                 newStatus,
                 reason,
                 actorType,
-                adminUserId,
+                userId,
                 customerIdentifier,
             ]
         );
@@ -91,7 +91,7 @@ export async function getAuditLogForBooking(bookingId: number, venueId: number):
         const rows = await conn.query(
             `SELECT a.id, a.action, a.old_status, a.new_status, a.reason, a.actor_type, a.customer_identifier, a.created_at, u.name AS admin_name
              FROM booking_audit_log a
-             LEFT JOIN admin_users u ON a.admin_user_id = u.id
+             LEFT JOIN users u ON a.user_id = u.id
              WHERE a.booking_id = ? AND a.venue_id = ?
              ORDER BY a.created_at DESC`,
             [bookingId, venueId]

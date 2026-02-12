@@ -22,6 +22,8 @@ export interface AdminWithVenue extends AdminUserPublic {
 export interface GlobalStats {
     venues: { total: number; active: number };
     admins: { total: number; active: number };
+    /** User-Anzahl pro Rolle (admin = System-Admin, owner, staff) */
+    usersByRole: { admin: number; owner: number; staff: number };
     bookings: {
         total: number;
         pending: number;
@@ -55,7 +57,7 @@ export class AdminService {
             conn = await getConnection();
             const rows = await conn.query(`
                 SELECT a.id, a.email, a.name, a.venue_id, a.role, a.is_active, a.last_login, a.created_at, v.name as venue_name
-                FROM admin_users a
+                FROM users a
                 LEFT JOIN venues v ON a.venue_id = v.id
                 ORDER BY a.email ASC
             `) as (AdminWithVenue & { venue_name: string })[];
@@ -92,14 +94,14 @@ export class AdminService {
         let conn;
         try {
             conn = await getConnection();
-            const existing = await conn.query('SELECT id FROM admin_users WHERE email = ?', [data.email]) as { id: number }[];
+            const existing = await conn.query('SELECT id FROM users WHERE email = ?', [data.email]) as { id: number }[];
             if (existing.length > 0) throw new Error('E-Mail wird bereits verwendet');
             await conn.query(
-                `INSERT INTO admin_users (email, password_hash, name, venue_id, role) VALUES (?, ?, ?, ?, ?)`,
+                `INSERT INTO users (email, password_hash, name, venue_id, role) VALUES (?, ?, ?, ?, ?)`,
                 [data.email, password_hash, data.name, venue_id, role]
             );
             const insertResult = await conn.query(
-                'SELECT id, email, name, venue_id, role FROM admin_users WHERE email = ?',
+                'SELECT id, email, name, venue_id, role FROM users WHERE email = ?',
                 [data.email]
             ) as AdminUserPublic[];
             return insertResult[0];
@@ -118,7 +120,7 @@ export class AdminService {
         let conn;
         try {
             conn = await getConnection();
-            const existing = await conn.query('SELECT id FROM admin_users WHERE id = ?', [adminId]) as { id: number }[];
+            const existing = await conn.query('SELECT id FROM users WHERE id = ?', [adminId]) as { id: number }[];
             if (existing.length === 0) throw new Error('Admin nicht gefunden');
             const fields: string[] = [];
             const values: (string | number | boolean | null)[] = [];
@@ -127,12 +129,12 @@ export class AdminService {
             if (updates.is_active !== undefined) { fields.push('is_active = ?'); values.push(updates.is_active); }
             if (updates.name !== undefined) { fields.push('name = ?'); values.push(updates.name); }
             if (fields.length === 0) {
-                const rows = await conn.query('SELECT id, email, name, venue_id, role FROM admin_users WHERE id = ?', [adminId]) as AdminUserPublic[];
+                const rows = await conn.query('SELECT id, email, name, venue_id, role FROM users WHERE id = ?', [adminId]) as AdminUserPublic[];
                 return rows[0];
             }
             values.push(adminId);
-            await conn.query(`UPDATE admin_users SET ${fields.join(', ')}, updated_at = NOW() WHERE id = ?`, values);
-            const rows = await conn.query('SELECT id, email, name, venue_id, role FROM admin_users WHERE id = ?', [adminId]) as AdminUserPublic[];
+            await conn.query(`UPDATE users SET ${fields.join(', ')}, updated_at = NOW() WHERE id = ?`, values);
+            const rows = await conn.query('SELECT id, email, name, venue_id, role FROM users WHERE id = ?', [adminId]) as AdminUserPublic[];
             return rows[0];
         } catch (error) {
             logger.error('Error updating admin', error);
@@ -148,7 +150,7 @@ export class AdminService {
         let conn;
         try {
             conn = await getConnection();
-            const [result] = await conn.query('UPDATE admin_users SET password_hash = ?, updated_at = NOW() WHERE id = ?', [password_hash, adminId]) as { affectedRows: number }[];
+            const [result] = await conn.query('UPDATE users SET password_hash = ?, updated_at = NOW() WHERE id = ?', [password_hash, adminId]) as { affectedRows: number }[];
             if ((result as { affectedRows?: number })?.affectedRows === 0) throw new Error('Admin nicht gefunden');
         } catch (error) {
             logger.error('Error setting admin password', error);
@@ -163,7 +165,15 @@ export class AdminService {
         try {
             conn = await getConnection();
             const [venueCount] = await conn.query(`SELECT COUNT(*) as total, SUM(CASE WHEN is_active = TRUE THEN 1 ELSE 0 END) as active FROM venues`) as [{ total: bigint; active: bigint }];
-            const [adminCount] = await conn.query(`SELECT COUNT(*) as total, SUM(CASE WHEN is_active = TRUE THEN 1 ELSE 0 END) as active FROM admin_users`) as [{ total: bigint; active: bigint }];
+            const [adminCount] = await conn.query(`SELECT COUNT(*) as total, SUM(CASE WHEN is_active = TRUE THEN 1 ELSE 0 END) as active FROM users`) as [{ total: bigint; active: bigint }];
+            const [usersByRoleRaw] = await conn.query(`
+                SELECT role, COUNT(*) as count FROM users GROUP BY role
+            `);
+            const usersByRoleRows = Array.isArray(usersByRoleRaw) ? usersByRoleRaw : (usersByRoleRaw ? [usersByRoleRaw] : []);
+            const usersByRole = { admin: 0, owner: 0, staff: 0 };
+            for (const row of usersByRoleRows) {
+                if (row.role in usersByRole) usersByRole[row.role as keyof typeof usersByRole] = Number(row.count ?? 0);
+            }
             const [bookingStats] = await conn.query(`
                 SELECT COUNT(*) as total,
                     SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) as pending,
@@ -176,6 +186,7 @@ export class AdminService {
             return {
                 venues: { total: Number(venueCount?.total ?? 0), active: Number(venueCount?.active ?? 0) },
                 admins: { total: Number(adminCount?.total ?? 0), active: Number(adminCount?.active ?? 0) },
+                usersByRole,
                 bookings: {
                     total: Number(bookingStats?.total ?? 0),
                     pending: Number(bookingStats?.pending ?? 0),

@@ -93,6 +93,8 @@ export async function getCurrentUser(): Promise<{
 export interface GlobalStats {
   venues: { total: number; active: number };
   admins: { total: number; active: number };
+  /** User-Anzahl pro Rolle (admin = System-Admin, owner, staff); optional für Abwärtskompatibilität */
+  usersByRole?: { admin: number; owner: number; staff: number };
   bookings: {
     total: number;
     pending: number;

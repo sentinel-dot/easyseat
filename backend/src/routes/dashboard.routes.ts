@@ -108,7 +108,7 @@ router.patch('/bookings/:id/status', async (req: Request, res: Response) => {
         return;
     }
     try {
-        const auditContext = req.user ? { adminUserId: req.user.id, actorType: req.user.role } : undefined;
+        const auditContext = req.user ? { userId: req.user.id, actorType: req.user.role } : undefined;
         const booking = await DashboardService.updateBookingStatus(bookingId, status, reason, auditContext);
         res.json({ success: true, data: booking, message: 'Status erfolgreich aktualisiert' });
     } catch (error) {

@@ -13,7 +13,7 @@ DELETE FROM staff_services;
 DELETE FROM services;
 DELETE FROM staff_members;
 
-DELETE FROM admin_users;
+DELETE FROM users;
 DELETE FROM venues;
 
 
@@ -25,7 +25,7 @@ ALTER TABLE staff_members AUTO_INCREMENT = 1;
 ALTER TABLE services AUTO_INCREMENT = 1;
 ALTER TABLE staff_services AUTO_INCREMENT = 1;
 ALTER TABLE availability_rules AUTO_INCREMENT = 1;
-ALTER TABLE admin_users AUTO_INCREMENT = 1;
+ALTER TABLE users AUTO_INCREMENT = 1;
 
 ALTER TABLE bookings AUTO_INCREMENT = 1;
 
@@ -37,13 +37,13 @@ INSERT INTO venues (name, type, email, phone, address, city, postal_code, descri
 ('Salon Schmidt', 'hair_salon', 'info@salon-schmidt.com', '+49 30 87654321', 'Friedrichstraße 456', 'Berlin', '10117', 'Moderner Friseursalon mit erfahrenen Stylisten', 'https://images.unsplash.com/photo-1560066984-138dadb4c035?w=800', NOW(), NOW()),
 ('Leloluxee Lashes', 'beauty_salon', 'lea@leloluxee-lashes.de', NULL, 'Theodor-Heuss-Straße 6', 'Egelsbach', '63229', 'Wimpern & Brauen – Lashlifting, Browlifting, Zahnschmuck. Deine Ansprechpartnerin: Lea.', 'https://images.unsplash.com/photo-1570172619644-dfd03ed5d881?w=800', NOW(), NOW());
 
--- Insert admin users
+-- Insert users (Dashboard-Login)
 -- Default password: admin123 (bcrypt hash with 10 rounds)
-INSERT INTO admin_users (email, password_hash, name, venue_id, role, created_at) VALUES
+INSERT INTO users (email, password_hash, name, venue_id, role, created_at) VALUES
 ('lea@leloluxee-lashes.de', '$2b$10$EmCeYQvUi/PQvlyGpPAc4ubFhQTop112TrRl2G9ejfc8VVN4rxFiG', 'Lea', 3, 'owner', NOW());
 
 -- System-Admin (admin = System, venue_id NULL). Standard-Passwort: superadmin123
-INSERT INTO admin_users (email, password_hash, name, venue_id, role, created_at) VALUES
+INSERT INTO users (email, password_hash, name, venue_id, role, created_at) VALUES
 ('admin@easyseat.local', '$2b$10$vsko22RhtwHvzrEEDivapevJP.XWo.kLNv/nAP81XhmZ0CmwXTAXq', 'Admin', NULL, 'admin', NOW());
 
 

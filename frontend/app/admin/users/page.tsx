@@ -28,9 +28,19 @@ const ROLE_LABELS: Record<string, string> = {
   staff: "Staff",
 };
 
+type RoleFilter = "all" | "admin" | "owner" | "staff";
+
+const ROLE_FILTER_OPTIONS: { value: RoleFilter; label: string }[] = [
+  { value: "all", label: "Alle Rollen" },
+  { value: "admin", label: "System-Admin" },
+  { value: "owner", label: "Owner" },
+  { value: "staff", label: "Staff" },
+];
+
 export default function AdminUsersPage() {
-  const [admins, setAdmins] = useState<AdminWithVenue[]>([]);
+  const [users, setUsers] = useState<AdminWithVenue[]>([]);
   const [venues, setVenues] = useState<Venue[]>([]);
+  const [roleFilter, setRoleFilter] = useState<RoleFilter>("all");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [modal, setModal] = useState<"create" | "edit" | "password" | null>(null);
@@ -50,9 +60,9 @@ export default function AdminUsersPage() {
     setLoading(true);
     setError(null);
     Promise.all([listAdmins(), listVenues()])
-      .then(([adminRes, venueRes]) => {
-        if (adminRes.success && adminRes.data) setAdmins(adminRes.data);
-        else setError(adminRes.message ?? "Fehler beim Laden.");
+      .then(([usersRes, venueRes]) => {
+        if (usersRes.success && usersRes.data) setUsers(usersRes.data);
+        else setError(usersRes.message ?? "Fehler beim Laden.");
         if (venueRes.success && venueRes.data) setVenues(venueRes.data);
       })
       .catch((e) => setError((e as Error).message))
@@ -113,7 +123,7 @@ export default function AdminUsersPage() {
           role: form.role === "owner" || form.role === "staff" ? form.role : "owner",
         });
         if (res.success) {
-          toast.success("Admin erstellt.");
+          toast.success("User erstellt.");
           setModal(null);
           load();
         } else toast.error(res.message ?? "Fehler.");
@@ -125,7 +135,7 @@ export default function AdminUsersPage() {
           is_active: form.is_active,
         });
         if (res.success) {
-          toast.success("Admin aktualisiert.");
+          toast.success("User aktualisiert.");
           setModal(null);
           setEditingId(null);
           load();
@@ -169,20 +179,43 @@ export default function AdminUsersPage() {
     return <ErrorMessage message={error} onRetry={() => load()} />;
   }
 
+  const filteredUsers =
+    roleFilter === "all"
+      ? users
+      : users.filter((a) => a.role === roleFilter);
+
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="font-display text-2xl font-semibold text-[var(--color-text)]">
-            Admins
+            User
           </h1>
           <p className="mt-1 text-sm text-[var(--color-muted)]">
-            Admin-Benutzer anlegen und Venues zuweisen.
+            Alle User anlegen, Rollen zuweisen und Venues verwalten.
           </p>
         </div>
         <Button variant="primary" onClick={openCreate}>
-          Admin anlegen
+          User anlegen
         </Button>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-3">
+        <span className="text-sm font-medium text-[var(--color-muted)]">Rolle filtern:</span>
+        <select
+          value={roleFilter}
+          onChange={(e) => setRoleFilter(e.target.value as RoleFilter)}
+          className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-sm text-[var(--color-text)]"
+        >
+          {ROLE_FILTER_OPTIONS.map((opt) => (
+            <option key={opt.value} value={opt.value}>
+              {opt.label}
+            </option>
+          ))}
+        </select>
+        <span className="text-sm text-[var(--color-muted)]">
+          {filteredUsers.length} User
+        </span>
       </div>
 
       <Card>
@@ -199,7 +232,7 @@ export default function AdminUsersPage() {
               </tr>
             </thead>
             <tbody>
-              {admins.map((a) => (
+              {filteredUsers.map((a) => (
                 <tr key={a.id} className="border-b border-[var(--color-border)] last:border-0">
                   <td className="py-2 text-[var(--color-text)]">{a.email}</td>
                   <td className="py-2 font-medium text-[var(--color-text)]">{a.name}</td>
@@ -236,7 +269,7 @@ export default function AdminUsersPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
           <Card className="w-full max-w-md p-6">
             <h2 className="font-display text-lg font-semibold text-[var(--color-text)]">
-              Admin anlegen
+              User anlegen
             </h2>
             <form onSubmit={handleSubmit} className="mt-4 space-y-3">
               <Input
@@ -309,7 +342,7 @@ export default function AdminUsersPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
           <Card className="w-full max-w-md p-6">
             <h2 className="font-display text-lg font-semibold text-[var(--color-text)]">
-              Admin bearbeiten
+              User bearbeiten
             </h2>
             <form onSubmit={handleSubmit} className="mt-4 space-y-3">
               <Input

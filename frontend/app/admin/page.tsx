@@ -48,10 +48,10 @@ export default function AdminDashboardPage() {
     <div className="space-y-8">
       <div>
         <h1 className="font-display text-2xl font-semibold text-[var(--color-text)]">
-          Admin – Systemübersicht
+          Systemübersicht
         </h1>
         <p className="mt-1 text-sm text-[var(--color-muted)]">
-          Venues, Admins und Buchungen systemweit verwalten.
+          Venues, User und Buchungen systemweit verwalten.
         </p>
       </div>
 
@@ -63,44 +63,66 @@ export default function AdminDashboardPage() {
         </Link>
         <Link href="/admin/users">
           <Button variant="outline" size="sm">
-            Benutzer verwalten
+            User verwalten
+          </Button>
+        </Link>
+        <Link href="/admin/settings">
+          <Button variant="outline" size="sm">
+            Einstellungen
           </Button>
         </Link>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <Card className="border-l-4 border-l-[var(--color-accent)]">
-          <CardTitle className="text-base font-medium text-[var(--color-muted)]">
-            Venues
-          </CardTitle>
-          <p className="mt-1 text-2xl font-semibold text-[var(--color-text)]">
-            {stats.venues.active} / {stats.venues.total} aktiv
-          </p>
-        </Card>
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        <Link href="/admin/venues" className="block transition-opacity hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] focus:ring-offset-2 focus:ring-offset-[var(--color-page)] rounded-xl">
+          <Card className="h-full border-l-4 border-l-[var(--color-accent)] cursor-pointer">
+            <CardTitle className="text-base font-medium text-[var(--color-muted)]">
+              Venues
+            </CardTitle>
+            <p className="mt-1 text-2xl font-semibold text-[var(--color-text)]">
+              {stats.venues.active} / {stats.venues.total} aktiv
+            </p>
+            <p className="mt-1 text-xs text-[var(--color-muted)]">Anklicken zum Verwalten</p>
+          </Card>
+        </Link>
+        <Link href="/admin/users" className="block transition-opacity hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] focus:ring-offset-2 focus:ring-offset-[var(--color-page)] rounded-xl">
+          <Card className="h-full cursor-pointer">
+            <CardTitle className="text-base font-medium text-[var(--color-muted)]">
+              User
+            </CardTitle>
+            <p className="mt-1 text-2xl font-semibold text-[var(--color-text)]">
+              {stats.admins.active} / {stats.admins.total} aktiv
+            </p>
+            {stats.usersByRole && (
+              <div className="mt-3 space-y-1 border-t border-[var(--color-border)] pt-3 text-sm">
+                <p className="flex justify-between">
+                  <span className="text-[var(--color-muted)]">System-Admin</span>
+                  <span className="font-medium">{stats.usersByRole.admin}</span>
+                </p>
+                <p className="flex justify-between">
+                  <span className="text-[var(--color-muted)]">Owner</span>
+                  <span className="font-medium">{stats.usersByRole.owner}</span>
+                </p>
+                <p className="flex justify-between">
+                  <span className="text-[var(--color-muted)]">Staff</span>
+                  <span className="font-medium">{stats.usersByRole.staff}</span>
+                </p>
+              </div>
+            )}
+            <p className="mt-3 text-xs text-[var(--color-muted)]">Anklicken zum Verwalten</p>
+          </Card>
+        </Link>
         <Card>
           <CardTitle className="text-base font-medium text-[var(--color-muted)]">
-            Admins
+            Buchungen
           </CardTitle>
           <p className="mt-1 text-2xl font-semibold text-[var(--color-text)]">
-            {stats.admins.active} / {stats.admins.total} aktiv
-          </p>
-        </Card>
-        <Card>
-          <CardTitle className="text-base font-medium text-[var(--color-muted)]">
-            Buchungen (gesamt)
-          </CardTitle>
-          <p className="mt-1 text-2xl font-semibold text-[var(--color-text)]">
-            {stats.bookings.total}
+            {stats.bookings.total} gesamt
           </p>
           <p className="mt-0.5 text-sm text-[var(--color-muted)]">
             Diesen Monat: {stats.bookings.thisMonth}
           </p>
-        </Card>
-        <Card>
-          <CardTitle className="text-base font-medium text-[var(--color-muted)]">
-            Status
-          </CardTitle>
-          <div className="mt-2 space-y-1 text-sm">
+          <div className="mt-3 space-y-1 border-t border-[var(--color-border)] pt-3 text-sm">
             <p className="flex justify-between">
               <span className="text-[var(--color-muted)]">Ausstehend</span>
               <span className="font-medium">{stats.bookings.pending}</span>

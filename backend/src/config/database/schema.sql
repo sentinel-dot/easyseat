@@ -119,8 +119,8 @@ CREATE TABLE bookings (
   FOREIGN KEY (staff_member_id) REFERENCES staff_members(id) ON DELETE SET NULL
 );
 
--- Admin users table for dashboard authentication
-CREATE TABLE admin_users (
+-- Users table (Dashboard-Login: Owner/Staff/System-Admin)
+CREATE TABLE users (
     id INT AUTO_INCREMENT PRIMARY KEY,
     email VARCHAR(255) UNIQUE NOT NULL,
     password_hash VARCHAR(255) NOT NULL,
@@ -144,12 +144,12 @@ CREATE TABLE booking_audit_log (
     new_status VARCHAR(20) NULL,
     reason VARCHAR(255) NULL COMMENT 'Allgemeiner Grund/Kommentar',
     actor_type ENUM('admin', 'owner', 'staff', 'customer', 'system') NOT NULL,
-    admin_user_id INT NULL,
+    user_id INT NULL,
     customer_identifier VARCHAR(255) NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (booking_id) REFERENCES bookings(id) ON DELETE CASCADE,
     FOREIGN KEY (venue_id) REFERENCES venues(id) ON DELETE CASCADE,
-    FOREIGN KEY (admin_user_id) REFERENCES admin_users(id) ON DELETE SET NULL,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL,
     INDEX idx_booking (booking_id),
     INDEX idx_venue_created (venue_id, created_at),
     INDEX idx_created (created_at)

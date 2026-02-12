@@ -39,7 +39,7 @@ export async function findAdminByEmail(email: string): Promise<AdminUser | null>
     try {
         conn = await getConnection();
         const rows = await conn.query(
-            'SELECT * FROM admin_users WHERE email = ? AND is_active = TRUE',
+            'SELECT * FROM users WHERE email = ? AND is_active = TRUE',
             [email]
         );
         
@@ -64,7 +64,7 @@ export async function findAdminById(id: number): Promise<AdminUser | null> {
     try {
         conn = await getConnection();
         const rows = await conn.query(
-            'SELECT * FROM admin_users WHERE id = ? AND is_active = TRUE',
+            'SELECT * FROM users WHERE id = ? AND is_active = TRUE',
             [id]
         );
         
@@ -135,7 +135,7 @@ export async function updateLastLogin(userId: number): Promise<void> {
     try {
         conn = await getConnection();
         await conn.query(
-            'UPDATE admin_users SET last_login = NOW() WHERE id = ?',
+            'UPDATE users SET last_login = NOW() WHERE id = ?',
             [userId]
         );
     } catch (error) {
@@ -187,7 +187,7 @@ export async function changePassword(
         try {
             conn = await getConnection();
             await conn.query(
-                'UPDATE admin_users SET password_hash = ? WHERE id = ?',
+                'UPDATE users SET password_hash = ? WHERE id = ?',
                 [newHash, userId]
             );
         } finally {
