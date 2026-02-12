@@ -110,7 +110,7 @@ export default function SystemAdminsPage() {
           password: form.password,
           name: form.name,
           venue_id: form.venue_id,
-          role: form.role,
+          role: form.role === "owner" || form.role === "staff" ? form.role : "owner",
         });
         if (res.success) {
           toast.success("Admin erstellt.");
@@ -121,7 +121,7 @@ export default function SystemAdminsPage() {
         const res = await updateAdmin(editingId, {
           name: form.name,
           venue_id: form.venue_id,
-          role: form.role,
+          role: form.role === "owner" || form.role === "staff" ? form.role : undefined,
           is_active: form.is_active,
         });
         if (res.success) {
@@ -287,7 +287,7 @@ export default function SystemAdminsPage() {
                   }
                   className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-[var(--color-text)]"
                 >
-                  {ROLES.filter((r) => r.value !== "admin").map((r) => (
+                  {ROLES.map((r) => (
                     <option key={r.value} value={r.value}>{r.label}</option>
                   ))}
                 </select>

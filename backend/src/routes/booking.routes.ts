@@ -4,7 +4,7 @@
  * Alle HTTP-Endpunkte für Buchungsoperationen:
  * - POST   /bookings                           -> Neue Buchung erstellen
  * - GET    /bookings/:id                       -> Einzelne Buchung abrufen
- * - GET    /bookings/customer/me               -> Buchungen eines Kunden abrufen
+ * - GET    /bookings/customer/:email           -> Buchungen eines Kunden abrufen
  * - PATCH  /bookings/manage/:token             -> Buchung aktualisieren (Token-basiert)
  * - POST   /bookings/:id/confirm               -> Buchung bestätigen
  * - POST   /bookings/manage/:token/cancel      -> Buchung stornieren
@@ -672,9 +672,8 @@ router.patch('/manage/:token', async (req: Request<{ token: string }>, res: Resp
  * 3. Kunde erhält Bestätigungsmail
  * 
  * WICHTIG:
- * - Setzt confirmation_sent_at Timestamp
- * - In Production: Auth-Middleware für Admin/Venue-Owner
- * - TODO: Email-Bestätigung nach Confirm senden
+ * - BookingService setzt confirmation_sent_at nach Versand der Bestätigungsmail
+ * - Bestätigungsmail wird vom BookingService nach Statuswechsel versendet
  * 
  * RESPONSE (Success - 200 OK):
  * {
@@ -716,8 +715,7 @@ router.post('/:id/confirm', async (req: Request<{ id: string }>, res: Response) 
 
         logger.info('Booking confirmed successfully', { booking_id: bookingId });
 
-        // TODO: Sobald SMTP ready ist
-        // await EmailService.sendConfirmationEmail(confirmedBooking);
+        // Bestätigungsmail wird im BookingService.confirmBooking() versendet
 
         res.json({
             success: true,
@@ -787,7 +785,7 @@ router.post('/:id/confirm', async (req: Request<{ id: string }>, res: Response) 
  * - cancelled_at → NOW()
  * - cancellation_reason → gespeichert
  * - Slot wird wieder verfügbar für andere Buchungen
- * - TODO: Stornierungsmail an Kunden
+ * - Stornierungsmail wird im BookingService.cancelBooking() versendet
  * 
  * USE CASES:
  * - Kunde kann nicht zum Termin
@@ -849,8 +847,7 @@ router.post('/manage/:token/cancel', async (req: Request<{ token: string }>, res
 
         logger.info('Booking cancelled successfully', { booking_id: cancelledBooking.id });
 
-        // TODO: Sobald SMTP ready ist
-        // await EmailService.sendCancellationEmail(cancelledBooking);
+        // Stornierungsmail wird im BookingService.cancelBooking() versendet
 
         res.json({
             success: true,
@@ -980,15 +977,9 @@ router.post('/manage/:token/cancel', async (req: Request<{ token: string }>, res
  * └─────────────┴──────────────────┴────────────────────┘
  * 
  * SICHERHEIT:
- * - In Production: Nur für Admin-Rolle!
- * - Aktuell KEINE Auth-Middleware (TODO!)
- * - Später: if (req.user.role !== 'admin') return 403
+ * - Geschützt durch authenticateToken + requireRole('owner', 'admin')
  * 
- * BESSERE ALTERNATIVE (Post-MVP):
- * Implementiere "Soft Delete" statt Hard Delete:
- * - Setze nur Flag: deleted_at = NOW()
- * - Daten bleiben für Audit/Analytics
- * - Siehe TODO.md für Details
+ * ALTERNATIVE (Post-MVP): Soft Delete (deleted_at) für Audit/Analytics
  * 
  * RESPONSE (Success - 200 OK):
  * {

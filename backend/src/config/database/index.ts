@@ -99,7 +99,8 @@ export async function testConnection(): Promise<boolean>
 }
 
 /**
- * Teste die Datenbankverbindung beim Start
+ * Setzt die Buchungstabelle zurück (für Tests/Entwicklung).
+ * Löscht alle Buchungen und fügt Beispieldaten ein.
  */
 export async function resetBookingsTable(): Promise<boolean>
 {

@@ -118,7 +118,7 @@ export class AvailabilityService
     static async isTimeSlotAvailable(
         venueId: number,                // ID des Geschäfts
         serviceId: number,              // ID des Services
-        staffMemberId: number | null,   // Optional: ID des Mitarbeites
+        staffMemberId: number | null,   // Optional: ID des Mitarbeiters
         date: string,                   // Datum im Format YYYY-MM-DD
         startTime: string,              // Startzeit in HH:MM
         endTime: string,                // Endzeit in HH:MM
@@ -490,7 +490,7 @@ export class AvailabilityService
                 {
                     const staffId = staffMember.staff_id;
 
-                    // Hole Availibility Rules des Mitarbeiters für diesen Tag
+                    // Hole Availability Rules des Mitarbeiters für diesen Tag
                     const staffRules = await conn.query(`
                         SELECT start_time, end_time
                         FROM availability_rules
@@ -1152,7 +1152,7 @@ export class AvailabilityService
             // Prüfe Verfügbarkeit nur wenn bisher keine Fehler
             if (errors.length === 0)
             {
-                const availibilityResult = await this.isTimeSlotAvailable(
+                const availabilityResult = await this.isTimeSlotAvailable(
                     venueId,
                     serviceId,
                     staffMemberId,
@@ -1164,10 +1164,10 @@ export class AvailabilityService
                 );
 
                 // Füge Verfügbarkeits-Fehler hinzu wenn nicht verfügbar
-                if (!availibilityResult.available)
+                if (!availabilityResult.available)
                 {
-                    logger.warn(availibilityResult.reason || 'Time slot not available');
-                    errors.push(availibilityResult.reason || 'Time slot not available');
+                    logger.warn(availabilityResult.reason || 'Time slot not available');
+                    errors.push(availabilityResult.reason || 'Time slot not available');
                 }
             }
         } 

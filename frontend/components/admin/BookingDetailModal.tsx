@@ -289,7 +289,7 @@ export function BookingDetailModal({
               disabled={
                 saving ||
                 status === booking.status ||
-                (reasonRequired && !statusReason.trim())
+                (!!reasonRequired && !statusReason.trim())
               }
               className="flex-1"
             >

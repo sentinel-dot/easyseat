@@ -5,7 +5,7 @@ import { JwtPayload, AdminUserPublic, AdminRole } from '../config/utils/types';
 
 const logger = createLogger('auth.middleware');
 
-// Extend Express Request type to include user
+// Erweiterung des Express Request um user und jwtPayload (nach Auth-Middleware)
 declare global {
     namespace Express {
         interface Request {

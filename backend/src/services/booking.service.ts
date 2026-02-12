@@ -865,7 +865,7 @@ import { randomUUID } from 'crypto';
         {
             conn = await getConnection();
 
-            // NEU: Prüfe Existenz ZUERST
+            // Prüfe Existenz zuerst
             const booking = await this.getBookingById(bookingId);
             
             if (!booking)
@@ -960,7 +960,7 @@ import { randomUUID } from 'crypto';
         try 
         {
 
-            // NEU: Prüfe Existenz ZUERST
+            // Prüfe Existenz zuerst
             const booking = await this.getBookingById(bookingId);
             
             if (!booking)

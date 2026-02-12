@@ -7,7 +7,7 @@
  * @returns true wenn gültig, false wenn ungültig
  * 
  * @example
- * validateBookingToken('a1b2c3d4-5e6f-7g8h-9i0j-k1l2m3n4o5p6') // true
+ * validateBookingToken('a1b2c3d4-5e6f-4a8b-8c0d-e1f2a3b4c5d6') // true (gültiges UUID v4)
  * validateBookingToken('invalid-token') // false
  * validateBookingToken(undefined) // false
  */
@@ -24,10 +24,10 @@ export function validateBookingToken(token: string | undefined): boolean
 }
 
 /**
- * Extrahiert Token aus verschiedenen Quellen und gibt nur Präfix für Logs zurück
- * 
- * @param token - Der vollständige Token
- * @returns Nur die ersten 8 Zeichen + "..." für sicheres Logging
+ * Gibt ein gekürztes Token für sicheres Logging zurück (erste 8 Zeichen + "...").
+ *
+ * @param token - Der vollständige Token (z. B. booking_token)
+ * @returns Gekürztes Token für Log-Ausgaben
  */
 export function getTokenPrefix(token: string): string 
 {
