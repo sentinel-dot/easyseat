@@ -6,7 +6,7 @@ import {
   getVenueSettings,
   updateVenueSettings,
   changePassword,
-} from "@/lib/api/admin";
+} from "@/lib/api/dashboard";
 import type { Venue } from "@/lib/types";
 import { Card, CardTitle } from "@/components/shared/card";
 import { Button } from "@/components/shared/button";

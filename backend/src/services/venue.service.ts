@@ -170,6 +170,205 @@ export class VenueService
 
 
     /**
+     * Fetch all venues (including inactive) for system admin (role admin)
+     */
+    static async getAllVenuesForAdmin(): Promise<Venue[]> {
+        logger.info('Fetching all venues for admin...');
+        let conn;
+        try {
+            conn = await getConnection();
+            const venues = await conn.query(`
+                SELECT id, name, type, email, phone, address, city, postal_code, country,
+                    description, website_url, booking_advance_days, booking_advance_hours, cancellation_hours,
+                    require_phone, require_deposit, deposit_amount, is_active, created_at, updated_at
+                FROM venues
+                ORDER BY name ASC
+            `) as Venue[];
+            logger.info(`${venues.length} venues fetched`);
+            return venues;
+        } catch (error) {
+            logger.error('Error fetching all venues for admin', error);
+            throw error;
+        } finally {
+            if (conn) conn.release();
+        }
+    }
+
+    /**
+     * Create a new venue (system admin only)
+     */
+    static async createVenue(data: {
+        name: string;
+        type: Venue['type'];
+        email: string;
+        phone?: string;
+        address?: string;
+        city?: string;
+        postal_code?: string;
+        country?: string;
+        description?: string;
+        website_url?: string;
+        booking_advance_days?: number;
+        booking_advance_hours?: number;
+        cancellation_hours?: number;
+        require_phone?: boolean;
+        require_deposit?: boolean;
+        deposit_amount?: number;
+        is_active?: boolean;
+    }): Promise<Venue> {
+        logger.info('Creating venue', { name: data.name, email: data.email });
+        let conn;
+        try {
+            conn = await getConnection();
+            const result = await conn.query(
+                `INSERT INTO venues (
+                    name, type, email, phone, address, city, postal_code, country,
+                    description, website_url, booking_advance_days, booking_advance_hours, cancellation_hours,
+                    require_phone, require_deposit, deposit_amount, is_active
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                [
+                    data.name,
+                    data.type,
+                    data.email,
+                    data.phone ?? null,
+                    data.address ?? null,
+                    data.city ?? null,
+                    data.postal_code ?? null,
+                    data.country ?? 'DE',
+                    data.description ?? null,
+                    data.website_url ?? null,
+                    data.booking_advance_days ?? 30,
+                    data.booking_advance_hours ?? 48,
+                    data.cancellation_hours ?? 24,
+                    data.require_phone ?? false,
+                    data.require_deposit ?? false,
+                    data.deposit_amount ?? null,
+                    data.is_active !== false,
+                ]
+            );
+            const insertResult = result as { insertId: number };
+            const id = insertResult.insertId;
+            const rows = await conn.query(
+                'SELECT id, name, type, email, phone, address, city, postal_code, country, description, website_url, booking_advance_days, booking_advance_hours, cancellation_hours, require_phone, require_deposit, deposit_amount, is_active, created_at, updated_at FROM venues WHERE id = ?',
+                [id]
+            ) as Venue[];
+            return rows[0];
+        } catch (error) {
+            logger.error('Error creating venue', error);
+            throw error;
+        } finally {
+            if (conn) conn.release();
+        }
+    }
+
+    /**
+     * Update venue (system admin only)
+     */
+    static async updateVenue(
+        venueId: number,
+        updates: {
+            name?: string;
+            type?: Venue['type'];
+            email?: string;
+            phone?: string;
+            address?: string;
+            city?: string;
+            postal_code?: string;
+            country?: string;
+            description?: string;
+            website_url?: string;
+            booking_advance_days?: number;
+            booking_advance_hours?: number;
+            cancellation_hours?: number;
+            require_phone?: boolean;
+            require_deposit?: boolean;
+            deposit_amount?: number;
+            is_active?: boolean;
+        }
+    ): Promise<Venue> {
+        logger.info('Updating venue', { venueId, updates });
+        let conn;
+        try {
+            conn = await getConnection();
+            const existing = await conn.query('SELECT id FROM venues WHERE id = ?', [venueId]) as { id: number }[];
+            if (existing.length === 0) {
+                throw new Error('Venue not found');
+            }
+            const fields: string[] = [];
+            const values: (string | number | boolean | null)[] = [];
+            const map: Record<string, unknown> = {
+                name: updates.name,
+                type: updates.type,
+                email: updates.email,
+                phone: updates.phone,
+                address: updates.address,
+                city: updates.city,
+                postal_code: updates.postal_code,
+                country: updates.country,
+                description: updates.description,
+                website_url: updates.website_url,
+                booking_advance_days: updates.booking_advance_days,
+                booking_advance_hours: updates.booking_advance_hours,
+                cancellation_hours: updates.cancellation_hours,
+                require_phone: updates.require_phone,
+                require_deposit: updates.require_deposit,
+                deposit_amount: updates.deposit_amount,
+                is_active: updates.is_active,
+            };
+            for (const [key, val] of Object.entries(map)) {
+                if (val !== undefined) {
+                    fields.push(`${key} = ?`);
+                    values.push(val as string | number | boolean | null);
+                }
+            }
+            if (fields.length === 0) {
+                const rows = await conn.query(
+                    'SELECT id, name, type, email, phone, address, city, postal_code, country, description, website_url, booking_advance_days, booking_advance_hours, cancellation_hours, require_phone, require_deposit, deposit_amount, is_active, created_at, updated_at FROM venues WHERE id = ?',
+                    [venueId]
+                ) as Venue[];
+                return rows[0];
+            }
+            values.push(venueId);
+            await conn.query(
+                `UPDATE venues SET ${fields.join(', ')}, updated_at = NOW() WHERE id = ?`,
+                values
+            );
+            const rows = await conn.query(
+                'SELECT id, name, type, email, phone, address, city, postal_code, country, description, website_url, booking_advance_days, booking_advance_hours, cancellation_hours, require_phone, require_deposit, deposit_amount, is_active, created_at, updated_at FROM venues WHERE id = ?',
+                [venueId]
+            ) as Venue[];
+            return rows[0];
+        } catch (error) {
+            logger.error('Error updating venue', error);
+            throw error;
+        } finally {
+            if (conn) conn.release();
+        }
+    }
+
+    /**
+     * Get venue by ID (including inactive) for system admin (role admin)
+     */
+    static async getVenueByIdForAdmin(venueId: number): Promise<Venue | null> {
+        let conn;
+        try {
+            conn = await getConnection();
+            const venues = await conn.query(`
+                SELECT id, name, type, email, phone, address, city, postal_code, country,
+                    description, website_url, booking_advance_days, booking_advance_hours, cancellation_hours,
+                    require_phone, require_deposit, deposit_amount, is_active, created_at, updated_at
+                FROM venues WHERE id = ?
+            `, [venueId]) as Venue[];
+            return venues.length > 0 ? venues[0] : null;
+        } catch (error) {
+            logger.error('Error fetching venue for admin', error);
+            throw error;
+        } finally {
+            if (conn) conn.release();
+        }
+    }
+
+    /**
      * Prüft ob Venue existiert und aktiv ist
      */
     static async venueExists(venueId: number): Promise<boolean>

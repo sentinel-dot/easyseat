@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { getStats } from "@/lib/api/admin";
+import { getStats } from "@/lib/api/dashboard";
 import type { AdminStats } from "@/lib/types";
 import { Card, CardTitle } from "@/components/shared/card";
 import { PageLoader } from "@/components/shared/loading-spinner";

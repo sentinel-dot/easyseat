@@ -160,13 +160,15 @@ export interface UpdateBookingData
 
 
 // Admin User Types
+export type AdminRole = 'admin' | 'owner' | 'staff';
+
 export interface AdminUser {
     id: number;
     email: string;
     password_hash: string;
     name: string;
     venue_id: number | null;
-    role: 'owner' | 'admin' | 'staff';
+    role: AdminRole;
     is_active: boolean;
     last_login: Date | null;
     created_at: Date;
@@ -178,13 +180,13 @@ export interface AdminUserPublic {
     email: string;
     name: string;
     venue_id: number | null;
-    role: 'owner' | 'admin' | 'staff';
+    role: AdminRole;
 }
 
 export interface JwtPayload {
     userId: number;
     email: string;
-    role: 'owner' | 'admin' | 'staff';
+    role: AdminRole;
     venueId: number | null;
 }
 

@@ -143,3 +143,25 @@ Die API-URL muss **ohne** abschließenden Schrägstrich sein und mit der Railway
 - **Lokal mit Production-API testen:** Im Frontend `NEXT_PUBLIC_API_URL` auf die Railway-URL setzen und `npm run dev` (nur zum Testen).
 
 Mit diesen Schritten läuft die App sicher und produktionsreif mit Backend auf Railway und Frontend auf Vercel.
+
+---
+
+## 8. Admin (Systemsteuerung)
+
+Rollen: **admin** = System-Admin (keine Venue), **owner** = Venue-Inhaber, **staff** = Mitarbeiter.  
+Der **Admin** verwaltet das gesamte System (Venues, Benutzer). Das **Dashboard** ist für **Owner** und **Staff** (ein Betrieb).
+
+### Einrichtung
+
+- **Neue Installation:** `schema.sql` und `seed.sql` ausführen. Der Seed legt einen System-Admin an:
+  - E-Mail: `admin@easyseat.local`
+  - Passwort: `superadmin123`
+  - Rolle: `admin`, `venue_id`: NULL
+- **Bestehende Installation** (ältere Rollen-Struktur):  
+  `migrate_roles_admin_owner.sql` ausführen (Rollen-Migration: z. B. frühere System-Admin-Rolle → admin, Venue-Admin → owner).
+
+### Nach dem Login
+
+- **Alle** melden sich unter **/admin/login** an.
+- **System-Admin** (Rolle `admin`, ohne Venue): **Admin-Übersicht** (Venues, Admins, Stats).
+- **Owner / Staff** (mit Venue): **Dashboard** (Buchungen, Leistungen, Einstellungen).

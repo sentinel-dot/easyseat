@@ -17,6 +17,12 @@ const NAV_ITEMS = [
   { href: "/admin/stats", label: "Statistik", icon: "M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" },
 ];
 
+const SYSTEM_ADMIN_NAV_ITEMS = [
+  { href: "/admin/system", label: "Übersicht", icon: "M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" },
+  { href: "/admin/system/venues", label: "Venues", icon: "M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" },
+  { href: "/admin/system/admins", label: "Admins", icon: "M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" },
+];
+
 function NavIcon({ d }: { d: string }) {
   return (
     <svg className="h-5 w-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -55,6 +61,10 @@ export default function AdminLayout({
       .then((res) => {
         if (res.success && res.data) {
           setUser(res.data);
+          // System-Admin (role admin): redirect to admin overview
+          if (res.data.role === "admin" && pathname === "/admin") {
+            router.replace("/admin/system");
+          }
         } else {
           router.replace(`/admin/login?redirect=${encodeURIComponent(pathname)}`);
         }
@@ -94,10 +104,14 @@ export default function AdminLayout({
     return <>{children}</>;
   }
 
+  const isSystemAdmin = user?.role === "admin";
+  const navItems = isSystemAdmin ? SYSTEM_ADMIN_NAV_ITEMS : NAV_ITEMS;
   const navContent = (
     <nav className="flex flex-col gap-0.5">
-      {NAV_ITEMS.map((item) => {
-        const isActive = pathname === item.href || (item.href !== "/admin" && pathname.startsWith(item.href));
+      {navItems.map((item) => {
+        const isActive =
+          pathname === item.href ||
+          (item.href !== "/admin" && item.href !== "/admin/system" && pathname.startsWith(item.href));
         return (
           <Link
             key={item.href}
@@ -131,8 +145,11 @@ export default function AdminLayout({
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
           </svg>
         </button>
-        <Link href="/admin" className="font-display text-lg text-[var(--color-text)]">
-          easyseat Admin
+        <Link
+          href={isSystemAdmin ? "/admin/system" : "/admin"}
+          className="font-display text-lg text-[var(--color-text)]"
+        >
+          {isSystemAdmin ? "easyseat Admin" : "easyseat Dashboard"}
         </Link>
         <div className="w-10" />
       </header>
@@ -153,8 +170,11 @@ export default function AdminLayout({
         }`}
       >
         <div className="flex h-14 items-center border-b border-[var(--color-border)] px-4 lg:px-5">
-          <Link href="/admin" className="font-display text-lg font-semibold text-[var(--color-text)]">
-            <span className="text-[var(--color-accent)]">easy</span>seat Admin
+          <Link
+            href={isSystemAdmin ? "/admin/system" : "/admin"}
+            className="font-display text-lg font-semibold text-[var(--color-text)]"
+          >
+            <span className="text-[var(--color-accent)]">easy</span>seat {isSystemAdmin ? "Admin" : "Dashboard"}
           </Link>
         </div>
         <div className="overflow-y-auto p-3 pb-24 lg:p-4 lg:pb-24">{navContent}</div>
@@ -215,7 +235,15 @@ export default function AdminLayout({
           </div>
         </div>
 
-        <main className="min-h-[calc(100vh-3.5rem)] px-4 py-6 lg:px-8">{children}</main>
+        <main className="min-h-[calc(100vh-3.5rem)] px-4 py-6 lg:px-8">
+          {pathname === "/admin" && user?.role === "admin" ? (
+            <div className="flex items-center justify-center py-12">
+              <p className="text-[var(--color-muted)]">Weiterleitung zur Admin-Übersicht…</p>
+            </div>
+          ) : (
+            children
+          )}
+        </main>
       </div>
     </div>
   );

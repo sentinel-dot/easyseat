@@ -13,6 +13,7 @@ import availabilityRoutes from './routes/availability.routes';
 import bookingRoutes from './routes/booking.routes';
 import authRoutes from './routes/auth.routes';
 import adminRoutes from './routes/admin.routes';
+import dashboardRoutes from './routes/dashboard.routes';
 import { assertSecureJwtSecret } from './services/auth.service';
 
 dotenv.config();
@@ -101,8 +102,11 @@ app.use('/availability', availabilityRoutes);
 // Booking routes
 app.use('/bookings', bookingRoutes);
 
-// Admin routes (protected)
+// Admin routes (protected, role admin = System: Venues, User, Stats)
 app.use('/admin', adminRoutes);
+
+// Dashboard routes (protected, role owner/staff = Venue-Management)
+app.use('/dashboard', dashboardRoutes);
 
 
 // 404 - Handler
@@ -183,14 +187,28 @@ const startServer = async() => {
             logger.info('   POST   /bookings/:id/cancel - Cancel booking (email verification required)');
             logger.info('   DELETE /bookings/:id - Delete booking (ADMIN ONLY)');
             logger.info('');
-            logger.info('   👤 Admin (requires auth):');
-            logger.info('   GET    /admin/bookings - Get bookings with filters');
-            logger.info('   PATCH  /admin/bookings/:id/status - Update booking status');
-            logger.info('   GET    /admin/stats - Get dashboard statistics');
-            logger.info('   GET    /admin/services - Get all services');
-            logger.info('   PATCH  /admin/services/:id - Update service');
-            logger.info('   GET    /admin/availability - Get availability rules');
-            logger.info('   PATCH  /admin/availability/:id - Update availability rule');
+            logger.info('   👤 Admin – System (role admin):');
+            logger.info('   GET    /admin/stats - Global stats');
+            logger.info('   GET    /admin/venues - List venues');
+            logger.info('   GET    /admin/venues/:id - Get venue');
+            logger.info('   POST   /admin/venues - Create venue');
+            logger.info('   PATCH  /admin/venues/:id - Update venue');
+            logger.info('   GET    /admin/admins - List admins');
+            logger.info('   POST   /admin/admins - Create admin');
+            logger.info('   PATCH  /admin/admins/:id - Update admin');
+            logger.info('   PATCH  /admin/admins/:id/password - Set admin password');
+            logger.info('   📊 Dashboard – Venue (role owner/staff):');
+            logger.info('   GET    /dashboard/bookings - Get bookings');
+            logger.info('   POST   /dashboard/bookings - Create manual booking');
+            logger.info('   PATCH  /dashboard/bookings/:id/status - Update booking status');
+            logger.info('   GET    /dashboard/stats - Venue stats');
+            logger.info('   GET    /dashboard/services - Get services');
+            logger.info('   PATCH  /dashboard/services/:id - Update service');
+            logger.info('   GET    /dashboard/availability - Get availability rules');
+            logger.info('   PATCH  /dashboard/availability/:id - Update availability rule');
+            logger.info('   GET    /dashboard/venue/settings - Get venue settings');
+            logger.info('   PATCH  /dashboard/venue/settings - Update venue settings');
+            logger.info('   PATCH  /dashboard/me/password - Change password');
             logger.separator();
         });
     } catch (error) {

@@ -42,6 +42,10 @@ INSERT INTO venues (name, type, email, phone, address, city, postal_code, descri
 INSERT INTO admin_users (email, password_hash, name, venue_id, role, created_at) VALUES
 ('lea@leloluxee-lashes.de', '$2b$10$EmCeYQvUi/PQvlyGpPAc4ubFhQTop112TrRl2G9ejfc8VVN4rxFiG', 'Lea', 3, 'owner', NOW());
 
+-- System-Admin (admin = System, venue_id NULL). Standard-Passwort: superadmin123
+INSERT INTO admin_users (email, password_hash, name, venue_id, role, created_at) VALUES
+('admin@easyseat.local', '$2b$10$vsko22RhtwHvzrEEDivapevJP.XWo.kLNv/nAP81XhmZ0CmwXTAXq', 'Admin', NULL, 'admin', NOW());
+
 
 -- Insert restaurant services (tables)
 INSERT INTO services (venue_id, name, description, duration_minutes, price, capacity, requires_staff, created_at, updated_at) VALUES

@@ -50,10 +50,10 @@ export default function AdminLoginPage() {
         </Link>
         <div className="mt-10 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-8 shadow-[var(--shadow-md)]">
           <h1 className="font-display text-2xl font-semibold text-[var(--color-text)]">
-            Admin-Anmeldung
+            Anmeldung
           </h1>
           <p className="mt-2 text-sm text-[var(--color-muted)]">
-            Melden Sie sich mit Ihrem Konto an.
+            Für Admin (System) oder Dashboard (Betrieb) – gleicher Login.
           </p>
           <form onSubmit={handleSubmit} className="mt-6 space-y-4">
             <Input

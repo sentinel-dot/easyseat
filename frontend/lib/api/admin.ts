@@ -1,232 +1,206 @@
-import { AdminUser, LoginResponse, AdminStats, BookingWithDetails, Service, AvailabilityRule, CreateBookingData, Booking, Venue } from '../types';
-import { NETWORK_ERROR_MESSAGE, isNetworkError } from './client';
+import type { AdminUser, LoginResponse, Venue } from "../types";
+import { NETWORK_ERROR_MESSAGE, isNetworkError } from "./client";
 
 /** Im Browser Same-Origin (/api) für Cookie-Auth, sonst direkte Backend-URL. */
 function getAdminApiBase(): string {
-    if (typeof window !== 'undefined') return '/api';
-    return process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001';
+  if (typeof window !== "undefined") return "/api";
+  return process.env.NEXT_PUBLIC_API_URL || "http://localhost:5001";
 }
 
 /**
  * Admin API client – Auth nur per HttpOnly-Cookie (credentials: 'include').
+ * Nur System-Admin-Endpunkte (/admin/*). Venue-Dashboard nutzt dashboard.ts (/dashboard/*).
  */
 async function adminApiClient<T>(
-    endpoint: string,
-    options?: RequestInit
-): Promise<{ success: boolean; data?: T; message?: string; pagination?: { total: number; limit: number; offset: number } }> {
-    try {
-        const response = await fetch(`${getAdminApiBase()}${endpoint}`, {
-            ...options,
-            credentials: 'include',
-            headers: {
-                'Content-Type': 'application/json',
-                ...options?.headers,
-            },
-        });
-
-        const data = await response.json().catch(() => ({}));
-
-        if (!response.ok) {
-            throw new Error((data && typeof data.message === 'string') ? data.message : 'API request failed');
-        }
-
-        return data;
-    } catch (error) {
-        if (isNetworkError(error)) {
-            throw new Error(NETWORK_ERROR_MESSAGE);
-        }
-        throw error;
-    }
-}
-
-/**
- * Login – Backend setzt HttpOnly-Cookie, Response enthält nur { user }.
- */
-export async function login(email: string, password: string): Promise<{ success: boolean; data?: { user: AdminUser }; message?: string }> {
-    try {
-        const response = await fetch(`${getAdminApiBase()}/auth/login`, {
-            method: 'POST',
-            credentials: 'include',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email, password }),
-        });
-
-        const data = await response.json();
-        return data;
-    } catch (error) {
-        return {
-            success: false,
-            message: isNetworkError(error) ? NETWORK_ERROR_MESSAGE : ((error as Error).message || 'Login fehlgeschlagen')
-        };
-    }
-}
-
-/**
- * Logout
- */
-export async function logout(): Promise<void> {
-    try {
-        await adminApiClient('/auth/logout', { method: 'POST' });
-    } catch {
-        // Ignore – Cookie wird vom Backend gelöscht
-    }
-}
-
-/**
- * Get current user
- */
-export async function getCurrentUser(): Promise<{ success: boolean; data?: AdminUser }> {
-    return adminApiClient<AdminUser>('/auth/me');
-}
-
-/**
- * Get bookings with filters
- */
-export async function getBookings(filters?: {
-    startDate?: string;
-    endDate?: string;
-    status?: string;
-    serviceId?: number;
-    search?: string;
-    limit?: number;
-    offset?: number;
-}): Promise<{ 
-    success: boolean; 
-    data?: BookingWithDetails[]; 
-    pagination?: { total: number; limit: number; offset: number };
-    message?: string;
+  endpoint: string,
+  options?: RequestInit
+): Promise<{
+  success: boolean;
+  data?: T;
+  message?: string;
+  pagination?: { total: number; limit: number; offset: number };
 }> {
-    const params = new URLSearchParams();
-    
-    if (filters?.startDate) params.append('startDate', filters.startDate);
-    if (filters?.endDate) params.append('endDate', filters.endDate);
-    if (filters?.status) params.append('status', filters.status);
-    if (filters?.serviceId != null) params.append('serviceId', String(filters.serviceId));
-    if (filters?.search) params.append('search', filters.search);
-    if (filters?.limit != null) params.append('limit', String(filters.limit));
-    if (filters?.offset != null) params.append('offset', String(filters.offset));
-
-    const queryString = params.toString();
-    return adminApiClient<BookingWithDetails[]>(`/admin/bookings${queryString ? `?${queryString}` : ''}`);
-}
-
-/**
- * Update booking status
- */
-export async function updateBookingStatus(
-    bookingId: number,
-    status: string,
-    reason?: string
-): Promise<{ success: boolean; data?: BookingWithDetails; message?: string }> {
-    return adminApiClient<BookingWithDetails>(`/admin/bookings/${bookingId}/status`, {
-        method: 'PATCH',
-        body: JSON.stringify({ status, reason }),
+  try {
+    const response = await fetch(`${getAdminApiBase()}${endpoint}`, {
+      ...options,
+      credentials: "include",
+      headers: {
+        "Content-Type": "application/json",
+        ...options?.headers,
+      },
     });
-}
 
-/**
- * Get dashboard stats
- */
-export async function getStats(): Promise<{ success: boolean; data?: AdminStats; message?: string }> {
-    return adminApiClient<AdminStats>('/admin/stats');
-}
+    const data = await response.json().catch(() => ({}));
 
-/**
- * Get services
- */
-export async function getServices(): Promise<{ success: boolean; data?: Service[]; message?: string }> {
-    return adminApiClient<Service[]>('/admin/services');
-}
-
-/**
- * Update service
- */
-export async function updateService(
-    serviceId: number,
-    updates: {
-        name?: string;
-        description?: string;
-        duration_minutes?: number;
-        price?: number;
-        is_active?: boolean;
+    if (!response.ok) {
+      throw new Error(
+        data && typeof data.message === "string" ? data.message : "API request failed"
+      );
     }
-): Promise<{ success: boolean; data?: Service; message?: string }> {
-    return adminApiClient<Service>(`/admin/services/${serviceId}`, {
-        method: 'PATCH',
-        body: JSON.stringify(updates),
-    });
-}
 
-/**
- * Get availability rules
- */
-export async function getAvailabilityRules(): Promise<{ success: boolean; data?: AvailabilityRule[]; message?: string }> {
-    return adminApiClient<AvailabilityRule[]>('/admin/availability');
-}
-
-/**
- * Update availability rule
- */
-export async function updateAvailabilityRule(
-    ruleId: number,
-    updates: {
-        start_time?: string;
-        end_time?: string;
-        is_active?: boolean;
+    return data;
+  } catch (error) {
+    if (isNetworkError(error)) {
+      throw new Error(NETWORK_ERROR_MESSAGE);
     }
+    throw error;
+  }
+}
+
+// --- Auth (shared) ---
+
+export async function login(
+  email: string,
+  password: string
+): Promise<{ success: boolean; data?: { user: AdminUser }; message?: string }> {
+  try {
+    const response = await fetch(`${getAdminApiBase()}/auth/login`, {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password }),
+    });
+
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    return {
+      success: false,
+      message: isNetworkError(error)
+        ? NETWORK_ERROR_MESSAGE
+        : ((error as Error).message || "Login fehlgeschlagen"),
+    };
+  }
+}
+
+export async function logout(): Promise<void> {
+  try {
+    await adminApiClient("/auth/logout", { method: "POST" });
+  } catch {
+    // Ignore – Cookie wird vom Backend gelöscht
+  }
+}
+
+export async function getCurrentUser(): Promise<{
+  success: boolean;
+  data?: AdminUser;
+}> {
+  return adminApiClient<AdminUser>("/auth/me");
+}
+
+// --- System-Admin (role admin): Stats, Venues, Admins ---
+
+export interface GlobalStats {
+  venues: { total: number; active: number };
+  admins: { total: number; active: number };
+  bookings: {
+    total: number;
+    pending: number;
+    confirmed: number;
+    cancelled: number;
+    completed: number;
+    thisMonth: number;
+  };
+}
+
+export interface AdminWithVenue extends AdminUser {
+  venue_name: string | null;
+  is_active: boolean;
+  last_login: Date | null;
+  created_at: Date;
+}
+
+export async function getAdminStats(): Promise<{
+  success: boolean;
+  data?: GlobalStats;
+  message?: string;
+}> {
+  return adminApiClient<GlobalStats>("/admin/stats");
+}
+
+export async function listVenues(): Promise<{
+  success: boolean;
+  data?: Venue[];
+  message?: string;
+}> {
+  return adminApiClient<Venue[]>("/admin/venues");
+}
+
+export async function getVenue(id: number): Promise<{
+  success: boolean;
+  data?: Venue;
+  message?: string;
+}> {
+  return adminApiClient<Venue>(`/admin/venues/${id}`);
+}
+
+export async function createVenue(
+  data: Partial<Venue> & { name: string; type: Venue["type"]; email: string }
+): Promise<{ success: boolean; data?: Venue; message?: string }> {
+  const res = await fetch(`${getAdminApiBase()}/admin/venues`, {
+    method: "POST",
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  }).then((r) => r.json());
+  return res;
+}
+
+export async function updateVenue(
+  id: number,
+  data: Partial<Venue>
+): Promise<{ success: boolean; data?: Venue; message?: string }> {
+  return adminApiClient<Venue>(`/admin/venues/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function listAdmins(): Promise<{
+  success: boolean;
+  data?: AdminWithVenue[];
+  message?: string;
+}> {
+  return adminApiClient<AdminWithVenue[]>("/admin/admins");
+}
+
+export async function createAdmin(data: {
+  email: string;
+  password: string;
+  name: string;
+  venue_id?: number | null;
+  role?: "owner" | "staff";
+}): Promise<{ success: boolean; data?: AdminUser; message?: string }> {
+  const res = await fetch(`${getAdminApiBase()}/admin/admins`, {
+    method: "POST",
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  }).then((r) => r.json());
+  return res;
+}
+
+export async function updateAdmin(
+  id: number,
+  data: {
+    venue_id?: number | null;
+    role?: "owner" | "staff";
+    is_active?: boolean;
+    name?: string;
+  }
+): Promise<{ success: boolean; data?: AdminUser; message?: string }> {
+  return adminApiClient<AdminUser>(`/admin/admins/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function setAdminPassword(
+  adminId: number,
+  newPassword: string
 ): Promise<{ success: boolean; message?: string }> {
-    return adminApiClient(`/admin/availability/${ruleId}`, {
-        method: 'PATCH',
-        body: JSON.stringify(updates),
-    });
-}
-
-/**
- * Create manual booking (bypasses booking_advance_hours check)
- */
-export async function createManualBooking(
-    bookingData: Omit<CreateBookingData, 'venue_id'>
-): Promise<{ success: boolean; data?: Booking; message?: string }> {
-    return adminApiClient<Booking>('/admin/bookings', {
-        method: 'POST',
-        body: JSON.stringify(bookingData),
-    });
-}
-
-/**
- * Get venue settings
- */
-export async function getVenueSettings(): Promise<{ success: boolean; data?: Venue; message?: string }> {
-    return adminApiClient<Venue>('/admin/venue/settings');
-}
-
-/**
- * Update venue settings (booking policies)
- */
-export async function updateVenueSettings(
-    updates: {
-        booking_advance_hours?: number;
-        cancellation_hours?: number;
-    }
-): Promise<{ success: boolean; message?: string }> {
-    return adminApiClient('/admin/venue/settings', {
-        method: 'PATCH',
-        body: JSON.stringify(updates),
-    });
-}
-
-/**
- * Change the current admin user's password
- */
-export async function changePassword(
-    currentPassword: string,
-    newPassword: string
-): Promise<{ success: boolean; message?: string }> {
-    return adminApiClient('/admin/me/password', {
-        method: 'PATCH',
-        body: JSON.stringify({
-            currentPassword,
-            newPassword,
-        }),
-    });
+  return adminApiClient(`/admin/admins/${adminId}/password`, {
+    method: "PATCH",
+    body: JSON.stringify({ newPassword }),
+  });
 }

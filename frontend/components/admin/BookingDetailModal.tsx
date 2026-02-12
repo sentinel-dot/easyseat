@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { updateBookingStatus } from "@/lib/api/admin";
+import { updateBookingStatus } from "@/lib/api/dashboard";
 import type { BookingWithDetails } from "@/lib/types";
 import { getStatusLabel, getStatusColor } from "@/lib/utils/bookingStatus";
 import { Button } from "@/components/shared/button";

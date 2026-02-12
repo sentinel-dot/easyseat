@@ -1,644 +1,192 @@
 /**
- * ADMIN SERVICE
- * 
- * Service für Admin-Dashboard Operationen:
- * - Buchungsverwaltung mit erweiterten Filtern
- * - Statistiken
- * - Service-Verwaltung (CRUD)
- * - Verfügbarkeits-Verwaltung
+ * Admin Service (System)
+ * Venues verwalten, User verwalten, globale Stats. Rolle: admin.
  */
 
 import { getConnection } from '../config/database';
 import { createLogger } from '../config/utils/logger';
-import { Booking, Service } from '../config/utils/types';
-import { BookingService } from './booking.service';
+import { VenueService } from './venue.service';
+import { hashPassword } from './auth.service';
+import { AdminUserPublic, AdminRole } from '../config/utils/types';
+import { Venue } from '../config/utils/types';
 
 const logger = createLogger('admin.service');
 
-// Extended Booking type with joined data
-export interface BookingWithDetails extends Booking {
-    venue_name?: string;
-    service_name?: string;
-    staff_member_name?: string;
-    service_price?: number;
-    service_duration?: number;
+export interface AdminWithVenue extends AdminUserPublic {
+    venue_name: string | null;
+    is_active: boolean;
+    last_login: Date | null;
+    created_at: Date;
 }
 
-// Stats types
-export interface AdminStats {
+export interface GlobalStats {
+    venues: { total: number; active: number };
+    admins: { total: number; active: number };
     bookings: {
-        today: number;
-        thisWeek: number;
-        thisMonth: number;
+        total: number;
         pending: number;
         confirmed: number;
         cancelled: number;
         completed: number;
-    };
-    revenue: {
-        today: number;
-        thisWeek: number;
         thisMonth: number;
-        total: number;
     };
-    popularServices: Array<{
-        service_id: number;
-        service_name: string;
-        booking_count: number;
-        total_revenue: number;
-    }>;
-    popularTimeSlots: Array<{
-        hour: number;
-        booking_count: number;
-    }>;
 }
 
 export class AdminService {
-    /**
-     * Get all bookings with extended filters (for admin dashboard)
-     */
-    static async getBookings(
-        venueId: number,
-        filters?: {
-            startDate?: string;
-            endDate?: string;
-            status?: string;
-            serviceId?: number;
-            search?: string;
-            limit?: number;
-            offset?: number;
-        }
-    ): Promise<{ bookings: BookingWithDetails[]; total: number }> {
-        logger.info('Admin: Fetching bookings...', { venueId, filters });
+    static async listVenues(): Promise<Venue[]> {
+        return VenueService.getAllVenuesForAdmin();
+    }
 
+    static async createVenue(data: Parameters<typeof VenueService.createVenue>[0]): Promise<Venue> {
+        return VenueService.createVenue(data);
+    }
+
+    static async updateVenue(id: number, updates: Parameters<typeof VenueService.updateVenue>[1]): Promise<Venue> {
+        return VenueService.updateVenue(id, updates);
+    }
+
+    static async getVenue(id: number): Promise<Venue | null> {
+        return VenueService.getVenueByIdForAdmin(id);
+    }
+
+    static async listAdmins(): Promise<AdminWithVenue[]> {
         let conn;
         try {
             conn = await getConnection();
-
-            // Build query
-            let query = `
-                SELECT 
-                    b.*,
-                    v.name as venue_name,
-                    s.name as service_name,
-                    s.price as service_price,
-                    s.duration_minutes as service_duration,
-                    sm.name as staff_member_name
-                FROM bookings b
-                LEFT JOIN venues v ON b.venue_id = v.id
-                LEFT JOIN services s ON b.service_id = s.id
-                LEFT JOIN staff_members sm ON b.staff_member_id = sm.id
-                WHERE b.venue_id = ?
-            `;
-
-            let countQuery = `
-                SELECT COUNT(*) as total
-                FROM bookings b
-                WHERE b.venue_id = ?
-            `;
-
-            const params: (string | number)[] = [venueId];
-            const countParams: (string | number)[] = [venueId];
-
-            // Apply filters
-            if (filters?.startDate) {
-                query += ' AND b.booking_date >= ?';
-                countQuery += ' AND b.booking_date >= ?';
-                params.push(filters.startDate);
-                countParams.push(filters.startDate);
-            }
-
-            if (filters?.endDate) {
-                query += ' AND b.booking_date <= ?';
-                countQuery += ' AND b.booking_date <= ?';
-                params.push(filters.endDate);
-                countParams.push(filters.endDate);
-            }
-
-            if (filters?.status) {
-                query += ' AND b.status = ?';
-                countQuery += ' AND b.status = ?';
-                params.push(filters.status);
-                countParams.push(filters.status);
-            }
-
-            if (filters?.serviceId) {
-                query += ' AND b.service_id = ?';
-                countQuery += ' AND b.service_id = ?';
-                params.push(filters.serviceId);
-                countParams.push(filters.serviceId);
-            }
-
-            if (filters?.search) {
-                query += ' AND (b.customer_name LIKE ? OR b.customer_email LIKE ? OR b.customer_phone LIKE ?)';
-                countQuery += ' AND (b.customer_name LIKE ? OR b.customer_email LIKE ? OR b.customer_phone LIKE ?)';
-                const searchTerm = `%${filters.search}%`;
-                params.push(searchTerm, searchTerm, searchTerm);
-                countParams.push(searchTerm, searchTerm, searchTerm);
-            }
-
-            // Order and pagination
-            query += ' ORDER BY b.booking_date DESC, b.start_time DESC';
-
-            if (filters?.limit) {
-                query += ' LIMIT ?';
-                params.push(filters.limit);
-            }
-
-            if (filters?.offset) {
-                query += ' OFFSET ?';
-                params.push(filters.offset);
-            }
-
-            const [bookings, countResult] = await Promise.all([
-                conn.query(query, params) as Promise<BookingWithDetails[]>,
-                conn.query(countQuery, countParams) as Promise<[{ total: bigint }]>
-            ]);
-
-            const total = Number(countResult[0]?.total || 0);
-
-            await BookingService.markPastBookingsCompleted(conn, bookings);
-
-            logger.info(`Admin: Found ${bookings.length} bookings (total: ${total})`);
-
-            return { bookings, total };
+            const rows = await conn.query(`
+                SELECT a.id, a.email, a.name, a.venue_id, a.role, a.is_active, a.last_login, a.created_at, v.name as venue_name
+                FROM admin_users a
+                LEFT JOIN venues v ON a.venue_id = v.id
+                ORDER BY a.email ASC
+            `) as (AdminWithVenue & { venue_name: string })[];
+            return rows.map((r) => ({
+                id: r.id,
+                email: r.email,
+                name: r.name,
+                venue_id: r.venue_id,
+                role: r.role,
+                venue_name: r.venue_name ?? null,
+                is_active: r.is_active,
+                last_login: r.last_login,
+                created_at: r.created_at,
+            }));
         } catch (error) {
-            logger.error('Admin: Error fetching bookings', error);
+            logger.error('Error listing admins', error);
             throw error;
         } finally {
             if (conn) conn.release();
         }
     }
 
-    /**
-     * Update booking status (admin only)
-     */
-    static async updateBookingStatus(
-        bookingId: number,
-        status: 'pending' | 'confirmed' | 'cancelled' | 'completed' | 'no_show',
-        reason?: string
-    ): Promise<Booking> {
-        logger.info(`Admin: Updating booking ${bookingId} status to ${status}`);
-
+    static async createAdmin(data: {
+        email: string;
+        password: string;
+        name: string;
+        venue_id?: number | null;
+        role?: AdminRole;
+    }): Promise<AdminUserPublic> {
+        if (!data.password || data.password.length < 8) throw new Error('Passwort muss mindestens 8 Zeichen haben');
+        const role = data.role && data.role !== 'admin' ? data.role : 'owner';
+        const venue_id = data.venue_id ?? null;
+        const password_hash = await hashPassword(data.password);
         let conn;
         try {
             conn = await getConnection();
-
-            // Check if booking exists
-            const existing = await conn.query(
-                'SELECT * FROM bookings WHERE id = ?',
-                [bookingId]
-            ) as Booking[];
-
-            if (existing.length === 0) {
-                throw new Error('Booking not found');
-            }
-
-            const currentStatus = existing[0].status;
-            const isPendingToConfirmed = currentStatus === 'pending' && status === 'confirmed';
-            if (!isPendingToConfirmed) {
-                const hasReason = reason != null && String(reason).trim().length > 0;
-                if (!hasReason) {
-                    throw new Error('Grund ist erforderlich');
-                }
-            }
-
-            // Update status
-            let updateQuery = `
-                UPDATE bookings 
-                SET status = ?, updated_at = NOW()
-            `;
-            const params: (string | number | null)[] = [status];
-
-            if (status === 'cancelled') {
-                updateQuery += ', cancelled_at = NOW(), cancellation_reason = ?';
-                params.push(reason || null);
-            }
-
-            if (status === 'confirmed') {
-                updateQuery += ', confirmation_sent_at = NOW()';
-            }
-
-            updateQuery += ' WHERE id = ?';
-            params.push(bookingId);
-
-            await conn.query(updateQuery, params);
-
-            // Get updated booking
-            const updated = await conn.query(
-                'SELECT * FROM bookings WHERE id = ?',
-                [bookingId]
-            ) as Booking[];
-
-            if (reason?.trim()) {
-                logger.info(`Admin: Booking ${bookingId} status updated to ${status}`, { reason: reason.trim() });
-            } else {
-                logger.info(`Admin: Booking ${bookingId} status updated to ${status}`);
-            }
-
-            return updated[0];
+            const existing = await conn.query('SELECT id FROM admin_users WHERE email = ?', [data.email]) as { id: number }[];
+            if (existing.length > 0) throw new Error('E-Mail wird bereits verwendet');
+            await conn.query(
+                `INSERT INTO admin_users (email, password_hash, name, venue_id, role) VALUES (?, ?, ?, ?, ?)`,
+                [data.email, password_hash, data.name, venue_id, role]
+            );
+            const insertResult = await conn.query(
+                'SELECT id, email, name, venue_id, role FROM admin_users WHERE email = ?',
+                [data.email]
+            ) as AdminUserPublic[];
+            return insertResult[0];
         } catch (error) {
-            logger.error('Admin: Error updating booking status', error);
+            logger.error('Error creating admin', error);
             throw error;
         } finally {
             if (conn) conn.release();
         }
     }
 
-    /**
-     * Get dashboard statistics
-     */
-    static async getStats(venueId: number): Promise<AdminStats> {
-        logger.info(`Admin: Fetching stats for venue ${venueId}`);
-
+    static async updateAdmin(
+        adminId: number,
+        updates: { venue_id?: number | null; role?: AdminRole; is_active?: boolean; name?: string }
+    ): Promise<AdminUserPublic> {
         let conn;
         try {
             conn = await getConnection();
+            const existing = await conn.query('SELECT id FROM admin_users WHERE id = ?', [adminId]) as { id: number }[];
+            if (existing.length === 0) throw new Error('Admin nicht gefunden');
+            const fields: string[] = [];
+            const values: (string | number | boolean | null)[] = [];
+            if (updates.venue_id !== undefined) { fields.push('venue_id = ?'); values.push(updates.venue_id); }
+            if (updates.role !== undefined) { fields.push('role = ?'); values.push(updates.role); }
+            if (updates.is_active !== undefined) { fields.push('is_active = ?'); values.push(updates.is_active); }
+            if (updates.name !== undefined) { fields.push('name = ?'); values.push(updates.name); }
+            if (fields.length === 0) {
+                const rows = await conn.query('SELECT id, email, name, venue_id, role FROM admin_users WHERE id = ?', [adminId]) as AdminUserPublic[];
+                return rows[0];
+            }
+            values.push(adminId);
+            await conn.query(`UPDATE admin_users SET ${fields.join(', ')}, updated_at = NOW() WHERE id = ?`, values);
+            const rows = await conn.query('SELECT id, email, name, venue_id, role FROM admin_users WHERE id = ?', [adminId]) as AdminUserPublic[];
+            return rows[0];
+        } catch (error) {
+            logger.error('Error updating admin', error);
+            throw error;
+        } finally {
+            if (conn) conn.release();
+        }
+    }
 
-            // Active bookings (for counts): confirmed + completed; pending/cancelled excluded
-            const activeStatusCondition = "status IN ('confirmed', 'completed')";
-            const activeStatusConditionB = "b.status IN ('confirmed', 'completed')";
-            // Revenue and "completed" stats: only completed = real revenue; cancelled never counted
-            const completedOnlyCondition = "status = 'completed'";
-            const completedOnlyConditionB = "b.status = 'completed'";
+    static async setAdminPassword(adminId: number, newPassword: string): Promise<void> {
+        if (!newPassword || newPassword.length < 8) throw new Error('Passwort muss mindestens 8 Zeichen haben');
+        const password_hash = await hashPassword(newPassword);
+        let conn;
+        try {
+            conn = await getConnection();
+            const [result] = await conn.query('UPDATE admin_users SET password_hash = ?, updated_at = NOW() WHERE id = ?', [password_hash, adminId]) as { affectedRows: number }[];
+            if ((result as { affectedRows?: number })?.affectedRows === 0) throw new Error('Admin nicht gefunden');
+        } catch (error) {
+            logger.error('Error setting admin password', error);
+            throw error;
+        } finally {
+            if (conn) conn.release();
+        }
+    }
 
-            // Get booking counts (today/week/month = only active; pending/confirmed/cancelled/completed for overview)
-            const bookingStats = await conn.query(`
-                SELECT
-                    COUNT(CASE WHEN booking_date = CURDATE() AND ${activeStatusCondition} THEN 1 END) as today,
-                    COUNT(CASE WHEN booking_date >= DATE_SUB(CURDATE(), INTERVAL (WEEKDAY(CURDATE())) DAY) 
-                               AND booking_date < DATE_ADD(CURDATE(), INTERVAL 1 DAY) AND ${activeStatusCondition} THEN 1 END) as this_week,
-                    COUNT(CASE WHEN MONTH(booking_date) = MONTH(CURDATE()) 
-                               AND YEAR(booking_date) = YEAR(CURDATE()) AND ${activeStatusCondition} THEN 1 END) as this_month,
-                    COUNT(CASE WHEN status = 'pending' THEN 1 END) as pending,
-                    COUNT(CASE WHEN status = 'confirmed' THEN 1 END) as confirmed,
-                    COUNT(CASE WHEN status = 'cancelled' THEN 1 END) as cancelled,
-                    COUNT(CASE WHEN status = 'completed' THEN 1 END) as completed
+    static async getGlobalStats(): Promise<GlobalStats> {
+        let conn;
+        try {
+            conn = await getConnection();
+            const [venueCount] = await conn.query(`SELECT COUNT(*) as total, SUM(CASE WHEN is_active = TRUE THEN 1 ELSE 0 END) as active FROM venues`) as [{ total: bigint; active: bigint }];
+            const [adminCount] = await conn.query(`SELECT COUNT(*) as total, SUM(CASE WHEN is_active = TRUE THEN 1 ELSE 0 END) as active FROM admin_users`) as [{ total: bigint; active: bigint }];
+            const [bookingStats] = await conn.query(`
+                SELECT COUNT(*) as total,
+                    SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) as pending,
+                    SUM(CASE WHEN status = 'confirmed' THEN 1 ELSE 0 END) as confirmed,
+                    SUM(CASE WHEN status = 'cancelled' THEN 1 ELSE 0 END) as cancelled,
+                    SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as completed,
+                    SUM(CASE WHEN MONTH(booking_date) = MONTH(CURDATE()) AND YEAR(booking_date) = YEAR(CURDATE()) THEN 1 ELSE 0 END) as this_month
                 FROM bookings
-                WHERE venue_id = ?
-            `, [venueId]) as [{
-                today: bigint;
-                this_week: bigint;
-                this_month: bigint;
-                pending: bigint;
-                confirmed: bigint;
-                cancelled: bigint;
-                completed: bigint;
-            }];
-
-            // Revenue: only completed (service delivered); confirmed = not yet revenue; cancelled never counted
-            const revenueStats = await conn.query(`
-                SELECT
-                    COALESCE(SUM(CASE WHEN booking_date = CURDATE() AND ${completedOnlyCondition} THEN total_amount END), 0) as today,
-                    COALESCE(SUM(CASE WHEN booking_date >= DATE_SUB(CURDATE(), INTERVAL (WEEKDAY(CURDATE())) DAY) 
-                               AND booking_date < DATE_ADD(CURDATE(), INTERVAL 1 DAY) AND ${completedOnlyCondition} THEN total_amount END), 0) as this_week,
-                    COALESCE(SUM(CASE WHEN MONTH(booking_date) = MONTH(CURDATE()) 
-                               AND YEAR(booking_date) = YEAR(CURDATE()) AND ${completedOnlyCondition} THEN total_amount END), 0) as this_month,
-                    COALESCE(SUM(CASE WHEN ${completedOnlyCondition} THEN total_amount END), 0) as total
-                FROM bookings
-                WHERE venue_id = ?
-            `, [venueId]) as [{
-                today: string;
-                this_week: string;
-                this_month: string;
-                total: string;
-            }];
-
-            // Popular services: only completed (real revenue & count; cancelled excluded)
-            const popularServices = await conn.query(`
-                SELECT 
-                    b.service_id,
-                    s.name as service_name,
-                    COUNT(*) as booking_count,
-                    COALESCE(SUM(b.total_amount), 0) as total_revenue
-                FROM bookings b
-                JOIN services s ON b.service_id = s.id
-                WHERE b.venue_id = ? AND ${completedOnlyConditionB}
-                GROUP BY b.service_id, s.name
-                ORDER BY booking_count DESC
-                LIMIT 5
-            `, [venueId]) as Array<{
-                service_id: number;
-                service_name: string;
-                booking_count: bigint;
-                total_revenue: string;
-            }>;
-
-            // Popular time slots: only completed (cancelled excluded)
-            const popularTimeSlots = await conn.query(`
-                SELECT 
-                    HOUR(start_time) as hour,
-                    COUNT(*) as booking_count
-                FROM bookings
-                WHERE venue_id = ? AND ${completedOnlyCondition}
-                GROUP BY HOUR(start_time)
-                ORDER BY booking_count DESC
-                LIMIT 10
-            `, [venueId]) as Array<{
-                hour: number;
-                booking_count: bigint;
-            }>;
-
-            const stats: AdminStats = {
+            `) as [{ total: bigint; pending: bigint; confirmed: bigint; cancelled: bigint; completed: bigint; this_month: bigint }];
+            return {
+                venues: { total: Number(venueCount?.total ?? 0), active: Number(venueCount?.active ?? 0) },
+                admins: { total: Number(adminCount?.total ?? 0), active: Number(adminCount?.active ?? 0) },
                 bookings: {
-                    today: Number(bookingStats[0]?.today || 0),
-                    thisWeek: Number(bookingStats[0]?.this_week || 0),
-                    thisMonth: Number(bookingStats[0]?.this_month || 0),
-                    pending: Number(bookingStats[0]?.pending || 0),
-                    confirmed: Number(bookingStats[0]?.confirmed || 0),
-                    cancelled: Number(bookingStats[0]?.cancelled || 0),
-                    completed: Number(bookingStats[0]?.completed || 0),
+                    total: Number(bookingStats?.total ?? 0),
+                    pending: Number(bookingStats?.pending ?? 0),
+                    confirmed: Number(bookingStats?.confirmed ?? 0),
+                    cancelled: Number(bookingStats?.cancelled ?? 0),
+                    completed: Number(bookingStats?.completed ?? 0),
+                    thisMonth: Number(bookingStats?.this_month ?? 0),
                 },
-                revenue: {
-                    today: parseFloat(revenueStats[0]?.today || '0'),
-                    thisWeek: parseFloat(revenueStats[0]?.this_week || '0'),
-                    thisMonth: parseFloat(revenueStats[0]?.this_month || '0'),
-                    total: parseFloat(revenueStats[0]?.total || '0'),
-                },
-                popularServices: popularServices.map(s => ({
-                    service_id: s.service_id,
-                    service_name: s.service_name,
-                    booking_count: Number(s.booking_count),
-                    total_revenue: parseFloat(s.total_revenue || '0'),
-                })),
-                popularTimeSlots: popularTimeSlots.map(t => ({
-                    hour: t.hour,
-                    booking_count: Number(t.booking_count),
-                })),
             };
-
-            logger.info('Admin: Stats fetched successfully');
-
-            return stats;
         } catch (error) {
-            logger.error('Admin: Error fetching stats', error);
-            throw error;
-        } finally {
-            if (conn) conn.release();
-        }
-    }
-
-    /**
-     * Get all services for a venue
-     */
-    static async getServices(venueId: number): Promise<Service[]> {
-        logger.info(`Admin: Fetching services for venue ${venueId}`);
-
-        let conn;
-        try {
-            conn = await getConnection();
-
-            const services = await conn.query(`
-                SELECT * FROM services
-                WHERE venue_id = ?
-                ORDER BY name ASC
-            `, [venueId]) as Service[];
-
-            logger.info(`Admin: Found ${services.length} services`);
-
-            return services;
-        } catch (error) {
-            logger.error('Admin: Error fetching services', error);
-            throw error;
-        } finally {
-            if (conn) conn.release();
-        }
-    }
-
-    /**
-     * Update a service
-     */
-    static async updateService(
-        serviceId: number,
-        updates: {
-            name?: string;
-            description?: string;
-            duration_minutes?: number;
-            price?: number;
-            is_active?: boolean;
-        }
-    ): Promise<Service> {
-        logger.info(`Admin: Updating service ${serviceId}`, updates);
-
-        let conn;
-        try {
-            conn = await getConnection();
-
-            // Check if service exists
-            const existing = await conn.query(
-                'SELECT * FROM services WHERE id = ?',
-                [serviceId]
-            ) as Service[];
-
-            if (existing.length === 0) {
-                throw new Error('Service not found');
-            }
-
-            // Build update query
-            const updateFields: string[] = [];
-            const params: (string | number | boolean)[] = [];
-
-            if (updates.name !== undefined) {
-                updateFields.push('name = ?');
-                params.push(updates.name);
-            }
-            if (updates.description !== undefined) {
-                updateFields.push('description = ?');
-                params.push(updates.description);
-            }
-            if (updates.duration_minutes !== undefined) {
-                updateFields.push('duration_minutes = ?');
-                params.push(updates.duration_minutes);
-            }
-            if (updates.price !== undefined) {
-                updateFields.push('price = ?');
-                params.push(updates.price);
-            }
-            if (updates.is_active !== undefined) {
-                updateFields.push('is_active = ?');
-                params.push(updates.is_active);
-            }
-
-            if (updateFields.length === 0) {
-                return existing[0];
-            }
-
-            updateFields.push('updated_at = NOW()');
-            params.push(serviceId);
-
-            await conn.query(`
-                UPDATE services
-                SET ${updateFields.join(', ')}
-                WHERE id = ?
-            `, params);
-
-            // Get updated service
-            const updated = await conn.query(
-                'SELECT * FROM services WHERE id = ?',
-                [serviceId]
-            ) as Service[];
-
-            logger.info(`Admin: Service ${serviceId} updated`);
-
-            return updated[0];
-        } catch (error) {
-            logger.error('Admin: Error updating service', error);
-            throw error;
-        } finally {
-            if (conn) conn.release();
-        }
-    }
-
-    /**
-     * Get availability rules for staff/venue
-     */
-    static async getAvailabilityRules(venueId: number): Promise<Array<{
-        id: number;
-        venue_id: number | null;
-        staff_member_id: number | null;
-        staff_member_name?: string;
-        day_of_week: number;
-        start_time: string;
-        end_time: string;
-        is_active: boolean;
-    }>> {
-        logger.info(`Admin: Fetching availability rules for venue ${venueId}`);
-
-        let conn;
-        try {
-            conn = await getConnection();
-
-            const rules = await conn.query(`
-                SELECT 
-                    ar.*,
-                    sm.name as staff_member_name
-                FROM availability_rules ar
-                LEFT JOIN staff_members sm ON ar.staff_member_id = sm.id
-                WHERE ar.venue_id = ? OR ar.staff_member_id IN (
-                    SELECT id FROM staff_members WHERE venue_id = ?
-                )
-                ORDER BY ar.day_of_week, ar.start_time
-            `, [venueId, venueId]);
-
-            logger.info(`Admin: Found ${(rules as []).length} availability rules`);
-
-            return rules as Array<{
-                id: number;
-                venue_id: number | null;
-                staff_member_id: number | null;
-                staff_member_name?: string;
-                day_of_week: number;
-                start_time: string;
-                end_time: string;
-                is_active: boolean;
-            }>;
-        } catch (error) {
-            logger.error('Admin: Error fetching availability rules', error);
-            throw error;
-        } finally {
-            if (conn) conn.release();
-        }
-    }
-
-    /**
-     * Update availability rule
-     */
-    static async updateAvailabilityRule(
-        ruleId: number,
-        updates: {
-            start_time?: string;
-            end_time?: string;
-            is_active?: boolean;
-        }
-    ): Promise<void> {
-        logger.info(`Admin: Updating availability rule ${ruleId}`, updates);
-
-        let conn;
-        try {
-            conn = await getConnection();
-
-            const updateFields: string[] = [];
-            const params: (string | boolean | number)[] = [];
-
-            if (updates.start_time !== undefined) {
-                updateFields.push('start_time = ?');
-                params.push(updates.start_time);
-            }
-            if (updates.end_time !== undefined) {
-                updateFields.push('end_time = ?');
-                params.push(updates.end_time);
-            }
-            if (updates.is_active !== undefined) {
-                updateFields.push('is_active = ?');
-                params.push(updates.is_active);
-            }
-
-            if (updateFields.length === 0) {
-                return;
-            }
-
-            params.push(ruleId);
-
-            await conn.query(`
-                UPDATE availability_rules
-                SET ${updateFields.join(', ')}
-                WHERE id = ?
-            `, params);
-
-            logger.info(`Admin: Availability rule ${ruleId} updated`);
-        } catch (error) {
-            logger.error('Admin: Error updating availability rule', error);
-            throw error;
-        } finally {
-            if (conn) conn.release();
-        }
-    }
-
-    /**
-     * Update venue settings (booking policies)
-     */
-    static async updateVenueSettings(
-        venueId: number,
-        updates: {
-            booking_advance_hours?: number;
-            cancellation_hours?: number;
-        }
-    ): Promise<void> {
-        logger.info(`Admin: Updating venue ${venueId} settings`, updates);
-
-        let conn;
-        try {
-            conn = await getConnection();
-
-            const updateFields: string[] = [];
-            const params: any[] = [];
-
-            if (updates.booking_advance_hours !== undefined) {
-                updateFields.push('booking_advance_hours = ?');
-                params.push(updates.booking_advance_hours);
-            }
-
-            if (updates.cancellation_hours !== undefined) {
-                updateFields.push('cancellation_hours = ?');
-                params.push(updates.cancellation_hours);
-            }
-
-            if (updateFields.length === 0) {
-                logger.warn('No fields to update');
-                return;
-            }
-
-            params.push(venueId);
-
-            await conn.query(`
-                UPDATE venues
-                SET ${updateFields.join(', ')}, updated_at = NOW()
-                WHERE id = ?
-            `, params);
-
-            logger.info(`Admin: Venue ${venueId} settings updated successfully`);
-        } catch (error) {
-            logger.error('Admin: Error updating venue settings', error);
+            logger.error('Error fetching global stats', error);
             throw error;
         } finally {
             if (conn) conn.release();

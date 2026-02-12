@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { verifyToken, findAdminById, toPublicUser } from '../services/auth.service';
 import { createLogger } from '../config/utils/logger';
-import { JwtPayload, AdminUserPublic } from '../config/utils/types';
+import { JwtPayload, AdminUserPublic, AdminRole } from '../config/utils/types';
 
 const logger = createLogger('auth.middleware');
 
@@ -103,7 +103,7 @@ export async function authenticateAndLoadUser(req: Request, res: Response, next:
  * Role-based authorization middleware
  * Must be used after authenticateToken or authenticateAndLoadUser
  */
-export function requireRole(...roles: Array<'owner' | 'admin' | 'staff'>) {
+export function requireRole(...roles: AdminRole[]) {
     return (req: Request, res: Response, next: NextFunction): void => {
         if (!req.jwtPayload) {
             res.status(401).json({
@@ -126,6 +126,27 @@ export function requireRole(...roles: Array<'owner' | 'admin' | 'staff'>) {
 }
 
 /**
+ * System-Admin-only authorization (role admin, typically venue_id NULL)
+ */
+export function requireSystemAdmin(req: Request, res: Response, next: NextFunction): void {
+    if (!req.jwtPayload) {
+        res.status(401).json({
+            success: false,
+            message: 'Authentifizierung erforderlich'
+        });
+        return;
+    }
+    if (req.jwtPayload.role !== 'admin') {
+        res.status(403).json({
+            success: false,
+            message: 'Nur System-Admins haben Zugriff'
+        });
+        return;
+    }
+    next();
+}
+
+/**
  * Venue-based authorization middleware
  * Ensures user can only access their own venue's data
  */
@@ -137,8 +158,12 @@ export function requireVenueAccess(req: Request, res: Response, next: NextFuncti
         });
         return;
     }
-    
-    // Owner can access all venues
+    // System admin (role admin, venue_id null) can access any venue via request params/body
+    if (req.jwtPayload.role === 'admin') {
+        next();
+        return;
+    }
+    // Owner can access all venues (when venue_id is set in JWT for context)
     if (req.jwtPayload.role === 'owner') {
         next();
         return;

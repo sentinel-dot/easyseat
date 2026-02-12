@@ -120,12 +120,14 @@ export interface Booking extends CreateBookingData
 }
 
 // Admin Types
+export type AdminRole = 'admin' | 'owner' | 'staff';
+
 export interface AdminUser {
     id: number;
     email: string;
     name: string;
     venue_id: number | null;
-    role: 'owner' | 'admin' | 'staff';
+    role: AdminRole;
 }
 
 export interface LoginResponse {
