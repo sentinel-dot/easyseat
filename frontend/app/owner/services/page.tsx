@@ -10,7 +10,7 @@ import { Input } from "@/components/shared/input";
 import { PageLoader } from "@/components/shared/loading-spinner";
 import { ErrorMessage } from "@/components/shared/error-message";
 
-export default function AdminServicesPage() {
+export default function OwnerServicesPage() {
   const [services, setServices] = useState<Service[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

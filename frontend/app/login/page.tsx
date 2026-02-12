@@ -8,9 +8,9 @@ import { login } from "@/lib/api/admin";
 import { Button } from "@/components/shared/button";
 import { Input } from "@/components/shared/input";
 
-export default function AdminLoginPage() {
+export default function LoginPage() {
   const searchParams = useSearchParams();
-  const redirect = searchParams.get("redirect") ?? "/admin";
+  const redirectParam = searchParams.get("redirect");
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -27,7 +27,14 @@ export default function AdminLoginPage() {
       const res = await login(email.trim(), password);
       if (res.success || res.data?.user) {
         toast.success("Angemeldet.");
-        window.location.replace(redirect);
+        const role = res.data?.user?.role;
+        const target =
+          redirectParam && redirectParam !== "/admin/login"
+            ? redirectParam
+            : role === "admin"
+              ? "/admin"
+              : "/owner";
+        window.location.replace(target);
         return;
       } else {
         toast.error(res.message ?? "Anmeldung fehlgeschlagen.");
@@ -53,7 +60,7 @@ export default function AdminLoginPage() {
             Anmeldung
           </h1>
           <p className="mt-2 text-sm text-[var(--color-muted)]">
-            Für System-Admin oder Betreiber-Dashboard – gleicher Login.
+            Für Admin-Bereich und Betreiber-Dashboard.
           </p>
           <form onSubmit={handleSubmit} className="mt-6 space-y-4">
             <Input

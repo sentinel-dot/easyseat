@@ -39,7 +39,7 @@ export function Footer() {
               AGB
             </Link>
             <Link
-              href="/admin/login"
+              href="/login"
               className="text-[var(--color-muted)] transition-colors hover:text-[var(--color-text)]"
             >
               Betreiber-Login

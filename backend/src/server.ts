@@ -199,10 +199,10 @@ const startServer = async() => {
             logger.info('   GET    /admin/venues/:id - Get venue');
             logger.info('   POST   /admin/venues - Create venue');
             logger.info('   PATCH  /admin/venues/:id - Update venue');
-            logger.info('   GET    /admin/admins - List admins');
-            logger.info('   POST   /admin/admins - Create admin');
-            logger.info('   PATCH  /admin/admins/:id - Update admin');
-            logger.info('   PATCH  /admin/admins/:id/password - Set admin password');
+            logger.info('   GET    /admin/users - List users');
+            logger.info('   POST   /admin/users - Create user');
+            logger.info('   PATCH  /admin/users/:id - Update user');
+            logger.info('   PATCH  /admin/users/:id/password - Set user password');
             logger.info('   📊 Dashboard – Venue (role owner/staff):');
             logger.info('   GET    /dashboard/bookings - Get bookings');
             logger.info('   POST   /dashboard/bookings - Create manual booking');

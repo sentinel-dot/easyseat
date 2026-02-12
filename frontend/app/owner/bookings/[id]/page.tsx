@@ -34,7 +34,7 @@ function formatAuditAction(entry: BookingAuditLogEntry): string {
   return entry.action;
 }
 
-export default function BookingVerlaufPage() {
+export default function OwnerBookingVerlaufPage() {
   const params = useParams();
   const router = useRouter();
   const id = typeof params.id === "string" ? params.id : "";
@@ -84,10 +84,10 @@ export default function BookingVerlaufPage() {
       <div className="space-y-4">
         <ErrorMessage
           message={error}
-          onRetry={() => router.push("/admin/bookings")}
+          onRetry={() => router.push("/owner/bookings")}
         />
         <Link
-          href="/admin/bookings"
+          href="/owner/bookings"
           className="text-sm font-medium text-[var(--color-accent)] hover:underline"
         >
           ← Zurück zur Buchungsliste
@@ -100,7 +100,7 @@ export default function BookingVerlaufPage() {
     <div className="space-y-6">
       <nav className="text-sm text-[var(--color-muted)]">
         <Link
-          href="/admin/bookings"
+          href="/owner/bookings"
           className="hover:text-[var(--color-accent)]"
         >
           Buchungen

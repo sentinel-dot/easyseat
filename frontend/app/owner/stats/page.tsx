@@ -8,7 +8,7 @@ import { Card, CardTitle } from "@/components/shared/card";
 import { PageLoader } from "@/components/shared/loading-spinner";
 import { ErrorMessage } from "@/components/shared/error-message";
 
-export default function AdminStatsPage() {
+export default function OwnerStatsPage() {
   const [stats, setStats] = useState<AdminStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -53,14 +53,13 @@ export default function AdminStatsPage() {
             Detaillierte Auswertungen zu Buchungen und Umsatz.
           </p>
         </div>
-        <Link href="/admin">
+        <Link href="/owner">
           <span className="text-sm font-medium text-[var(--color-accent)] hover:underline">
             ← Zur Übersicht
           </span>
         </Link>
       </div>
 
-      {/* Buchungsstatus */}
       <Card>
         <CardTitle className="text-lg">Buchungsstatus (Gesamt)</CardTitle>
         <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -83,7 +82,6 @@ export default function AdminStatsPage() {
         </div>
       </Card>
 
-      {/* Umsatz */}
       <Card>
         <CardTitle className="text-lg">Umsatz (abgeschlossene Buchungen)</CardTitle>
         <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -106,7 +104,6 @@ export default function AdminStatsPage() {
         </div>
       </Card>
 
-      {/* Beliebte Leistungen */}
       {s.popularServices.length > 0 && (
         <Card>
           <CardTitle className="text-lg">Beliebte Leistungen (abgeschlossene Buchungen)</CardTitle>
@@ -135,7 +132,6 @@ export default function AdminStatsPage() {
         </Card>
       )}
 
-      {/* Beliebte Uhrzeiten */}
       {s.popularTimeSlots.length > 0 && (
         <Card>
           <CardTitle className="text-lg">Beliebteste Uhrzeiten (Stunde)</CardTitle>

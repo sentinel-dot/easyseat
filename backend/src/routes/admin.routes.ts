@@ -94,7 +94,7 @@ router.patch('/venues/:id', async (req: Request, res: Response) => {
     }
 });
 
-router.get('/admins', async (req: Request, res: Response) => {
+router.get('/users', async (req: Request, res: Response) => {
     try {
         const admins = await AdminService.listAdmins();
         res.json({ success: true, data: admins });
@@ -104,7 +104,7 @@ router.get('/admins', async (req: Request, res: Response) => {
     }
 });
 
-router.post('/admins', async (req: Request, res: Response) => {
+router.post('/users', async (req: Request, res: Response) => {
     const { email, password, name, venue_id, role } = req.body;
     if (!email || !password || !name) {
         res.status(400).json({ success: false, message: 'E-Mail, Passwort und Name sind erforderlich' });
@@ -124,7 +124,7 @@ router.post('/admins', async (req: Request, res: Response) => {
     }
 });
 
-router.patch('/admins/:id', async (req: Request, res: Response) => {
+router.patch('/users/:id', async (req: Request, res: Response) => {
     const id = parseInt(req.params.id, 10);
     if (!Number.isInteger(id) || id < 1) {
         res.status(400).json({ success: false, message: 'Ungültige Admin-ID' });
@@ -150,7 +150,7 @@ router.patch('/admins/:id', async (req: Request, res: Response) => {
     }
 });
 
-router.patch('/admins/:id/password', async (req: Request, res: Response) => {
+router.patch('/users/:id/password', async (req: Request, res: Response) => {
     const id = parseInt(req.params.id, 10);
     if (!Number.isInteger(id) || id < 1) {
         res.status(400).json({ success: false, message: 'Ungültige Admin-ID' });

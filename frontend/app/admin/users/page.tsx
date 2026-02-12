@@ -28,7 +28,7 @@ const ROLE_LABELS: Record<string, string> = {
   staff: "Staff",
 };
 
-export default function SystemAdminsPage() {
+export default function AdminUsersPage() {
   const [admins, setAdmins] = useState<AdminWithVenue[]>([]);
   const [venues, setVenues] = useState<Venue[]>([]);
   const [loading, setLoading] = useState(true);

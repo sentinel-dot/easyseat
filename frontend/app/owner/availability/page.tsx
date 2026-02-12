@@ -19,7 +19,7 @@ const DAY_NAMES: Record<number, string> = {
   6: "Samstag",
 };
 
-export default function AdminAvailabilityPage() {
+export default function OwnerAvailabilityPage() {
   const [rules, setRules] = useState<AvailabilityRule[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

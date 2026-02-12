@@ -25,7 +25,7 @@ const STATUS_OPTIONS = [
 
 const today = new Date().toISOString().slice(0, 10);
 
-export default function AdminBookingsPage() {
+export default function OwnerBookingsPage() {
   const searchParams = useSearchParams();
   const statusParam = searchParams.get("status") ?? "";
 
@@ -221,7 +221,6 @@ export default function AdminBookingsPage() {
         </Button>
       </div>
 
-      {/* Filter */}
       <Card className="p-4">
         <div className="flex flex-wrap items-end gap-4">
           <label className="flex flex-col gap-1 text-sm">
@@ -387,6 +386,7 @@ export default function AdminBookingsPage() {
             open={!!detailBooking}
             onClose={() => setDetailBooking(null)}
             onUpdated={loadBookings}
+            bookingsBasePath="/owner/bookings"
           />
 
           {reasonDialog && (
@@ -452,7 +452,6 @@ export default function AdminBookingsPage() {
         </>
       )}
 
-      {/* Modal: Manuelle Buchung */}
       {manualOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
           <div className="w-full max-w-md rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-6 shadow-[var(--shadow-lg)]">

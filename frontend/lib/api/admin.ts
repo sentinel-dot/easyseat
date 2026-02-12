@@ -161,7 +161,7 @@ export async function listAdmins(): Promise<{
   data?: AdminWithVenue[];
   message?: string;
 }> {
-  return adminApiClient<AdminWithVenue[]>("/admin/admins");
+  return adminApiClient<AdminWithVenue[]>("/admin/users");
 }
 
 export async function createAdmin(data: {
@@ -171,7 +171,7 @@ export async function createAdmin(data: {
   venue_id?: number | null;
   role?: "owner" | "staff";
 }): Promise<{ success: boolean; data?: AdminUser; message?: string }> {
-  const res = await fetch(`${getAdminApiBase()}/admin/admins`, {
+  const res = await fetch(`${getAdminApiBase()}/admin/users`, {
     method: "POST",
     credentials: "include",
     headers: { "Content-Type": "application/json" },
@@ -189,7 +189,7 @@ export async function updateAdmin(
     name?: string;
   }
 ): Promise<{ success: boolean; data?: AdminUser; message?: string }> {
-  return adminApiClient<AdminUser>(`/admin/admins/${id}`, {
+  return adminApiClient<AdminUser>(`/admin/users/${id}`, {
     method: "PATCH",
     body: JSON.stringify(data),
   });
@@ -199,7 +199,7 @@ export async function setAdminPassword(
   adminId: number,
   newPassword: string
 ): Promise<{ success: boolean; message?: string }> {
-  return adminApiClient(`/admin/admins/${adminId}/password`, {
+  return adminApiClient(`/admin/users/${adminId}/password`, {
     method: "PATCH",
     body: JSON.stringify({ newPassword }),
   });

@@ -7,10 +7,9 @@ import {
   listVenues,
   createVenue,
   updateVenue,
-  getVenue,
 } from "@/lib/api/admin";
 import type { Venue } from "@/lib/types";
-import { Card, CardTitle } from "@/components/shared/card";
+import { Card } from "@/components/shared/card";
 import { Button } from "@/components/shared/button";
 import { Input } from "@/components/shared/input";
 import { PageLoader } from "@/components/shared/loading-spinner";
@@ -24,7 +23,7 @@ const VENUE_TYPES: { value: Venue["type"]; label: string }[] = [
   { value: "other", label: "Sonstiges" },
 ];
 
-export default function SystemVenuesPage() {
+export default function AdminVenuesPage() {
   const [venues, setVenues] = useState<Venue[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

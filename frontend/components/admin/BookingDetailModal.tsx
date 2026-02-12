@@ -22,6 +22,8 @@ type Props = {
   open: boolean;
   onClose: () => void;
   onUpdated?: () => void;
+  /** Base path for booking links, e.g. "/owner/bookings" or "/admin/bookings" */
+  bookingsBasePath?: string;
 };
 
 function formatDate(d: string) {
@@ -38,6 +40,7 @@ export function BookingDetailModal({
   open,
   onClose,
   onUpdated,
+  bookingsBasePath = "/admin/bookings",
 }: Props) {
   const [status, setStatus] = useState<string>("");
   const [statusReason, setStatusReason] = useState("");
@@ -260,7 +263,7 @@ export function BookingDetailModal({
               )}
 
               <Link
-                href={`/admin/bookings/${booking.id}`}
+                href={`${bookingsBasePath}/${booking.id}`}
                 onClick={onClose}
                 className="inline-flex items-center gap-1.5 text-sm font-medium text-[var(--color-accent)] hover:underline mt-2"
               >

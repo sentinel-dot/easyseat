@@ -28,7 +28,7 @@ function toYMD(d: Date) {
 
 const WEEKDAY_LABELS = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"];
 
-export default function AdminCalendarPage() {
+export default function OwnerCalendarPage() {
   const [viewDate, setViewDate] = useState(() => new Date());
   const [bookings, setBookings] = useState<BookingWithDetails[]>([]);
   const [loading, setLoading] = useState(true);
@@ -211,6 +211,7 @@ export default function AdminCalendarPage() {
             open={!!detailBooking}
             onClose={() => setDetailBooking(null)}
             onUpdated={loadBookings}
+            bookingsBasePath="/owner/bookings"
           />
         </>
       )}
