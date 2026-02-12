@@ -1,6 +1,7 @@
 import type {
   AdminStats,
   BookingWithDetails,
+  BookingAuditLogEntry,
   Service,
   AvailabilityRule,
   CreateBookingData,
@@ -75,6 +76,28 @@ export async function getBookings(filters?: {
   const queryString = params.toString();
   return dashboardApiClient<BookingWithDetails[]>(
     `/dashboard/bookings${queryString ? `?${queryString}` : ""}`
+  );
+}
+
+export async function getBooking(bookingId: number): Promise<{
+  success: boolean;
+  data?: BookingWithDetails;
+  message?: string;
+}> {
+  return dashboardApiClient<BookingWithDetails>(
+    `/dashboard/bookings/${bookingId}`
+  );
+}
+
+export async function getBookingAuditLog(
+  bookingId: number
+): Promise<{
+  success: boolean;
+  data?: BookingAuditLogEntry[];
+  message?: string;
+}> {
+  return dashboardApiClient<BookingAuditLogEntry[]>(
+    `/dashboard/bookings/${bookingId}/audit`
   );
 }
 

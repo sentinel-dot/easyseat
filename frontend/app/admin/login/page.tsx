@@ -53,7 +53,7 @@ export default function AdminLoginPage() {
             Anmeldung
           </h1>
           <p className="mt-2 text-sm text-[var(--color-muted)]">
-            Für Admin (System) oder Dashboard (Betrieb) – gleicher Login.
+            Für System-Admin oder Betreiber-Dashboard – gleicher Login.
           </p>
           <form onSubmit={handleSubmit} className="mt-6 space-y-4">
             <Input

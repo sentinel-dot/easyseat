@@ -186,7 +186,7 @@ export default function AdminSettingsPage() {
       <Card id="password" className="p-6 scroll-mt-6">
         <CardTitle className="text-lg">Passwort ändern</CardTitle>
         <p className="mt-1 text-sm text-[var(--color-muted)]">
-          Ändern Sie das Passwort Ihres Admin-Kontos.
+          Ändern Sie das Passwort Ihres Kontos.
         </p>
         <form onSubmit={handlePasswordSubmit} className="mt-6 space-y-4 max-w-md">
           <Input

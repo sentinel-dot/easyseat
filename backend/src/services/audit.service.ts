@@ -68,3 +68,48 @@ export async function logBookingAction(params: LogBookingActionParams): Promise<
         if (conn) conn.release();
     }
 }
+
+export interface AuditLogEntry {
+    id: number;
+    action: AuditAction;
+    old_status: string | null;
+    new_status: string | null;
+    reason: string | null;
+    actor_type: AuditActorType;
+    actor_label: string | null;
+    created_at: string;
+}
+
+/**
+ * Liest den Audit-Verlauf für eine Buchung (nur Einträge der angegebenen Venue).
+ * Für Dashboard: Betreiber sieht nur Verlauf der eigenen Buchungen.
+ */
+export async function getAuditLogForBooking(bookingId: number, venueId: number): Promise<AuditLogEntry[]> {
+    let conn;
+    try {
+        conn = await getConnection();
+        const rows = await conn.query(
+            `SELECT a.id, a.action, a.old_status, a.new_status, a.reason, a.actor_type, a.customer_identifier, a.created_at, u.name AS admin_name
+             FROM booking_audit_log a
+             LEFT JOIN admin_users u ON a.admin_user_id = u.id
+             WHERE a.booking_id = ? AND a.venue_id = ?
+             ORDER BY a.created_at DESC`,
+            [bookingId, venueId]
+        ) as (AuditLogEntry & { customer_identifier?: string | null; admin_name?: string | null })[];
+        return rows.map((r) => ({
+            id: r.id,
+            action: r.action,
+            old_status: r.old_status,
+            new_status: r.new_status,
+            reason: r.reason,
+            actor_type: r.actor_type,
+            actor_label: r.actor_type === 'customer' ? (r.customer_identifier || 'Kunde') : (r.admin_name || (r.actor_type === 'admin' ? 'System-Admin' : r.actor_type === 'owner' ? 'Betreiber' : r.actor_type === 'staff' ? 'Mitarbeiter' : 'System')),
+            created_at: (r.created_at as unknown) instanceof Date ? (r.created_at as unknown as Date).toISOString() : String(r.created_at),
+        }));
+    } catch (error) {
+        logger.error('Failed to read audit log', { bookingId, venueId, error });
+        throw error;
+    } finally {
+        if (conn) conn.release();
+    }
+}

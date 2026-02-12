@@ -61,7 +61,7 @@ export default function AdminLayout({
       .then((res) => {
         if (res.success && res.data) {
           setUser(res.data);
-          // System-Admin (role admin): redirect to admin overview
+          // System-Admin (role admin): redirect to Admin-Bereich; Owner/Staff bleiben im Dashboard
           if (res.data.role === "admin" && pathname === "/admin") {
             router.replace("/admin/system");
           }
@@ -183,7 +183,7 @@ export default function AdminLayout({
             {user?.email}
           </p>
           <p className="truncate px-2 text-xs text-[var(--color-muted)]">
-            {user?.name || "Admin"}
+            {user?.name || (isSystemAdmin ? "Admin" : "Betreiber")}
           </p>
         </div>
       </aside>
@@ -207,7 +207,7 @@ export default function AdminLayout({
             {userMenuOpen && (
               <div className="absolute right-0 top-full mt-1 w-56 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] py-1 shadow-[var(--shadow-lg)]">
                 <div className="border-b border-[var(--color-border)] px-3 py-2">
-                  <p className="truncate text-sm font-medium text-[var(--color-text)]">{user?.name || "Admin"}</p>
+                  <p className="truncate text-sm font-medium text-[var(--color-text)]">{user?.name || (isSystemAdmin ? "Admin" : "Betreiber")}</p>
                   <p className="truncate text-xs text-[var(--color-muted)]">{user?.email}</p>
                 </div>
                 <Link

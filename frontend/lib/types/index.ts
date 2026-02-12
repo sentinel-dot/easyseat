@@ -179,3 +179,14 @@ export interface AvailabilityRule {
     end_time: string;
     is_active: boolean;
 }
+
+export interface BookingAuditLogEntry {
+    id: number;
+    action: 'status_change' | 'cancel' | 'update';
+    old_status: string | null;
+    new_status: string | null;
+    reason: string | null;
+    actor_type: string;
+    actor_label: string | null;
+    created_at: string;
+}

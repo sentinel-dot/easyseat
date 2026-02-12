@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { authenticateAndLoadUser, requireRole } from '../middleware/auth.middleware';
 import { DashboardService } from '../services/dashboard.service';
+import { getAuditLogForBooking } from '../services/audit.service';
 import { changePassword } from '../services/auth.service';
 import { BookingService } from '../services/booking.service';
 import { VenueService } from '../services/venue.service';
@@ -37,6 +38,55 @@ router.get('/bookings', async (req: Request, res: Response) => {
     } catch (error) {
         logger.error('Error fetching dashboard bookings', error);
         res.status(500).json({ success: false, message: 'Fehler beim Laden der Buchungen' });
+    }
+});
+
+router.get('/bookings/:id', async (req: Request, res: Response) => {
+    const venueId = getVenueId(req);
+    if (!venueId) {
+        res.status(403).json({ success: false, message: 'Kein Venue zugewiesen' });
+        return;
+    }
+    const bookingId = parseInt(req.params.id);
+    if (Number.isNaN(bookingId)) {
+        res.status(400).json({ success: false, message: 'Ungültige Buchungs-ID' });
+        return;
+    }
+    try {
+        const booking = await DashboardService.getBookingById(venueId, bookingId);
+        if (!booking) {
+            res.status(404).json({ success: false, message: 'Buchung nicht gefunden' });
+            return;
+        }
+        res.json({ success: true, data: booking });
+    } catch (error) {
+        logger.error('Error fetching booking', error);
+        res.status(500).json({ success: false, message: 'Fehler beim Laden der Buchung' });
+    }
+});
+
+router.get('/bookings/:id/audit', async (req: Request, res: Response) => {
+    const venueId = getVenueId(req);
+    if (!venueId) {
+        res.status(403).json({ success: false, message: 'Kein Venue zugewiesen' });
+        return;
+    }
+    const bookingId = parseInt(req.params.id);
+    if (Number.isNaN(bookingId)) {
+        res.status(400).json({ success: false, message: 'Ungültige Buchungs-ID' });
+        return;
+    }
+    try {
+        const booking = await DashboardService.getBookingById(venueId, bookingId);
+        if (!booking) {
+            res.status(404).json({ success: false, message: 'Buchung nicht gefunden' });
+            return;
+        }
+        const entries = await getAuditLogForBooking(bookingId, venueId);
+        res.json({ success: true, data: entries });
+    } catch (error) {
+        logger.error('Error fetching booking audit log', error);
+        res.status(500).json({ success: false, message: 'Fehler beim Laden des Verlaufs' });
     }
 });
 

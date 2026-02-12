@@ -93,7 +93,6 @@ Einzige Ausnahme: **Owner ohne venueId** erhält 403 – bewusste Design-Entsche
 
 | Thema | Wo | Priorität |
 |-------|-----|-----------|
-| Admin-UI „Verlauf“ pro Buchung (Anzeige aus `booking_audit_log`) | Frontend | Später |
 | Venue-Timezone für „vergangene Buchung“ (aktuell Server-Zeit) | Backend | Nur bei Multi-Zeitzonen nötig |
 
 ---

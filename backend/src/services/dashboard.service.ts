@@ -106,6 +106,31 @@ export class DashboardService {
         }
     }
 
+    /** Einzelne Buchung für Dashboard (nur eigene Venue). */
+    static async getBookingById(venueId: number, bookingId: number): Promise<BookingWithDetails | null> {
+        let conn;
+        try {
+            conn = await getConnection();
+            const query = `
+                SELECT b.*, v.name as venue_name, s.name as service_name, s.price as service_price, s.duration_minutes as service_duration, sm.name as staff_member_name
+                FROM bookings b
+                LEFT JOIN venues v ON b.venue_id = v.id
+                LEFT JOIN services s ON b.service_id = s.id
+                LEFT JOIN staff_members sm ON b.staff_member_id = sm.id
+                WHERE b.venue_id = ? AND b.id = ?
+            `;
+            const rows = await conn.query(query, [venueId, bookingId]) as BookingWithDetails[];
+            if (rows.length === 0) return null;
+            await BookingService.markPastBookingsCompleted(conn, rows);
+            return rows[0];
+        } catch (error) {
+            logger.error('Dashboard: Error fetching booking by id', error);
+            throw error;
+        } finally {
+            if (conn) conn.release();
+        }
+    }
+
     static async updateBookingStatus(
         bookingId: number,
         status: 'pending' | 'confirmed' | 'cancelled' | 'completed' | 'no_show',
