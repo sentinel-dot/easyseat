@@ -34,9 +34,6 @@ function timeWindowAround(timeStr: string): { timeWindowStart: string; timeWindo
  */
 router.get('/', async (req, res) => 
 {
-    logger.separator();
-    logger.info('Received request - GET /venues');
-    
     const typeParam = req.query.type as string | undefined;
     const type = typeParam && VALID_VENUE_TYPES.includes(typeParam as typeof VALID_VENUE_TYPES[number])
         ? (typeParam as typeof VALID_VENUE_TYPES[number])
@@ -83,11 +80,6 @@ router.get('/', async (req, res) =>
             error: process.env.NODE_ENV === 'development' ? String(error) : undefined
         } as ApiResponse<void>);
     }
-    finally
-    {
-        logger.info('Response sent');
-        logger.separator();
-    }
 });
 
 /**
@@ -95,8 +87,6 @@ router.get('/', async (req, res) =>
  * Öffentliche Statistiken für Homepage: venueCount, bookingCountThisMonth
  */
 router.get('/stats', async (req, res) => {
-    logger.separator();
-    logger.info('Received request - GET /venues/stats');
     try {
         const stats = await VenueService.getPublicStats();
         res.json({ success: true, data: stats } as ApiResponse<{ venueCount: number; bookingCountThisMonth: number }>);
@@ -106,9 +96,6 @@ router.get('/stats', async (req, res) => {
             message: 'Failed to retrieve stats',
             error: process.env.NODE_ENV === 'development' ? String(error) : undefined
         } as ApiResponse<void>);
-    } finally {
-        logger.info('Response sent');
-        logger.separator();
     }
 });
 
@@ -118,17 +105,11 @@ router.get('/stats', async (req, res) => {
  */
 router.get('/:id', async (req, res) => 
 {
-    logger.separator();
-    logger.info(`Received request - GET /venues/id`);
-
     const id = parseInt(req.params.id);
 
-    // Validierung
     if (isNaN(id) || id <= 0)
     {
         logger.warn('Invalid venue ID provided', { provided_id: req.params.id });
-        logger.separator();
-
         return res.status(400).json({
             success: false,
             message: 'Invalid venue ID'
@@ -156,22 +137,13 @@ router.get('/:id', async (req, res) =>
     catch (error) 
     {
         logger.error('Failed to retrieve venue details', error);
-
         res.status(500).json({
             success: false,
             message: 'Failed to retrieve venue',
             error: process.env.NODE_ENV === 'development' ? String(error) : undefined
         } as ApiResponse<void>);
     }
-    finally
-    {
-        logger.info('Response sent');
-        logger.separator();
-    }
 });
-
-
-
 
 /**
  * =====================================================================================================
@@ -208,9 +180,6 @@ router.get('/:id', async (req, res) =>
  */
 router.get('/:venueId/bookings', async (req: Request<{ venueId: string }>, res: Response) => 
 {
-    logger.separator();
-    logger.info('Received Request - GET /venues/:venueId/bookings');
-
     const venueId = parseInt(req.params.venueId);
 
     // Query-Parameter extrahieren (alle sind optional)
@@ -222,8 +191,6 @@ router.get('/:venueId/bookings', async (req: Request<{ venueId: string }>, res: 
     if (isNaN(venueId) || venueId <= 0)
     {
         logger.warn('Invalid venue ID', { provided: req.params.venueId });
-        logger.separator();
-
         return res.status(400).json({
             success: false,
             message: 'Invalid venue Id'
@@ -270,17 +237,11 @@ router.get('/:venueId/bookings', async (req: Request<{ venueId: string }>, res: 
     catch (error) 
     {
         logger.error('Error fetching venue bookings', error);
-
         res.status(500).json({
             success: false,
             message: 'Failed to fetch bookings',
             error: process.env.NODE_ENV === 'development' ? String(error) : undefined
         } as ApiResponse<void>);
-    }
-    finally
-    {
-        logger.info('Response sent');
-        logger.separator();
     }
 });
 

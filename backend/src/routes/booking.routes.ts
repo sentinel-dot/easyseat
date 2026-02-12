@@ -82,15 +82,9 @@ const MAX_SPECIAL_REQUESTS = 500;
  */
 router.post('/', async (req: Request, res: Response) => 
 {
-    logger.separator();
-    logger.info('Received Request - POST /bookings');
-
-    // WICHTIG: Prüfe zuerst ob überhaupt ein Body gesendet wurde
     if (!req.body || Object.keys(req.body).length === 0)
     {
         logger.warn('Empty request body');
-        logger.separator();
-
         return res.status(400).json({
             success: false,
             message: 'Request body is required'
@@ -121,9 +115,6 @@ router.post('/', async (req: Request, res: Response) =>
     if (missingFields.length > 0)
     {
         logger.warn('Missing required fields', { missing: missingFields });
-        logger.separator();
-
-        // 400 - Bad Request = Client hat Fehler gemacht
         return res.status(400).json({
             success: false,
             message: `Missing required fields: ${missingFields.join(', ')}`
@@ -137,8 +128,6 @@ router.post('/', async (req: Request, res: Response) =>
     if (!emailRegex.test(bookingData.customer_email))
     {
         logger.warn('Invalid email format', { email: bookingData.customer_email });
-        logger.separator();
-
         return res.status(400).json({
             success: false,
             message: 'Invalid email format'
@@ -151,8 +140,6 @@ router.post('/', async (req: Request, res: Response) =>
     if (!dateRegex.test(bookingData.booking_date))
     {
         logger.warn('Invalid date format', { date: bookingData.booking_date });
-        logger.separator();
-
         return res.status(400).json({
             success: false,
             message: 'Invalid date format. Expected: YYYY-MM-DD'
@@ -168,8 +155,6 @@ router.post('/', async (req: Request, res: Response) =>
             start: bookingData.start_time,
             end: bookingData.end_time
         });
-        logger.separator();
-
         return res.status(400).json({
             success: false,
             message: 'Invalid time format. Expected: HH:MM'
@@ -182,8 +167,6 @@ router.post('/', async (req: Request, res: Response) =>
     if (bookingData.party_size < 1 || bookingData.party_size > 50)
     {
         logger.warn('Invalid party size', { party_size: bookingData.party_size });
-        logger.separator();
-
         return res.status(400).json({
             success: false,
             message: 'Party size must be between 1 and 50'
@@ -251,11 +234,6 @@ router.post('/', async (req: Request, res: Response) =>
             error: process.env.NODE_ENV === 'development' ? String(error) : undefined
         } as ApiResponse<void>);
     }
-    finally
-    {
-        logger.info('Response sent');
-        logger.separator();
-    }
 });
 
 /**
@@ -263,9 +241,6 @@ router.post('/', async (req: Request, res: Response) =>
  */
 router.get('/customer/:email', async (req: Request<{ email: string }>, res: Response) => 
 {
-    logger.separator();
-    logger.info('Received Request - GET /bookings/customer/:email');
-
     const customerEmail = req.params.email;
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -273,8 +248,6 @@ router.get('/customer/:email', async (req: Request<{ email: string }>, res: Resp
     if (!emailRegex.test(customerEmail))
     {
         logger.warn('Invalid email format', { email: customerEmail });
-        logger.separator();
-
         return res.status(400).json({
             success: false,
             message: 'Invalid email format'
@@ -304,11 +277,6 @@ router.get('/customer/:email', async (req: Request<{ email: string }>, res: Resp
             error: process.env.NODE_ENV === 'development' ? String(error) : undefined
         } as ApiResponse<void>);
     }
-    finally
-    {
-        logger.info('Response sent');
-        logger.separator();
-    }
 });
 
 /**
@@ -316,17 +284,12 @@ router.get('/customer/:email', async (req: Request<{ email: string }>, res: Resp
  */
 router.get('/manage/:token', async (req: Request<{ token: string }>, res: Response) => 
 {
-    logger.separator();
-    logger.info('Received Request - GET /bookings/manage/:token');
-
     const { token } = req.params;
     const tokenPrefix = getTokenPrefix(token);
 
     if (!validateBookingToken(token))
     {
         logger.warn('Invalid booking token format', { token_prefix: tokenPrefix });
-        logger.separator();
-
         return res.status(400).json({
             success: false,
             message: 'Invalid booking token format'
@@ -368,11 +331,6 @@ router.get('/manage/:token', async (req: Request<{ token: string }>, res: Respon
             error: process.env.NODE_ENV === 'development' ? String(error) : undefined
         } as ApiResponse<void>);
     }
-    finally
-    {
-        logger.info('Response sent');
-        logger.separator();
-    }
 });
 
 /**
@@ -384,14 +342,10 @@ router.get('/manage/:token', async (req: Request<{ token: string }>, res: Respon
  */
 router.get('/:id', authenticateToken, async (req: Request<{ id: string }>, res: Response) => 
 {
-    logger.separator();
-    logger.info('Received Request - GET /bookings/:id');
-
     const bookingId = parseInt(req.params.id);
     if (isNaN(bookingId) || bookingId <= 0)
     {
         logger.warn('Invalid booking ID', { provided: req.params.id });
-        logger.separator();
         return res.status(400).json({
             success: false,
             message: 'Invalid booking ID'
@@ -432,14 +386,7 @@ router.get('/:id', authenticateToken, async (req: Request<{ id: string }>, res: 
             error: process.env.NODE_ENV === 'development' ? String(error) : undefined
         } as ApiResponse<void>);
     }
-    finally
-    {
-        logger.info('Response sent');
-        logger.separator();
-    }
 });
-
-
 
 
 
@@ -498,9 +445,6 @@ router.get('/:id', authenticateToken, async (req: Request<{ id: string }>, res: 
  */
 router.patch('/manage/:token', async (req: Request<{ token: string }>, res: Response) => 
 {
-    logger.separator();
-    logger.info('Received Request - PATCH /bookings/:id');
-
     const { token } = req.params;
     const updates = req.body;
 
@@ -513,8 +457,6 @@ router.patch('/manage/:token', async (req: Request<{ token: string }>, res: Resp
     if (!validateBookingToken(token))
     {
         logger.warn('Invalid booking token format', { provided: token });
-        logger.separator();
-
         return res.status(400).json({
             success: false,
             message: 'Invalid booking token format'
@@ -528,8 +470,6 @@ router.patch('/manage/:token', async (req: Request<{ token: string }>, res: Resp
     if (!updates || Object.keys(updates).length === 0)
     {
         logger.warn('No updates provided');
-        logger.separator();
-
         return res.status(400).json({
             success: false,
             message: 'No updates provided'
@@ -554,8 +494,6 @@ router.patch('/manage/:token', async (req: Request<{ token: string }>, res: Resp
     if (invalidFields.length > 0)
     {
         logger.warn('Invalid update fields', { invalid: invalidFields });
-        logger.separator();
-
         return res.status(400).json({
             success: false,
             message: `Invalid fields: ${invalidFields.join(', ')}`
@@ -657,13 +595,7 @@ router.patch('/manage/:token', async (req: Request<{ token: string }>, res: Resp
             error: process.env.NODE_ENV === 'development' ? String(error) : undefined
         } as ApiResponse<void>);
     }
-    finally
-    {
-        logger.info('Response sent');
-        logger.separator();
-    }
 });
-
 
 /**
  * ============================================================================
@@ -699,14 +631,10 @@ router.patch('/manage/:token', async (req: Request<{ token: string }>, res: Resp
  */
 router.post('/:id/confirm', authenticateToken, requireRole('owner', 'admin', 'staff'), async (req: Request<{ id: string }>, res: Response) => 
 {
-    logger.separator();
-    logger.info('Received Request - POST /bookings/:id/confirm');
-
     const bookingId = parseInt(req.params.id);
     if (isNaN(bookingId) || bookingId <= 0)
     {
         logger.warn('Invalid booking ID', { provided: req.params.id });
-        logger.separator();
         return res.status(400).json({
             success: false,
             message: 'Invalid booking ID'
@@ -757,13 +685,7 @@ router.post('/:id/confirm', authenticateToken, requireRole('owner', 'admin', 'st
             error: process.env.NODE_ENV === 'development' ? String(error) : undefined
         } as ApiResponse<void>);
     }
-    finally
-    {
-        logger.info('Response sent');
-        logger.separator();
-    }
 });
-
 
 /**
  * ============================================================================
@@ -815,22 +737,11 @@ router.post('/:id/confirm', authenticateToken, requireRole('owner', 'admin', 'st
  */
 router.post('/manage/:token/cancel', async (req: Request<{ token: string }>, res: Response) => 
 {
-    logger.separator();
-    logger.info('Received Request - POST /manage/:token/cancel');
-
     const { token } = req.params;
     const { reason } = req.body;
 
-    // ========================================================================
-    // VALIDIERUNG
-    // ========================================================================
-    // bypassPolicy wird auf dieser öffentlichen Route NICHT akzeptiert – nur Admins
-    // dürfen die Stornierungsfrist umgehen (z. B. über Owner/Admin-API).
-
     if (!validateBookingToken(token)) {
         logger.warn('Invalid booking token format');
-        logger.separator();
-
         return res.status(400).json({
             success: false,
             message: 'Invalid booking token format'
@@ -934,14 +845,7 @@ router.post('/manage/:token/cancel', async (req: Request<{ token: string }>, res
         } as ApiResponse<void>);
 
     }
-    finally
-    {
-        logger.info('Response sent');
-        logger.separator();
-    }
 });
-
-
 
 
 
@@ -998,15 +902,12 @@ router.post('/manage/:token/cancel', async (req: Request<{ token: string }>, res
  */
 router.delete('/:id', authenticateToken, requireRole('owner', 'admin'), async (req: Request<{ id: string }>, res: Response) => 
 {
-    logger.separator();
-    logger.info('Received Request - DELETE /bookings/:id');
     logger.warn('⚠️ HARD DELETE operation requested');
 
     const bookingId = parseInt(req.params.id);
     if (isNaN(bookingId) || bookingId <= 0)
     {
         logger.warn('Invalid booking ID', { provided: req.params.id });
-        logger.separator();
         return res.status(400).json({
             success: false,
             message: 'Invalid booking ID'
@@ -1055,13 +956,7 @@ router.delete('/:id', authenticateToken, requireRole('owner', 'admin'), async (r
             error: process.env.NODE_ENV === 'development' ? String(error) : undefined
         } as ApiResponse<void>);
     }
-    finally
-    {
-        logger.info('Response sent');
-        logger.separator();
-    }
 });
-
 
 // ============================================================================
 // ROUTER EXPORTIEREN

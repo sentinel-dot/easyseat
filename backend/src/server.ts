@@ -7,6 +7,8 @@ import dotenv from 'dotenv';
 
 import { createLogger } from './config/utils/logger';
 import { testConnection, setupGracefulShutdown } from './config/database';
+import { requestLogger } from './middleware/requestLogger.middleware';
+import { errorLogger } from './middleware/errorLogger.middleware';
 
 import venueRoutes from './routes/venue.routes';
 import availabilityRoutes from './routes/availability.routes';
@@ -45,6 +47,7 @@ app.use(cors({
 app.use(cookieParser());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use(requestLogger);
 
 // Rate limiting: allgemein (z. B. 100 Requests / 15 Min pro IP)
 const generalLimiter = rateLimit({
@@ -69,29 +72,22 @@ app.use('/auth', authLimiter);
 
 // Basic Route
 app.get('/', (req, res) => {
-    logger.separator();
-    logger.info('Received Request - GET /');
     res.json({
         message: 'easyseat backend api',
         version: '1.0.0'
     });
-    logger.separator();
 });
 
 app.get('/health', (req, res) => {
-    logger.separator();
-    logger.info('Received Request - GET /health');
     const payload: { status: string; timestamp: string; uptime: number; environment?: string } = {
         status: 'HEALTHY',
         timestamp: new Date().toISOString(),
         uptime: process.uptime(),
     };
-    // In Production keine Umgebungsinfos preisgeben
     if (process.env.NODE_ENV !== 'production') {
         payload.environment = process.env.NODE_ENV;
     }
     res.json(payload);
-    logger.separator();
 });
 
 
@@ -115,25 +111,15 @@ app.use('/owner', ownerRoutes);
 
 
 // 404 - Handler
-app.use((req, res) => 
-{
+app.use((req, res) => {
     res.status(404).json({
         success: false,
         message: `Route ${req.originalUrl} not found`
     });
-    logger.warn(`Route ${req.originalUrl} not found`)
 });
 
 // Error Handler (MUSS nach allen anderen Routes kommen)
-app.use((err: Error, req: express.Request, res: express.Response, next: express.NextFunction) => {
-    logger.error('Unhandled error', err);
-    
-    res.status(500).json({
-        success: false,
-        message: 'Internal server error',
-        error: process.env.NODE_ENV === 'development' ? err.message : undefined
-    });
-});
+app.use(errorLogger);
 
 const startServer = async() => {
     logger.separator();

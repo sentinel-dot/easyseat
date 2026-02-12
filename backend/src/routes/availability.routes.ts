@@ -18,16 +18,11 @@ const logger = createLogger('availability.routes');
  */
 router.get('/slots', async (req, res) =>     
 {
-    logger.separator();
-    logger.info('Received Request - GET /availability/slots');  
-
     const { venueId, serviceId, date, partySize, timeWindowStart, timeWindowEnd } = req.query;  
 
     if (!venueId || !serviceId || !date)
     {
         logger.warn('Missing one or more required parameters: venueId, serviceId, date');
-        logger.separator();
-
         return res.status(400).json({
             success: false,
             message: 'Missing one or more required parameters: venueId, serviceId, date'
@@ -67,15 +62,7 @@ router.get('/slots', async (req, res) =>
             error: process.env.NODE_ENV === 'development' ? String(error) : undefined
         } as ApiResponse<void>);
     }
-    finally
-    {
-        logger.info('Response sent');
-        logger.separator();
-    }
-})
-
-
-
+});
 
 /**
  * GET /availability/week
@@ -84,16 +71,11 @@ router.get('/slots', async (req, res) =>
  */
 router.get('/week', async (req, res) => 
 {
-    logger.separator();
-    logger.info('Received Request - GET /availability/week'); 
-    
     const { venueId, serviceId, startDate } = req.query;  
 
     if (!venueId || !serviceId || !startDate)
     {
         logger.warn('Missing one or more required params: venueId, serviceId, startDate');
-        logger.separator();
-
         return res.status(400).json({
             success: false,
             message: 'Missing one or more required params: venueId, serviceId, startDate'
@@ -123,15 +105,7 @@ router.get('/week', async (req, res) =>
             error: process.env.NODE_ENV === 'development' ? String(error) : undefined
         } as ApiResponse<void>);      
     }
-    finally
-    {
-        logger.info('Response sent');
-        logger.separator();
-    }
 });
-
-
-
 
 /**
  * POST /availability/check
@@ -140,9 +114,6 @@ router.get('/week', async (req, res) =>
  */
 router.post('/check', async (req, res) => 
 {
-    logger.separator();
-    logger.info('Received Request - POST /availability/check');
-
     const {
         venueId,
         serviceId,
@@ -159,8 +130,6 @@ router.post('/check', async (req, res) =>
     if (!venueId || !serviceId || !date || !startTime || !endTime)
     {
         logger.warn('Missing one or more required fields');
-        logger.separator();
-
         return res.status(400).json({
             success: false,
             message: 'Missing one or more required fields'
@@ -195,15 +164,7 @@ router.post('/check', async (req, res) =>
             error: process.env.NODE_ENV === 'development' ? String(error) : undefined
         } as ApiResponse<void>);
     }
-    finally
-    {
-        logger.info('Response sent');
-        logger.separator();
-    }
 });
-
-
-
 
 /**
  * POST /availability/validate
@@ -221,9 +182,6 @@ router.post('/check', async (req, res) =>
  */
 router.post('/validate', async (req, res) => 
 {
-    logger.separator();
-    logger.info('Received Request - POST /availability/validate');
-
     const {
         venueId, 
         serviceId,
@@ -246,8 +204,6 @@ router.post('/validate', async (req, res) =>
     )
     {
         logger.warn('Missing one or more required fiels', partySize);
-        logger.separator();
-        
         return res.status(400).json({
             success: false,
             message: 'Missing one or more required fiels: venueId, serviceId, bookingDate, startTime, endTime, partySize'
@@ -293,15 +249,7 @@ router.post('/validate', async (req, res) =>
             error: process.env.NODE_ENV === 'development' ? String(error) : undefined
         } as ApiResponse<void>);
     }
-    finally
-    {
-        logger.info('Response sent');
-        logger.separator();
-    }
 });
-
-
-
 
 /**
  * GET /availability/service/:serviceId
@@ -310,17 +258,12 @@ router.post('/validate', async (req, res) =>
  */
 router.get('/service/:serviceId', async (req: Request<{ serviceId: string }>, res) => 
 {
-    logger.separator();
-    logger.info('Received Request - GET /availability/service/:serviceId');
-
     const { serviceId } = req.params;
     const { venueId } = req.query;    
 
     if (!venueId)
     {
         logger.warn('Missing required param: venueId');
-        logger.separator();
-        
         return res.status(400).json({
             success: false,
             message: 'Missing required param: venueId'
@@ -357,15 +300,7 @@ router.get('/service/:serviceId', async (req: Request<{ serviceId: string }>, re
             error: process.env.NODE_ENV === 'development' ? String(error) : undefined
         } as ApiResponse<void>);
     }
-    finally
-    {
-        logger.info('Response sent');
-        logger.separator();
-    }
 });
-
-
-
 
 /**
  * GET /availability/staff/:staffId/can-perform/:serviceId
@@ -373,9 +308,6 @@ router.get('/service/:serviceId', async (req: Request<{ serviceId: string }>, re
  */
 router.get('/staff/:staffId/can-perform/:serviceId', async (req, res) => 
 {
-    logger.separator();
-    logger.info('Received Request - GET /availability/staff/:staffId/can-perform/:serviceId');
-
     try 
     {
         const { staffId, serviceId } = req.params;
@@ -401,11 +333,6 @@ router.get('/staff/:staffId/can-perform/:serviceId', async (req, res) =>
             message: 'Failed to check staff capability',
             error: process.env.NODE_ENV === 'development' ? String(error) : undefined
         } as ApiResponse<void>);
-    }
-    finally
-    {
-        logger.info('Response sent');
-        logger.separator();
     }
 });
 
