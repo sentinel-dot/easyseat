@@ -379,43 +379,19 @@ router.get('/manage/:token', async (req: Request<{ token: string }>, res: Respon
  * =====================================================================================================
  * GET /bookings/:id
  * =====================================================================================================
- * Ruft eine einzelne Buchung anhand ihrer ID ab
- * 
- * URL PARAMETER:
- * - :id = Booking ID (z.B. /bookings/42)
- * 
- * USE CASES:
- * - Kunde will Buchungsdetails sehen
- * - Admin will spezifische Buchung überprüfen
- * - Frontend braucht aktuelle Daten nach Update
- * 
- * RESPONSE (Success - 200 OK):
- * {
- *      success: true,
- *      message: 'Booking retrieved successfully',
- *      data: { ...booking }
- * }
- * 
- * RESPONSE (Error):
- * - 400: Ungültige ID (nicht numerisch oder <= 0)
- * - 404: Buchung nicht gefunden
- * - 500: Serverfehler
+ * Ruft eine einzelne Buchung anhand ihrer ID ab.
+ * Nur für authentifizierte Admin/Owner/Staff; Owner/Staff nur für Buchungen der eigenen Venue.
  */
-router.get('/:id', async (req: Request<{ id: string }>, res: Response) => 
+router.get('/:id', authenticateToken, async (req: Request<{ id: string }>, res: Response) => 
 {
     logger.separator();
     logger.info('Received Request - GET /bookings/:id');
 
-    // URL-Parameter ist immer ein String -> muss zu Number konvertiert werden
     const bookingId = parseInt(req.params.id);
-
-
-    // ID-VALIDIERUNG
     if (isNaN(bookingId) || bookingId <= 0)
     {
         logger.warn('Invalid booking ID', { provided: req.params.id });
         logger.separator();
-
         return res.status(400).json({
             success: false,
             message: 'Invalid booking ID'
@@ -424,20 +400,23 @@ router.get('/:id', async (req: Request<{ id: string }>, res: Response) =>
 
     try 
     {
-        // Service-Aufruf: Hole Buchung aus Database
         const booking = await BookingService.getBookingById(bookingId);
-        
         if (!booking)
         {
             logger.warn('Booking not found');
-
-            // 404 Not Found = Ressource existiert nicht
             return res.status(404).json({
                 success: false,
                 message: 'Booking not found'
             } as ApiResponse<void>);
         }
-
+        const payload = req.jwtPayload!;
+        if (payload.role !== 'admin' && (payload.venueId === null || payload.venueId !== booking.venue_id))
+        {
+            return res.status(403).json({
+                success: false,
+                message: 'Kein Zugriff auf diese Buchung'
+            } as ApiResponse<void>);
+        }
         return res.status(200).json({
             success: true,
             message: 'Booking retrieved successfully',
@@ -447,7 +426,6 @@ router.get('/:id', async (req: Request<{ id: string }>, res: Response) =>
     catch (error) 
     {
         logger.error('Error fetching booking', error);
-
         res.status(500).json({
             success: false,
             message: 'Failed to fetch booking',
@@ -719,21 +697,16 @@ router.patch('/manage/:token', async (req: Request<{ token: string }>, res: Resp
  * - 404: Buchung nicht gefunden
  * - 500: Serverfehler
  */
-router.post('/:id/confirm', async (req: Request<{ id: string }>, res: Response) => 
+router.post('/:id/confirm', authenticateToken, requireRole('owner', 'admin', 'staff'), async (req: Request<{ id: string }>, res: Response) => 
 {
     logger.separator();
     logger.info('Received Request - POST /bookings/:id/confirm');
 
     const bookingId = parseInt(req.params.id);
-
-    // ========================================================================
-    // ID-VALIDIERUNG
-    // ========================================================================
     if (isNaN(bookingId) || bookingId <= 0)
     {
         logger.warn('Invalid booking ID', { provided: req.params.id });
         logger.separator();
-
         return res.status(400).json({
             success: false,
             message: 'Invalid booking ID'
@@ -742,13 +715,24 @@ router.post('/:id/confirm', async (req: Request<{ id: string }>, res: Response) 
 
     try 
     {
-        // Service-Aufruf: Ändere Status und setze confirmation_sent_at
+        const booking = await BookingService.getBookingById(bookingId);
+        if (!booking)
+        {
+            return res.status(404).json({
+                success: false,
+                message: 'Booking not found'
+            } as ApiResponse<void>);
+        }
+        const payload = req.jwtPayload!;
+        if (payload.role !== 'admin' && (payload.venueId === null || payload.venueId !== booking.venue_id))
+        {
+            return res.status(403).json({
+                success: false,
+                message: 'Kein Zugriff auf diese Buchung'
+            } as ApiResponse<void>);
+        }
         const confirmedBooking = await BookingService.confirmBooking(bookingId);
-
         logger.info('Booking confirmed successfully', { booking_id: bookingId });
-
-        // Bestätigungsmail wird im BookingService.confirmBooking() versendet
-
         res.json({
             success: true,
             message: 'Booking confirmed successfully',
@@ -758,10 +742,7 @@ router.post('/:id/confirm', async (req: Request<{ id: string }>, res: Response) 
     catch (error) 
     {
         logger.error('Error confirming booking', error);
-
         const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-
-        // Buchung nicht gefunden
         if (errorMessage.includes('not found'))
         {
             return res.status(404).json({
@@ -770,8 +751,6 @@ router.post('/:id/confirm', async (req: Request<{ id: string }>, res: Response) 
                 error: process.env.NODE_ENV === 'development' ? String(error) : undefined
             } as ApiResponse<void>);
         }
-
-        // Allgemeiner Fehler
         res.status(500).json({
             success: false,
             message: 'Failed to confirm booking',
@@ -800,7 +779,7 @@ router.post('/:id/confirm', async (req: Request<{ id: string }>, res: Response) 
  *   reason?: string   // Optional: Stornierungsgrund
  * }
  *
- * Admin-Storno (ohne Frist) erfolgt über Dashboard: PATCH /dashboard/bookings/:id/status.
+ * Admin-Storno (ohne Frist) erfolgt über Owner-API: PATCH /owner/bookings/:id/status.
  *
  * STORNIERUNGSRICHTLINIE:
  * - Stornierung nur bis X Stunden vor Termin erlaubt
@@ -846,7 +825,7 @@ router.post('/manage/:token/cancel', async (req: Request<{ token: string }>, res
     // VALIDIERUNG
     // ========================================================================
     // bypassPolicy wird auf dieser öffentlichen Route NICHT akzeptiert – nur Admins
-    // dürfen die Stornierungsfrist umgehen (z. B. über Dashboard/Admin-API).
+    // dürfen die Stornierungsfrist umgehen (z. B. über Owner/Admin-API).
 
     if (!validateBookingToken(token)) {
         logger.warn('Invalid booking token format');
@@ -1021,36 +1000,39 @@ router.delete('/:id', authenticateToken, requireRole('owner', 'admin'), async (r
 {
     logger.separator();
     logger.info('Received Request - DELETE /bookings/:id');
-    
-    // Spezielle Warnung für HARD DELETE Operation
-    // Dies erscheint prominent in den Logs für Audit-Zwecke
     logger.warn('⚠️ HARD DELETE operation requested');
 
     const bookingId = parseInt(req.params.id);
-
-    // ========================================================================
-    // VALIDIERUNG
-    // ========================================================================
     if (isNaN(bookingId) || bookingId <= 0)
     {
         logger.warn('Invalid booking ID', { provided: req.params.id });
         logger.separator();
-
         return res.status(400).json({
             success: false,
             message: 'Invalid booking ID'
         } as ApiResponse<void>);
     }
 
-    // Auth: authenticateToken + requireRole('owner', 'admin') sind oben an der Route registriert.
-
-    // ========================================================================
-    // HARD DELETE DURCHFÜHREN
-    // ========================================================================
     try 
     {
-        // Service-Aufruf: Führt DELETE FROM bookings WHERE id = ? aus
-        // Danach ist die Buchung UNWIDERRUFLICH weg!
+        if (req.jwtPayload!.role === 'owner')
+        {
+            const booking = await BookingService.getBookingById(bookingId);
+            if (!booking)
+            {
+                return res.status(404).json({
+                    success: false,
+                    message: 'Booking not found'
+                } as ApiResponse<void>);
+            }
+            if (req.jwtPayload!.venueId === null || booking.venue_id !== req.jwtPayload!.venueId)
+            {
+                return res.status(403).json({
+                    success: false,
+                    message: 'Kein Zugriff auf diese Buchung'
+                } as ApiResponse<void>);
+            }
+        }
         await BookingService.deleteBooking(bookingId);
 
         // Erfolgreiche Löschung wird geloggt (für Audit-Trail in Logs)

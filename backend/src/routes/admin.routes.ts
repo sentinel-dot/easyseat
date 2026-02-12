@@ -161,6 +161,10 @@ router.patch('/users/:id/password', async (req: Request, res: Response) => {
         res.status(400).json({ success: false, message: 'newPassword ist erforderlich' });
         return;
     }
+    if (String(newPassword).length < 8) {
+        res.status(400).json({ success: false, message: 'Passwort muss mindestens 8 Zeichen haben' });
+        return;
+    }
     try {
         await AdminService.setAdminPassword(id, newPassword);
         res.json({ success: true, message: 'Passwort geändert' });

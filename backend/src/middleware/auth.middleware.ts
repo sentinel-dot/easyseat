@@ -148,7 +148,8 @@ export function requireSystemAdmin(req: Request, res: Response, next: NextFuncti
 
 /**
  * Venue-based authorization middleware
- * Ensures user can only access their own venue's data
+ * Ensures user can only access their own venue's data.
+ * Admin: any venue. Owner/Staff: only venue_id from JWT.
  */
 export function requireVenueAccess(req: Request, res: Response, next: NextFunction): void {
     if (!req.jwtPayload) {
@@ -158,17 +159,10 @@ export function requireVenueAccess(req: Request, res: Response, next: NextFuncti
         });
         return;
     }
-    // System admin (role admin, venue_id null) can access any venue via request params/body
     if (req.jwtPayload.role === 'admin') {
         next();
         return;
     }
-    // Owner can access all venues (when venue_id is set in JWT for context)
-    if (req.jwtPayload.role === 'owner') {
-        next();
-        return;
-    }
-    
     const raw = req.params.venueId ?? req.body?.venue_id;
     const requestedVenueId = typeof raw === 'number' ? raw : parseInt(String(raw), 10);
     if (!Number.isInteger(requestedVenueId) || requestedVenueId < 1) {
@@ -178,7 +172,7 @@ export function requireVenueAccess(req: Request, res: Response, next: NextFuncti
         });
         return;
     }
-    if (req.jwtPayload.venueId !== null && requestedVenueId !== req.jwtPayload.venueId) {
+    if (req.jwtPayload.venueId === null || requestedVenueId !== req.jwtPayload.venueId) {
         res.status(403).json({
             success: false,
             message: 'Kein Zugriff auf diese Venue'

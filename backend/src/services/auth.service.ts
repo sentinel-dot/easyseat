@@ -21,12 +21,12 @@ const WEAK_JWT_SECRETS = new Set([
     DEFAULT_JWT_SECRET,
 ]);
 
-/** In Production darf kein Default- oder schwaches Secret verwendet werden. */
+/** Außer in Development muss ein starkes JWT_SECRET gesetzt sein (Production, Staging, etc.). */
 export function assertSecureJwtSecret(): void {
-    if (process.env.NODE_ENV !== 'production') return;
+    if (process.env.NODE_ENV === 'development') return;
     const secret = process.env.JWT_SECRET?.trim() ?? '';
     if (!secret || secret.length < 32 || WEAK_JWT_SECRETS.has(secret)) {
-        logger.error('Production requires a strong JWT_SECRET (min. 32 Zeichen). Set JWT_SECRET in your environment (e.g. openssl rand -base64 32).');
+        logger.error('NODE_ENV ist nicht "development". Ein starkes JWT_SECRET (min. 32 Zeichen) ist erforderlich. Setzen Sie JWT_SECRET (z. B. openssl rand -base64 32).');
         process.exit(1);
     }
 }

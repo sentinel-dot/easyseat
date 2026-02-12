@@ -9,7 +9,7 @@ function getAdminApiBase(): string {
 
 /**
  * Admin API client – Auth nur per HttpOnly-Cookie (credentials: 'include').
- * Nur System-Admin-Endpunkte (/admin/*). Venue-Dashboard nutzt dashboard.ts (/dashboard/*).
+ * Nur System-Admin-Endpunkte (/admin/*). Owner-Bereich nutzt owner.ts (/owner/*).
  */
 async function adminApiClient<T>(
   endpoint: string,

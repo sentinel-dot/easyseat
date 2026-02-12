@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { toast } from "sonner";
-import { getAvailabilityRules, updateAvailabilityRule } from "@/lib/api/dashboard";
+import { getAvailabilityRules, updateAvailabilityRule } from "@/lib/api/owner";
 import type { AvailabilityRule } from "@/lib/types";
 import { Card, CardTitle } from "@/components/shared/card";
 import { Button } from "@/components/shared/button";

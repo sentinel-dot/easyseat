@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { toast } from "sonner";
-import { changePassword } from "@/lib/api/dashboard";
+import { changePassword } from "@/lib/api/auth";
 import { Card, CardTitle } from "@/components/shared/card";
 import { Button } from "@/components/shared/button";
 import { Input } from "@/components/shared/input";

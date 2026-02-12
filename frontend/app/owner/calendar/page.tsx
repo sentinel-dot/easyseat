@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { getBookings } from "@/lib/api/dashboard";
+import { getBookings } from "@/lib/api/owner";
 import type { BookingWithDetails } from "@/lib/types";
 import { getStatusColorBlock } from "@/lib/utils/bookingStatus";
 import { Card } from "@/components/shared/card";

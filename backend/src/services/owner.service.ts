@@ -1,6 +1,6 @@
 /**
- * Dashboard Service (Venue-Management)
- * Für Owner/Staff: Buchungen, Stats, Leistungen, Verfügbarkeit, Venue-Einstellungen
+ * Owner Service (Venue-Management)
+ * Nur Rolle owner: Buchungen, Stats, Leistungen, Verfügbarkeit, Venue-Einstellungen
  */
 
 import { getConnection } from '../config/database';
@@ -11,7 +11,7 @@ import { logBookingAction } from './audit.service';
 import { sendConfirmation, sendCancellation } from './email.service';
 import type { BookingForEmail } from './email.service';
 
-const logger = createLogger('dashboard.service');
+const logger = createLogger('owner.service');
 
 export interface BookingWithDetails extends Booking {
     venue_name?: string;
@@ -21,7 +21,7 @@ export interface BookingWithDetails extends Booking {
     service_duration?: number;
 }
 
-export interface DashboardStats {
+export interface OwnerStats {
     bookings: {
         today: number;
         thisWeek: number;
@@ -49,7 +49,7 @@ export interface DashboardStats {
     }>;
 }
 
-export class DashboardService {
+export class OwnerService {
     static async getBookings(
         venueId: number,
         filters?: {
@@ -62,7 +62,7 @@ export class DashboardService {
             offset?: number;
         }
     ): Promise<{ bookings: BookingWithDetails[]; total: number }> {
-        logger.info('Dashboard: Fetching bookings...', { venueId, filters });
+        logger.info('Owner: Fetching bookings...', { venueId, filters });
         let conn;
         try {
             conn = await getConnection();
@@ -99,14 +99,13 @@ export class DashboardService {
             await BookingService.markPastBookingsCompleted(conn, bookings);
             return { bookings, total };
         } catch (error) {
-            logger.error('Dashboard: Error fetching bookings', error);
+            logger.error('Owner: Error fetching bookings', error);
             throw error;
         } finally {
             if (conn) conn.release();
         }
     }
 
-    /** Einzelne Buchung für Dashboard (nur eigene Venue). */
     static async getBookingById(venueId: number, bookingId: number): Promise<BookingWithDetails | null> {
         let conn;
         try {
@@ -124,7 +123,7 @@ export class DashboardService {
             await BookingService.markPastBookingsCompleted(conn, rows);
             return rows[0];
         } catch (error) {
-            logger.error('Dashboard: Error fetching booking by id', error);
+            logger.error('Owner: Error fetching booking by id', error);
             throw error;
         } finally {
             if (conn) conn.release();
@@ -135,25 +134,26 @@ export class DashboardService {
         bookingId: number,
         status: 'pending' | 'confirmed' | 'cancelled' | 'completed' | 'no_show',
         reason?: string,
-        auditContext?: { userId: number; actorType: 'admin' | 'owner' | 'staff' }
+        auditContext?: { userId: number; actorType: 'admin' | 'owner' | 'staff' },
+        allowedVenueId?: number | null
     ): Promise<Booking> {
-        logger.info(`Dashboard: Updating booking ${bookingId} status to ${status}`);
+        logger.info(`Owner: Updating booking ${bookingId} status to ${status}`);
         let conn;
         try {
             conn = await getConnection();
             const existing = await conn.query('SELECT * FROM bookings WHERE id = ?', [bookingId]) as Booking[];
             if (existing.length === 0) throw new Error('Booking not found');
             const booking = existing[0];
+            if (allowedVenueId != null && allowedVenueId !== undefined && booking.venue_id !== allowedVenueId)
+                throw new Error('Kein Zugriff auf diese Buchung');
             const currentStatus = booking.status;
             const venueId = booking.venue_id;
 
-            // Vergangene Buchungen: nur completed, no_show, cancelled erlauben (kein pending/confirmed)
             const endDateTime = new Date(`${booking.booking_date}T${booking.end_time}`);
             const now = new Date();
             if (endDateTime < now && (status === 'pending' || status === 'confirmed')) {
                 throw new Error('Für vergangene Buchungen kann der Status nur auf „Abgeschlossen“, „No-Show“ oder „Storniert“ gesetzt werden.');
             }
-            // Zukünftige Termine: completed/no_show erst nach Terminende erlauben
             if (endDateTime > now && (status === 'completed' || status === 'no_show')) {
                 throw new Error('Ein zukünftiger Termin kann nicht als „Abgeschlossen“ oder „Nicht erschienen“ markiert werden.');
             }
@@ -164,7 +164,6 @@ export class DashboardService {
             const params: (string | number | null)[] = [status];
             if (status === 'cancelled') { updateQuery += ', cancelled_at = NOW(), cancellation_reason = ?'; params.push(reason || null); }
             if (currentStatus === 'cancelled' && status !== 'cancelled') { updateQuery += ', cancelled_at = NULL, cancellation_reason = NULL'; }
-            // confirmation_sent_at wird ausschließlich vom E-Mail-Service nach Versand der Bestätigungsmail gesetzt
             updateQuery += ' WHERE id = ?';
             params.push(bookingId);
             await conn.query(updateQuery, params);
@@ -181,7 +180,6 @@ export class DashboardService {
                     userId: auditContext.userId,
                 });
             }
-            // E-Mails gemäß Doku: nur bei → confirmed oder → cancelled
             try {
                 const forEmail = await BookingService.getBookingByIdWithDetails(bookingId);
                 if (forEmail) {
@@ -205,19 +203,19 @@ export class DashboardService {
                     }
                 }
             } catch (emailErr) {
-                logger.error('Dashboard: Email after status update failed (booking updated)', emailErr);
+                logger.error('Owner: Email after status update failed (booking updated)', emailErr);
             }
             return updated[0];
         } catch (error) {
-            logger.error('Dashboard: Error updating booking status', error);
+            logger.error('Owner: Error updating booking status', error);
             throw error;
         } finally {
             if (conn) conn.release();
         }
     }
 
-    static async getStats(venueId: number): Promise<DashboardStats> {
-        logger.info(`Dashboard: Fetching stats for venue ${venueId}`);
+    static async getStats(venueId: number): Promise<OwnerStats> {
+        logger.info(`Owner: Fetching stats for venue ${venueId}`);
         let conn;
         try {
             conn = await getConnection();
@@ -271,7 +269,7 @@ export class DashboardService {
                 popularTimeSlots: popularTimeSlots.map(t => ({ hour: t.hour, booking_count: Number(t.booking_count) })),
             };
         } catch (error) {
-            logger.error('Dashboard: Error fetching stats', error);
+            logger.error('Owner: Error fetching stats', error);
             throw error;
         } finally {
             if (conn) conn.release();
@@ -285,19 +283,20 @@ export class DashboardService {
             const services = await conn.query('SELECT * FROM services WHERE venue_id = ? ORDER BY name ASC', [venueId]) as Service[];
             return services;
         } catch (error) {
-            logger.error('Dashboard: Error fetching services', error);
+            logger.error('Owner: Error fetching services', error);
             throw error;
         } finally {
             if (conn) conn.release();
         }
     }
 
-    static async updateService(serviceId: number, updates: { name?: string; description?: string; duration_minutes?: number; price?: number; is_active?: boolean }): Promise<Service> {
+    static async updateService(serviceId: number, updates: { name?: string; description?: string; duration_minutes?: number; price?: number; is_active?: boolean }, venueId: number): Promise<Service> {
         let conn;
         try {
             conn = await getConnection();
             const existing = await conn.query('SELECT * FROM services WHERE id = ?', [serviceId]) as Service[];
             if (existing.length === 0) throw new Error('Service not found');
+            if (existing[0].venue_id !== venueId) throw new Error('Kein Zugriff auf diesen Service');
             const updateFields: string[] = [];
             const params: (string | number | boolean)[] = [];
             if (updates.name !== undefined) { updateFields.push('name = ?'); params.push(updates.name); }
@@ -312,7 +311,7 @@ export class DashboardService {
             const updated = await conn.query('SELECT * FROM services WHERE id = ?', [serviceId]) as Service[];
             return updated[0];
         } catch (error) {
-            logger.error('Dashboard: Error updating service', error);
+            logger.error('Owner: Error updating service', error);
             throw error;
         } finally {
             if (conn) conn.release();
@@ -332,17 +331,28 @@ export class DashboardService {
             `, [venueId, venueId]);
             return rules as Array<{ id: number; venue_id: number | null; staff_member_id: number | null; staff_member_name?: string; day_of_week: number; start_time: string; end_time: string; is_active: boolean }>;
         } catch (error) {
-            logger.error('Dashboard: Error fetching availability rules', error);
+            logger.error('Owner: Error fetching availability rules', error);
             throw error;
         } finally {
             if (conn) conn.release();
         }
     }
 
-    static async updateAvailabilityRule(ruleId: number, updates: { start_time?: string; end_time?: string; is_active?: boolean }): Promise<void> {
+    static async updateAvailabilityRule(ruleId: number, updates: { start_time?: string; end_time?: string; is_active?: boolean }, venueId: number): Promise<void> {
         let conn;
         try {
             conn = await getConnection();
+            const rules = await conn.query('SELECT * FROM availability_rules WHERE id = ?', [ruleId]) as Array<{ id: number; venue_id: number | null; staff_member_id: number | null }>;
+            if (rules.length === 0) throw new Error('Verfügbarkeitsregel nicht gefunden');
+            const rule = rules[0];
+            if (rule.venue_id !== null) {
+                if (rule.venue_id !== venueId) throw new Error('Kein Zugriff auf diese Verfügbarkeitsregel');
+            } else if (rule.staff_member_id != null) {
+                const staff = await conn.query('SELECT venue_id FROM staff_members WHERE id = ?', [rule.staff_member_id]) as Array<{ venue_id: number }>;
+                if (staff.length === 0 || staff[0].venue_id !== venueId) throw new Error('Kein Zugriff auf diese Verfügbarkeitsregel');
+            } else {
+                throw new Error('Kein Zugriff auf diese Verfügbarkeitsregel');
+            }
             const updateFields: string[] = [];
             const params: (string | boolean | number)[] = [];
             if (updates.start_time !== undefined) { updateFields.push('start_time = ?'); params.push(updates.start_time); }
@@ -352,7 +362,7 @@ export class DashboardService {
             params.push(ruleId);
             await conn.query(`UPDATE availability_rules SET ${updateFields.join(', ')} WHERE id = ?`, params);
         } catch (error) {
-            logger.error('Dashboard: Error updating availability rule', error);
+            logger.error('Owner: Error updating availability rule', error);
             throw error;
         } finally {
             if (conn) conn.release();
@@ -372,7 +382,7 @@ export class DashboardService {
             params.push(venueId);
             await conn.query(`UPDATE venues SET ${updateFields.join(', ')}, updated_at = NOW() WHERE id = ?`, params);
         } catch (error) {
-            logger.error('Dashboard: Error updating venue settings', error);
+            logger.error('Owner: Error updating venue settings', error);
             throw error;
         } finally {
             if (conn) conn.release();

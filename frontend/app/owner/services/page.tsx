@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { toast } from "sonner";
-import { getServices, updateService } from "@/lib/api/dashboard";
+import { getServices, updateService } from "@/lib/api/owner";
 import type { Service } from "@/lib/types";
 import { Card, CardTitle } from "@/components/shared/card";
 import { Button } from "@/components/shared/button";

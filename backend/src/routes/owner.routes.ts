@@ -1,6 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { authenticateAndLoadUser, requireRole } from '../middleware/auth.middleware';
-import { DashboardService } from '../services/dashboard.service';
+import { OwnerService } from '../services/owner.service';
 import { getAuditLogForBooking } from '../services/audit.service';
 import { changePassword } from '../services/auth.service';
 import { BookingService } from '../services/booking.service';
@@ -9,14 +9,14 @@ import { createLogger } from '../config/utils/logger';
 import { CreateBookingData } from '../config/utils/types';
 
 const router = Router();
-const logger = createLogger('dashboard.routes');
+const logger = createLogger('owner.routes');
 
-/** Max-Längen für Buchungsfelder (wie in booking.routes) */
 const MAX_CUSTOMER_NAME = 200;
 const MAX_CUSTOMER_PHONE = 50;
 const MAX_SPECIAL_REQUESTS = 500;
 
 router.use(authenticateAndLoadUser);
+router.use(requireRole('owner'));
 
 function getVenueId(req: Request): number | null {
     return req.jwtPayload?.venueId ?? null;
@@ -38,10 +38,10 @@ router.get('/bookings', async (req: Request, res: Response) => {
             limit: req.query.limit ? parseInt(req.query.limit as string) : 50,
             offset: req.query.offset ? parseInt(req.query.offset as string) : 0,
         };
-        const result = await DashboardService.getBookings(venueId, filters);
+        const result = await OwnerService.getBookings(venueId, filters);
         res.json({ success: true, data: result.bookings, pagination: { total: result.total, limit: filters.limit, offset: filters.offset } });
     } catch (error) {
-        logger.error('Error fetching dashboard bookings', error);
+        logger.error('Error fetching owner bookings', error);
         res.status(500).json({ success: false, message: 'Fehler beim Laden der Buchungen' });
     }
 });
@@ -58,7 +58,7 @@ router.get('/bookings/:id', async (req: Request, res: Response) => {
         return;
     }
     try {
-        const booking = await DashboardService.getBookingById(venueId, bookingId);
+        const booking = await OwnerService.getBookingById(venueId, bookingId);
         if (!booking) {
             res.status(404).json({ success: false, message: 'Buchung nicht gefunden' });
             return;
@@ -82,7 +82,7 @@ router.get('/bookings/:id/audit', async (req: Request, res: Response) => {
         return;
     }
     try {
-        const booking = await DashboardService.getBookingById(venueId, bookingId);
+        const booking = await OwnerService.getBookingById(venueId, bookingId);
         if (!booking) {
             res.status(404).json({ success: false, message: 'Buchung nicht gefunden' });
             return;
@@ -96,6 +96,7 @@ router.get('/bookings/:id/audit', async (req: Request, res: Response) => {
 });
 
 router.patch('/bookings/:id/status', async (req: Request, res: Response) => {
+    const venueId = getVenueId(req);
     const bookingId = parseInt(req.params.id);
     const { status, reason } = req.body;
     if (!status) {
@@ -109,11 +110,12 @@ router.patch('/bookings/:id/status', async (req: Request, res: Response) => {
     }
     try {
         const auditContext = req.user ? { userId: req.user.id, actorType: req.user.role } : undefined;
-        const booking = await DashboardService.updateBookingStatus(bookingId, status, reason, auditContext);
+        const booking = await OwnerService.updateBookingStatus(bookingId, status, reason, auditContext, venueId ?? undefined);
         res.json({ success: true, data: booking, message: 'Status erfolgreich aktualisiert' });
     } catch (error) {
         const msg = (error as Error).message;
         if (msg === 'Booking not found') res.status(404).json({ success: false, message: 'Buchung nicht gefunden' });
+        else if (msg === 'Kein Zugriff auf diese Buchung') res.status(403).json({ success: false, message: msg });
         else if (msg === 'Grund ist erforderlich') res.status(400).json({ success: false, message: 'Grund ist erforderlich' });
         else if (msg.startsWith('Für vergangene Buchungen') || msg.startsWith('Ein zukünftiger Termin')) res.status(400).json({ success: false, message: msg });
         else res.status(500).json({ success: false, message: 'Fehler beim Aktualisieren des Status' });
@@ -127,10 +129,10 @@ router.get('/stats', async (req: Request, res: Response) => {
         return;
     }
     try {
-        const stats = await DashboardService.getStats(venueId);
+        const stats = await OwnerService.getStats(venueId);
         res.json({ success: true, data: stats });
     } catch (error) {
-        logger.error('Error fetching dashboard stats', error);
+        logger.error('Error fetching owner stats', error);
         res.status(500).json({ success: false, message: 'Fehler beim Laden der Statistiken' });
     }
 });
@@ -142,7 +144,7 @@ router.get('/services', async (req: Request, res: Response) => {
         return;
     }
     try {
-        const services = await DashboardService.getServices(venueId);
+        const services = await OwnerService.getServices(venueId);
         res.json({ success: true, data: services });
     } catch (error) {
         logger.error('Error fetching services', error);
@@ -150,7 +152,12 @@ router.get('/services', async (req: Request, res: Response) => {
     }
 });
 
-router.patch('/services/:id', requireRole('owner', 'staff'), async (req: Request, res: Response) => {
+router.patch('/services/:id', async (req: Request, res: Response) => {
+    const venueId = getVenueId(req);
+    if (!venueId) {
+        res.status(403).json({ success: false, message: 'Kein Venue zugewiesen' });
+        return;
+    }
     const serviceId = parseInt(req.params.id);
     const { name, description, duration_minutes: rawDuration, price: rawPrice, is_active } = req.body;
     const duration_minutes = rawDuration !== undefined && rawDuration !== null ? (typeof rawDuration === 'number' ? rawDuration : Number(rawDuration)) : undefined;
@@ -164,10 +171,12 @@ router.patch('/services/:id', requireRole('owner', 'staff'), async (req: Request
         return;
     }
     try {
-        const service = await DashboardService.updateService(serviceId, { name, description, duration_minutes, price, is_active });
+        const service = await OwnerService.updateService(serviceId, { name, description, duration_minutes, price, is_active }, venueId);
         res.json({ success: true, data: service, message: 'Service erfolgreich aktualisiert' });
     } catch (error) {
-        if ((error as Error).message === 'Service not found') res.status(404).json({ success: false, message: 'Service nicht gefunden' });
+        const msg = (error as Error).message;
+        if (msg === 'Service not found') res.status(404).json({ success: false, message: 'Service nicht gefunden' });
+        else if (msg === 'Kein Zugriff auf diesen Service') res.status(403).json({ success: false, message: msg });
         else res.status(500).json({ success: false, message: 'Fehler beim Aktualisieren des Services' });
     }
 });
@@ -179,7 +188,7 @@ router.get('/availability', async (req: Request, res: Response) => {
         return;
     }
     try {
-        const rules = await DashboardService.getAvailabilityRules(venueId);
+        const rules = await OwnerService.getAvailabilityRules(venueId);
         res.json({ success: true, data: rules });
     } catch (error) {
         logger.error('Error fetching availability rules', error);
@@ -187,14 +196,22 @@ router.get('/availability', async (req: Request, res: Response) => {
     }
 });
 
-router.patch('/availability/:id', requireRole('owner', 'staff'), async (req: Request, res: Response) => {
+router.patch('/availability/:id', async (req: Request, res: Response) => {
+    const venueId = getVenueId(req);
+    if (!venueId) {
+        res.status(403).json({ success: false, message: 'Kein Venue zugewiesen' });
+        return;
+    }
     const ruleId = parseInt(req.params.id);
     const { start_time, end_time, is_active } = req.body;
     try {
-        await DashboardService.updateAvailabilityRule(ruleId, { start_time, end_time, is_active });
+        await OwnerService.updateAvailabilityRule(ruleId, { start_time, end_time, is_active }, venueId);
         res.json({ success: true, message: 'Verfügbarkeit erfolgreich aktualisiert' });
     } catch (error) {
-        res.status(500).json({ success: false, message: 'Fehler beim Aktualisieren der Verfügbarkeit' });
+        const msg = (error as Error).message;
+        if (msg === 'Verfügbarkeitsregel nicht gefunden') res.status(404).json({ success: false, message: msg });
+        else if (msg === 'Kein Zugriff auf diese Verfügbarkeitsregel') res.status(403).json({ success: false, message: msg });
+        else res.status(500).json({ success: false, message: 'Fehler beim Aktualisieren der Verfügbarkeit' });
     }
 });
 
@@ -249,7 +266,7 @@ router.get('/venue/settings', async (req: Request, res: Response) => {
     }
 });
 
-router.patch('/venue/settings', requireRole('owner', 'staff'), async (req: Request, res: Response) => {
+router.patch('/venue/settings', async (req: Request, res: Response) => {
     const venueId = getVenueId(req);
     if (!venueId) {
         res.status(403).json({ success: false, message: 'Kein Venue zugewiesen' });
@@ -273,7 +290,7 @@ router.patch('/venue/settings', requireRole('owner', 'staff'), async (req: Reque
         return;
     }
     try {
-        await DashboardService.updateVenueSettings(venueId, { booking_advance_hours, cancellation_hours, image_url: imageUrl });
+        await OwnerService.updateVenueSettings(venueId, { booking_advance_hours, cancellation_hours, image_url: imageUrl });
         res.json({ success: true, message: 'Einstellungen erfolgreich aktualisiert' });
     } catch (error) {
         res.status(500).json({ success: false, message: 'Fehler beim Aktualisieren der Einstellungen' });

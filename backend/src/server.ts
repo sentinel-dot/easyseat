@@ -13,7 +13,7 @@ import availabilityRoutes from './routes/availability.routes';
 import bookingRoutes from './routes/booking.routes';
 import authRoutes from './routes/auth.routes';
 import adminRoutes from './routes/admin.routes';
-import dashboardRoutes from './routes/dashboard.routes';
+import ownerRoutes from './routes/owner.routes';
 import { assertSecureJwtSecret } from './services/auth.service';
 import { startReminderCron } from './jobs/reminder.job';
 
@@ -110,8 +110,8 @@ app.use('/bookings', bookingRoutes);
 // Admin routes (protected, role admin = System: Venues, User, Stats)
 app.use('/admin', adminRoutes);
 
-// Dashboard routes (protected, role owner/staff = Venue-Management)
-app.use('/dashboard', dashboardRoutes);
+// Owner routes (protected, role owner only = Venue-Management)
+app.use('/owner', ownerRoutes);
 
 
 // 404 - Handler
@@ -203,18 +203,18 @@ const startServer = async() => {
             logger.info('   POST   /admin/users - Create user');
             logger.info('   PATCH  /admin/users/:id - Update user');
             logger.info('   PATCH  /admin/users/:id/password - Set user password');
-            logger.info('   📊 Dashboard – Venue (role owner/staff):');
-            logger.info('   GET    /dashboard/bookings - Get bookings');
-            logger.info('   POST   /dashboard/bookings - Create manual booking');
-            logger.info('   PATCH  /dashboard/bookings/:id/status - Update booking status');
-            logger.info('   GET    /dashboard/stats - Venue stats');
-            logger.info('   GET    /dashboard/services - Get services');
-            logger.info('   PATCH  /dashboard/services/:id - Update service');
-            logger.info('   GET    /dashboard/availability - Get availability rules');
-            logger.info('   PATCH  /dashboard/availability/:id - Update availability rule');
-            logger.info('   GET    /dashboard/venue/settings - Get venue settings');
-            logger.info('   PATCH  /dashboard/venue/settings - Update venue settings');
-            logger.info('   PATCH  /dashboard/me/password - Change password');
+            logger.info('   📊 Owner – Venue (role owner only):');
+            logger.info('   GET    /owner/bookings - Get bookings');
+            logger.info('   POST   /owner/bookings - Create manual booking');
+            logger.info('   PATCH  /owner/bookings/:id/status - Update booking status');
+            logger.info('   GET    /owner/stats - Venue stats');
+            logger.info('   GET    /owner/services - Get services');
+            logger.info('   PATCH  /owner/services/:id - Update service');
+            logger.info('   GET    /owner/availability - Get availability rules');
+            logger.info('   PATCH  /owner/availability/:id - Update availability rule');
+            logger.info('   GET    /owner/venue/settings - Get venue settings');
+            logger.info('   PATCH  /owner/venue/settings - Update venue settings');
+            logger.info('   PATCH  /owner/me/password - Change password');
             logger.separator();
         });
     } catch (error) {

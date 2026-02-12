@@ -11,7 +11,7 @@ export function isNetworkError(error: unknown): boolean {
 }
 
 export async function apiClient<T>(
-    endpoint: String,
+    endpoint: string,
     options?: RequestInit
 ): Promise<{ success: boolean; data?: T; message?: string; error?: string }>
 {

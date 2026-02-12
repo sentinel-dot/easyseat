@@ -1,5 +1,5 @@
 import { Router, Request, Response } from 'express';
-import { login, findAdminById, toPublicUser } from '../services/auth.service';
+import { login, findAdminById, toPublicUser, changePassword } from '../services/auth.service';
 import { authenticateToken } from '../middleware/auth.middleware';
 import { createLogger } from '../config/utils/logger';
 
@@ -79,6 +79,29 @@ router.get('/me', authenticateToken, async (req: Request, res: Response) => {
             message: 'Interner Serverfehler'
         });
     }
+});
+
+/**
+ * PATCH /auth/me/password
+ * Change password for the currently authenticated user (any role: admin, owner, staff)
+ */
+router.patch('/me/password', authenticateToken, async (req: Request, res: Response) => {
+    const userId = req.jwtPayload?.userId;
+    if (!userId) {
+        res.status(401).json({ success: false, message: 'Nicht authentifiziert' });
+        return;
+    }
+    const { currentPassword, newPassword } = req.body;
+    if (!currentPassword || !newPassword) {
+        res.status(400).json({ success: false, message: 'Aktuelles Passwort und neues Passwort sind erforderlich' });
+        return;
+    }
+    const result = await changePassword(userId, currentPassword, newPassword);
+    if (!result.success) {
+        res.status(400).json({ success: false, message: result.message });
+        return;
+    }
+    res.json({ success: true, message: result.data?.message || 'Passwort erfolgreich geändert' });
 });
 
 /**

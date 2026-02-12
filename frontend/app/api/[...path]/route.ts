@@ -37,7 +37,7 @@ export async function DELETE(
   return proxy(request, await params);
 }
 
-const ALLOWED_PREFIXES = ["admin", "auth", "dashboard"];
+const ALLOWED_PREFIXES = ["admin", "auth", "owner"];
 
 async function proxy(
   request: NextRequest,
@@ -47,7 +47,7 @@ async function proxy(
   const prefix = path[0]?.toLowerCase();
   if (!path.length || !prefix || !ALLOWED_PREFIXES.includes(prefix)) {
     return new NextResponse(
-      JSON.stringify({ success: false, message: "Proxy only allows /admin, /auth and /dashboard" }),
+      JSON.stringify({ success: false, message: "Proxy only allows /admin, /auth and /owner" }),
       { status: 403, headers: { "Content-Type": "application/json" } }
     );
   }

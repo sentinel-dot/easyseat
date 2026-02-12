@@ -10,12 +10,12 @@ import type {
 } from "@/lib/types";
 import { NETWORK_ERROR_MESSAGE, isNetworkError } from "./client";
 
-function getDashboardApiBase(): string {
+function getOwnerApiBase(): string {
   if (typeof window !== "undefined") return "/api";
   return process.env.NEXT_PUBLIC_API_URL || "http://localhost:5001";
 }
 
-async function dashboardApiClient<T>(
+async function ownerApiClient<T>(
   endpoint: string,
   options?: RequestInit
 ): Promise<{
@@ -25,7 +25,7 @@ async function dashboardApiClient<T>(
   pagination?: { total: number; limit: number; offset: number };
 }> {
   try {
-    const response = await fetch(`${getDashboardApiBase()}${endpoint}`, {
+    const response = await fetch(`${getOwnerApiBase()}${endpoint}`, {
       ...options,
       credentials: "include",
       headers: {
@@ -74,8 +74,8 @@ export async function getBookings(filters?: {
   if (filters?.limit != null) params.append("limit", String(filters.limit));
   if (filters?.offset != null) params.append("offset", String(filters.offset));
   const queryString = params.toString();
-  return dashboardApiClient<BookingWithDetails[]>(
-    `/dashboard/bookings${queryString ? `?${queryString}` : ""}`
+  return ownerApiClient<BookingWithDetails[]>(
+    `/owner/bookings${queryString ? `?${queryString}` : ""}`
   );
 }
 
@@ -84,8 +84,8 @@ export async function getBooking(bookingId: number): Promise<{
   data?: BookingWithDetails;
   message?: string;
 }> {
-  return dashboardApiClient<BookingWithDetails>(
-    `/dashboard/bookings/${bookingId}`
+  return ownerApiClient<BookingWithDetails>(
+    `/owner/bookings/${bookingId}`
   );
 }
 
@@ -96,8 +96,8 @@ export async function getBookingAuditLog(
   data?: BookingAuditLogEntry[];
   message?: string;
 }> {
-  return dashboardApiClient<BookingAuditLogEntry[]>(
-    `/dashboard/bookings/${bookingId}/audit`
+  return ownerApiClient<BookingAuditLogEntry[]>(
+    `/owner/bookings/${bookingId}/audit`
   );
 }
 
@@ -106,8 +106,8 @@ export async function updateBookingStatus(
   status: string,
   reason?: string
 ): Promise<{ success: boolean; data?: BookingWithDetails; message?: string }> {
-  return dashboardApiClient<BookingWithDetails>(
-    `/dashboard/bookings/${bookingId}/status`,
+  return ownerApiClient<BookingWithDetails>(
+    `/owner/bookings/${bookingId}/status`,
     {
       method: "PATCH",
       body: JSON.stringify({ status, reason }),
@@ -120,7 +120,7 @@ export async function getStats(): Promise<{
   data?: AdminStats;
   message?: string;
 }> {
-  return dashboardApiClient<AdminStats>("/dashboard/stats");
+  return ownerApiClient<AdminStats>("/owner/stats");
 }
 
 export async function getServices(): Promise<{
@@ -128,7 +128,7 @@ export async function getServices(): Promise<{
   data?: Service[];
   message?: string;
 }> {
-  return dashboardApiClient<Service[]>("/dashboard/services");
+  return ownerApiClient<Service[]>("/owner/services");
 }
 
 export async function updateService(
@@ -141,7 +141,7 @@ export async function updateService(
     is_active?: boolean;
   }
 ): Promise<{ success: boolean; data?: Service; message?: string }> {
-  return dashboardApiClient<Service>(`/dashboard/services/${serviceId}`, {
+  return ownerApiClient<Service>(`/owner/services/${serviceId}`, {
     method: "PATCH",
     body: JSON.stringify(updates),
   });
@@ -152,7 +152,7 @@ export async function getAvailabilityRules(): Promise<{
   data?: AvailabilityRule[];
   message?: string;
 }> {
-  return dashboardApiClient<AvailabilityRule[]>("/dashboard/availability");
+  return ownerApiClient<AvailabilityRule[]>("/owner/availability");
 }
 
 export async function updateAvailabilityRule(
@@ -163,7 +163,7 @@ export async function updateAvailabilityRule(
     is_active?: boolean;
   }
 ): Promise<{ success: boolean; message?: string }> {
-  return dashboardApiClient(`/dashboard/availability/${ruleId}`, {
+  return ownerApiClient(`/owner/availability/${ruleId}`, {
     method: "PATCH",
     body: JSON.stringify(updates),
   });
@@ -172,7 +172,7 @@ export async function updateAvailabilityRule(
 export async function createManualBooking(
   bookingData: Omit<CreateBookingData, "venue_id">
 ): Promise<{ success: boolean; data?: Booking; message?: string }> {
-  return dashboardApiClient<Booking>("/dashboard/bookings", {
+  return ownerApiClient<Booking>("/owner/bookings", {
     method: "POST",
     body: JSON.stringify(bookingData),
   });
@@ -183,7 +183,7 @@ export async function getVenueSettings(): Promise<{
   data?: Venue;
   message?: string;
 }> {
-  return dashboardApiClient<Venue>("/dashboard/venue/settings");
+  return ownerApiClient<Venue>("/owner/venue/settings");
 }
 
 export async function updateVenueSettings(updates: {
@@ -191,7 +191,7 @@ export async function updateVenueSettings(updates: {
   cancellation_hours?: number;
   image_url?: string | null;
 }): Promise<{ success: boolean; message?: string }> {
-  return dashboardApiClient("/dashboard/venue/settings", {
+  return ownerApiClient("/owner/venue/settings", {
     method: "PATCH",
     body: JSON.stringify(updates),
   });
@@ -201,7 +201,7 @@ export async function changePassword(
   currentPassword: string,
   newPassword: string
 ): Promise<{ success: boolean; message?: string }> {
-  return dashboardApiClient("/dashboard/me/password", {
+  return ownerApiClient("/owner/me/password", {
     method: "PATCH",
     body: JSON.stringify({ currentPassword, newPassword }),
   });

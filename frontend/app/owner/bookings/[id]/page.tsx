@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { getBookingAuditLog } from "@/lib/api/dashboard";
+import { getBookingAuditLog } from "@/lib/api/owner";
 import type { BookingAuditLogEntry } from "@/lib/types";
 import { getStatusLabel } from "@/lib/utils/bookingStatus";
 import { Card, CardTitle } from "@/components/shared/card";

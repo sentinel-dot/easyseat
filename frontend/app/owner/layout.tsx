@@ -52,6 +52,10 @@ export default function OwnerLayout({
             router.replace("/admin");
             return;
           }
+          if (res.data.role !== "owner") {
+            router.replace("/login?reason=owner-only");
+            return;
+          }
         } else {
           router.replace(`/login?redirect=${encodeURIComponent(pathname)}`);
         }

@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
 import { toast } from "sonner";
-import { getBookings, updateBookingStatus, getServices, createManualBooking } from "@/lib/api/dashboard";
+import { getBookings, updateBookingStatus, getServices, createManualBooking } from "@/lib/api/owner";
 import type { BookingWithDetails } from "@/lib/types";
 import type { Service } from "@/lib/types";
 import { getStatusLabel, getStatusColor } from "@/lib/utils/bookingStatus";
