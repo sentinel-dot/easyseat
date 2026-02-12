@@ -53,11 +53,14 @@ router.patch('/bookings/:id/status', async (req: Request, res: Response) => {
         return;
     }
     try {
-        const booking = await DashboardService.updateBookingStatus(bookingId, status, reason);
+        const auditContext = req.user ? { adminUserId: req.user.id, actorType: req.user.role } : undefined;
+        const booking = await DashboardService.updateBookingStatus(bookingId, status, reason, auditContext);
         res.json({ success: true, data: booking, message: 'Status erfolgreich aktualisiert' });
     } catch (error) {
-        if ((error as Error).message === 'Booking not found') res.status(404).json({ success: false, message: 'Buchung nicht gefunden' });
-        else if ((error as Error).message === 'Grund ist erforderlich') res.status(400).json({ success: false, message: 'Grund ist erforderlich' });
+        const msg = (error as Error).message;
+        if (msg === 'Booking not found') res.status(404).json({ success: false, message: 'Buchung nicht gefunden' });
+        else if (msg === 'Grund ist erforderlich') res.status(400).json({ success: false, message: 'Grund ist erforderlich' });
+        else if (msg.startsWith('Für vergangene Buchungen')) res.status(400).json({ success: false, message: msg });
         else res.status(500).json({ success: false, message: 'Fehler beim Aktualisieren des Status' });
     }
 });

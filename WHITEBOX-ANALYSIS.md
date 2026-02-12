@@ -1,5 +1,7 @@
 # White-Box-Analyse – easyseat
 
+**Kurzüberblick:** **docs/PROJEKT-DOKUMENTATION.md** (Abschnitt 3. Code-Review).
+
 Durchführung: Code-Review aller relevanten Bestandteile (Backend, Frontend, API, DB-Schema, Types).  
 Gefundene Fehler und Verbesserungen sind nach Kategorie und Priorität geordnet.
 

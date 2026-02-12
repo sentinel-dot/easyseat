@@ -68,7 +68,7 @@ Das Schema muss einmal auf der Railway-MySQL-Datenbank laufen:
 - **Option A:** Lokal mit Railway-Datenbank verbinden (TCP Proxy in Railway aktivieren, dann mit z. B. TablePlus/DBeaver und den DB-Variablen verbinden) und `backend/src/config/database/schema.sql` sowie ggf. `seed.sql` ausführen.
 - **Option B:** In Railway einen **Cron Job** oder **One-off** Service anlegen, der einmal z. B. `mysql ... < schema.sql` ausführt, oder die SQL-Dateien per Hand im Railway MySQL-Dashboard (falls angeboten) ausführen.
 
-Schema-Dateien: `backend/src/config/database/schema.sql`, optional `seed.sql`.
+Schema-Dateien: `backend/src/config/database/schema.sql` (enthält u. a. `booking_audit_log`), optional `seed.sql`. Bei Bedarf weitere Migrationen ausführen (z. B. `add_venue_image_url.sql`).
 
 ---
 
@@ -165,3 +165,19 @@ Der **Admin** verwaltet das gesamte System (Venues, Benutzer). Das **Dashboard**
 - **Alle** melden sich unter **/admin/login** an.
 - **System-Admin** (Rolle `admin`, ohne Venue): **Admin-Übersicht** (Venues, Admins, Stats).
 - **Owner / Staff** (mit Venue): **Dashboard** (Buchungen, Leistungen, Einstellungen).
+
+---
+
+## 9. Produktions-Checkliste (vor Go-Live)
+
+Vor dem echten Start prüfen:
+
+- [ ] **Rechtliches:** Impressum, Datenschutz und AGB mit echten Daten (Name, Adresse, Kontakt).
+- [ ] **Deploy:** Technischen Deploy wie in den Abschnitten 1–6 durchgeführt (Railway + Vercel).
+- [ ] **Kundendaten:** Nur notwendige Daten erheben; Umgang mit personenbezogenen Daten geklärt (DSGVO).
+- [ ] **Monitoring:** Health-Check überwachen (z. B. UptimeRobot) oder Error-Tracking (z. B. Sentry).
+- [ ] **Backup:** DB-Backup-Strategie (Railway/Provider) einrichten.
+- [ ] **Tests:** Buchungsflow + Admin-Login manuell durchspielen; optional E2E-Tests.
+- [ ] **DB:** Schema (und optional Seed) auf Production-DB ausgeführt; Migrationen (z. B. `add_venue_image_url.sql`) bei Bedarf.
+- [ ] **E-Mail:** E-Mail-Service für Bestätigungen/Benachrichtigungen (falls geplant).
+- [ ] **Admin:** System-Admin-Dashboard (Venues, Admins) prüfen.

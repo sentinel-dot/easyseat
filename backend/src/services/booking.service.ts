@@ -12,6 +12,7 @@
 import { getConnection } from "../config/database";
 import { createLogger } from "../config/utils/logger";
 import { AvailabilityService } from "./availability.service";
+import { logBookingAction } from "./audit.service";
 import { 
     Booking,
     CreateBookingData,
@@ -614,6 +615,17 @@ import { randomUUID } from 'crypto';
 
             logger.info('Booking updated successfully');
 
+            // Audit: Kunde hat über Manage-Link Datum/Zeit/Details geändert
+            await logBookingAction({
+                bookingId: currentBooking.id,
+                venueId: currentBooking.venue_id,
+                action: 'update',
+                oldStatus: currentBooking.status,
+                newStatus: currentBooking.status,
+                reason: null,
+                actorType: 'customer',
+                customerIdentifier: 'manage_link',
+            });
 
             // SCHRITT 7: Hole aktualisierte Buchung
             const updatedBooking = await this.getBookingByToken(token);
@@ -732,6 +744,17 @@ import { randomUUID } from 'crypto';
 
             logger.info('Booking cancelled successfully');
 
+            // Audit: Kunde hat über Manage-Link storniert (kein Token speichern)
+            await logBookingAction({
+                bookingId: booking.id,
+                venueId: booking.venue_id,
+                action: 'cancel',
+                oldStatus: booking.status,
+                newStatus: 'cancelled',
+                reason: reason ?? null,
+                actorType: 'customer',
+                customerIdentifier: 'manage_link',
+            });
 
             // SCHRITT 6: Hole die aktualisierte Buchung
             const cancelledBooking = await this.getBookingById(booking.id);

@@ -147,3 +147,24 @@ CREATE TABLE admin_users (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (venue_id) REFERENCES venues(id) ON DELETE SET NULL
 );
+
+-- Booking audit log: wer wann welche Buchungsänderung (Admin/Owner/Staff/Kunde)
+CREATE TABLE booking_audit_log (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    booking_id INT NOT NULL,
+    venue_id INT NOT NULL,
+    action VARCHAR(50) NOT NULL COMMENT 'status_change, cancel, update',
+    old_status VARCHAR(20) NULL,
+    new_status VARCHAR(20) NULL,
+    reason VARCHAR(255) NULL COMMENT 'Allgemeiner Grund/Kommentar',
+    actor_type ENUM('admin', 'owner', 'staff', 'customer', 'system') NOT NULL,
+    admin_user_id INT NULL,
+    customer_identifier VARCHAR(255) NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (booking_id) REFERENCES bookings(id) ON DELETE CASCADE,
+    FOREIGN KEY (venue_id) REFERENCES venues(id) ON DELETE CASCADE,
+    FOREIGN KEY (admin_user_id) REFERENCES admin_users(id) ON DELETE SET NULL,
+    INDEX idx_booking (booking_id),
+    INDEX idx_venue_created (venue_id, created_at),
+    INDEX idx_created (created_at)
+);

@@ -7,6 +7,7 @@ import { getConnection } from '../config/database';
 import { createLogger } from '../config/utils/logger';
 import { Booking, Service } from '../config/utils/types';
 import { BookingService } from './booking.service';
+import { logBookingAction } from './audit.service';
 
 const logger = createLogger('dashboard.service');
 
@@ -106,7 +107,8 @@ export class DashboardService {
     static async updateBookingStatus(
         bookingId: number,
         status: 'pending' | 'confirmed' | 'cancelled' | 'completed' | 'no_show',
-        reason?: string
+        reason?: string,
+        auditContext?: { adminUserId: number; actorType: 'admin' | 'owner' | 'staff' }
     ): Promise<Booking> {
         logger.info(`Dashboard: Updating booking ${bookingId} status to ${status}`);
         let conn;
@@ -114,7 +116,16 @@ export class DashboardService {
             conn = await getConnection();
             const existing = await conn.query('SELECT * FROM bookings WHERE id = ?', [bookingId]) as Booking[];
             if (existing.length === 0) throw new Error('Booking not found');
-            const currentStatus = existing[0].status;
+            const booking = existing[0];
+            const currentStatus = booking.status;
+            const venueId = booking.venue_id;
+
+            // Vergangene Buchungen: nur completed, no_show, cancelled erlauben (kein pending/confirmed)
+            const endDateTime = new Date(`${booking.booking_date}T${booking.end_time}`);
+            if (endDateTime < new Date() && (status === 'pending' || status === 'confirmed')) {
+                throw new Error('Für vergangene Buchungen kann der Status nur auf „Abgeschlossen“, „No-Show“ oder „Storniert“ gesetzt werden.');
+            }
+
             const isPendingToConfirmed = currentStatus === 'pending' && status === 'confirmed';
             if (!isPendingToConfirmed && (!reason || !String(reason).trim())) throw new Error('Grund ist erforderlich');
             let updateQuery = `UPDATE bookings SET status = ?, updated_at = NOW()`;
@@ -125,6 +136,18 @@ export class DashboardService {
             params.push(bookingId);
             await conn.query(updateQuery, params);
             const updated = await conn.query('SELECT * FROM bookings WHERE id = ?', [bookingId]) as Booking[];
+            if (auditContext) {
+                await logBookingAction({
+                    bookingId,
+                    venueId,
+                    action: 'status_change',
+                    oldStatus: currentStatus,
+                    newStatus: status,
+                    reason: reason ?? null,
+                    actorType: auditContext.actorType,
+                    adminUserId: auditContext.adminUserId,
+                });
+            }
             return updated[0];
         } catch (error) {
             logger.error('Dashboard: Error updating booking status', error);
