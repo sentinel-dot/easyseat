@@ -21,6 +21,7 @@ CREATE TABLE venues (
     image_url VARCHAR(500),
     website_url VARCHAR(500),
     booking_advance_days INT DEFAULT 30,
+    booking_advance_hours INT DEFAULT 48,
     cancellation_hours INT DEFAULT 24,
     require_phone BOOLEAN DEFAULT FALSE,
     require_deposit BOOLEAN DEFAULT FALSE,
@@ -88,9 +89,10 @@ CREATE TABLE availability_rules (
 
 
 
--- Bookings table
+-- Bookings table (booking_token wird von der Anwendung beim Anlegen gesetzt)
 CREATE TABLE bookings (
   id INT AUTO_INCREMENT PRIMARY KEY,
+  booking_token VARCHAR(36) UNIQUE NOT NULL,
   venue_id INT NOT NULL,
   service_id INT NOT NULL,
   staff_member_id INT,
@@ -116,22 +118,6 @@ CREATE TABLE bookings (
   FOREIGN KEY (service_id) REFERENCES services(id) ON DELETE CASCADE,
   FOREIGN KEY (staff_member_id) REFERENCES staff_members(id) ON DELETE SET NULL
 );
-
--- TOKEN for Bookings added
--- Step 1: Add the booking_token column
-ALTER TABLE bookings
-ADD COLUMN booking_token VARCHAR(36) UNIQUE NULL AFTER id;
-
--- Step 2: Generate tokens for existing bookings (if any)
--- Uses UUID() to create secure random tokens
-UPDATE bookings 
-SET booking_token = UUID() 
-WHERE booking_token IS NULL;
-
--- Step 3: Make the column NOT NULL after all existing rows have tokens
-ALTER TABLE bookings
-MODIFY COLUMN booking_token VARCHAR(36) UNIQUE NOT NULL;
-
 
 -- Admin users table for dashboard authentication
 CREATE TABLE admin_users (

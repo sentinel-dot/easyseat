@@ -196,7 +196,9 @@ export function BookingDetailModal({
                         key={o.value}
                         value={o.value}
                         disabled={
-                          !isPast && (o.value === "completed" || o.value === "no_show")
+                          isPast
+                            ? (o.value === "pending" || o.value === "confirmed")
+                            : (o.value === "completed" || o.value === "no_show")
                         }
                       >
                         {o.label}

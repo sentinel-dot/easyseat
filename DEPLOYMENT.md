@@ -75,7 +75,7 @@ Das Schema muss einmal auf der Railway-MySQL-Datenbank laufen:
 - **Option A:** Lokal mit Railway-Datenbank verbinden (TCP Proxy in Railway aktivieren, dann mit z. B. TablePlus/DBeaver und den DB-Variablen verbinden) und `backend/src/config/database/schema.sql` sowie ggf. `seed.sql` ausführen.
 - **Option B:** In Railway einen **Cron Job** oder **One-off** Service anlegen, der einmal z. B. `mysql ... < schema.sql` ausführt, oder die SQL-Dateien per Hand im Railway MySQL-Dashboard (falls angeboten) ausführen.
 
-Schema-Dateien: `backend/src/config/database/schema.sql` (enthält u. a. `booking_audit_log`), optional `seed.sql`. Bei Bedarf weitere Migrationen ausführen (z. B. `add_venue_image_url.sql`).
+Schema-Dateien: `backend/src/config/database/schema.sql` optional `seed.sql`.
 
 ---
 
@@ -164,8 +164,7 @@ Der **Admin** verwaltet das gesamte System (Venues, Benutzer). Das **Dashboard**
   - E-Mail: `admin@easyseat.local`
   - Passwort: `superadmin123`
   - Rolle: `admin`, `venue_id`: NULL
-- **Bestehende Installation** (ältere Rollen-Struktur):  
-  `migrate_roles_admin_owner.sql` ausführen (Rollen-Migration: z. B. frühere System-Admin-Rolle → admin, Venue-Admin → owner).
+
 
 ### Nach dem Login
 
@@ -185,6 +184,6 @@ Vor dem echten Start prüfen:
 - [ ] **Monitoring:** Health-Check überwachen (z. B. UptimeRobot) oder Error-Tracking (z. B. Sentry).
 - [ ] **Backup:** DB-Backup-Strategie (Railway/Provider) einrichten.
 - [ ] **Tests:** Buchungsflow + Admin-Login manuell durchspielen; optional E2E-Tests.
-- [ ] **DB:** Schema (und optional Seed) auf Production-DB ausgeführt; Migrationen (z. B. `add_venue_image_url.sql`) bei Bedarf.
+- [ ] **DB:** Schema (und optional Seed) auf Production-DB ausgeführt
 - [ ] **E-Mail:** E-Mail-Service für Bestätigungen/Benachrichtigungen (falls geplant).
 - [ ] **Admin:** System-Admin-Dashboard (Venues, Admins) prüfen.
