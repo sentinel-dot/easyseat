@@ -42,7 +42,7 @@ export default async function ConfirmationPage({ searchParams }: Props) {
             </Link>
           </div>
         )}
-        <PostBookingRegisterPrompt customerEmail={email ?? ""} bookingToken={token} />
+        <PostBookingRegisterPrompt customerEmail={email ?? ""} />
         <div className="mt-10 space-y-3 text-center">
           <Link
             href="/bookings/my-bookings"

@@ -8,11 +8,9 @@ import { RegisterDialog } from "./RegisterDialog";
 type Props = {
   /** Pre-filled email from the booking (for registration) */
   customerEmail?: string;
-  /** Booking token to link after registration */
-  bookingToken?: string;
 };
 
-export function PostBookingRegisterPrompt({ customerEmail = "", bookingToken }: Props) {
+export function PostBookingRegisterPrompt({ customerEmail = "" }: Props) {
   const auth = useCustomerAuthOptional();
   const [registerOpen, setRegisterOpen] = useState(false);
 
@@ -40,13 +38,6 @@ export function PostBookingRegisterPrompt({ customerEmail = "", bookingToken }: 
         open={registerOpen}
         onClose={() => setRegisterOpen(false)}
         prefilledEmail={customerEmail}
-        onSuccess={() => {
-          if (bookingToken) {
-            import("@/lib/api/customer-auth").then(({ linkBooking }) =>
-              linkBooking(bookingToken).catch(() => {})
-            );
-          }
-        }}
       />
     </>
   );

@@ -5,6 +5,7 @@ import { getVenueById } from "@/lib/api/venues";
 import { SiteLayout } from "@/components/layout/site-layout";
 import { ManageBookingActions } from "./manage-actions";
 import { ManageBookingNotes } from "./manage-notes";
+import { ManageBookingReview } from "./manage-review";
 import { ManageRescheduleModal } from "./manage-reschedule";
 import { getStatusLabel, getStatusColor } from "@/lib/utils/bookingStatus";
 
@@ -108,6 +109,12 @@ export default async function ManageBookingPage({ params }: Props) {
           token={token}
           status={b.status}
           cancellationHours={b.cancellation_hours ?? undefined}
+        />
+
+        <ManageBookingReview
+          venueId={b.venue_id}
+          venueName={b.venue_name ?? undefined}
+          status={b.status}
         />
 
         <p className="mt-8 text-center">

@@ -42,12 +42,12 @@ class Logger {
           if (filename !== todayStr && filename !== yesterdayStr) {
             const filePath = path.join(this.logsDir, file);
             fs.unlinkSync(filePath);
-            console.log(`Deleted old log file: ${file}`);
+            this.info(`Deleted old log file: ${file}`);
           }
         }
       });
     } catch (error) {
-      console.error('Error cleaning old logs:', error);
+      this.error('Error cleaning old logs', error);
     }
   }
 
@@ -104,7 +104,10 @@ class Logger {
       const logFile = this.getCurrentLogFile();
       fs.appendFileSync(logFile, message + '\n', 'utf8');
     } catch (error) {
-      console.error('Error writing to log file:', error);
+      // Fallback wenn Datei-Logging fehlschlägt (z. B. Verzeichnis fehlt)
+      if (typeof process !== 'undefined' && process.stderr) {
+        process.stderr.write(`[${this.context}] Error writing to log file: ${error}\n`);
+      }
     }
   }
 

@@ -12,8 +12,10 @@ export default function VerifyEmailPage() {
   const [message, setMessage] = useState("");
 
   useEffect(() => {
-    const token = searchParams.get("token");
-    
+    const raw = searchParams.get("token");
+    // Reject missing token or literal "null" (e.g. from broken verification links)
+    const token = raw && raw !== "null" ? raw : null;
+
     if (!token) {
       setStatus("error");
       setMessage("Kein Verifizierungstoken gefunden.");

@@ -1,6 +1,6 @@
 import { Router, Request, Response } from 'express';
-import { login, findAdminById, toPublicUser, changePassword } from '../services/auth.service';
-import { authenticateToken } from '../middleware/auth.middleware';
+import { login, changePassword } from '../services/auth.service';
+import { authenticateToken, authenticateAndLoadUser } from '../middleware/auth.middleware';
 import { createLogger } from '../config/utils/logger';
 
 const router = Router();
@@ -44,41 +44,16 @@ router.post('/login', async (req: Request, res: Response) => {
 
 /**
  * GET /auth/me
- * Get current user info (requires authentication)
+ * Get current user info (requires authentication).
+ * Uses authenticateAndLoadUser so user is already loaded (no extra DB call).
  */
-router.get('/me', authenticateToken, async (req: Request, res: Response) => {
+router.get('/me', authenticateAndLoadUser, async (req: Request, res: Response) => {
     logger.info('GET /auth/me');
-    
-    try {
-        if (!req.jwtPayload) {
-            res.status(401).json({
-                success: false,
-                message: 'Nicht authentifiziert'
-            });
-            return;
-        }
-        
-        const user = await findAdminById(req.jwtPayload.userId);
-        
-        if (!user) {
-            res.status(404).json({
-                success: false,
-                message: 'Benutzer nicht gefunden'
-            });
-            return;
-        }
-        
-        res.json({
-            success: true,
-            data: toPublicUser(user)
-        });
-    } catch (error) {
-        logger.error('Error getting current user', error);
-        res.status(500).json({
-            success: false,
-            message: 'Interner Serverfehler'
-        });
+    if (!req.user) {
+        res.status(401).json({ success: false, message: 'Nicht authentifiziert' });
+        return;
     }
+    res.json({ success: true, data: req.user });
 });
 
 /**

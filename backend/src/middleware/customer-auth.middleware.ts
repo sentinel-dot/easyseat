@@ -27,35 +27,6 @@ function getTokenFromRequest(req: Request): string | null {
 }
 
 /**
- * Customer authentication middleware
- * Verifies JWT from Authorization header or from HttpOnly cookie
- * Sets req.customerJwtPayload if valid
- */
-export function authenticateCustomer(req: Request, res: Response, next: NextFunction): void {
-    const token = getTokenFromRequest(req);
-    
-    if (!token) {
-        res.status(401).json({
-            success: false,
-            message: 'Authentifizierung erforderlich'
-        });
-        return;
-    }
-    
-    const payload = verifyToken(token);
-    if (!payload) {
-        res.status(403).json({
-            success: false,
-            message: 'Ungültiger oder abgelaufener Token'
-        });
-        return;
-    }
-    
-    req.customerJwtPayload = payload;
-    next();
-}
-
-/**
  * Optional customer authentication middleware
  * Loads customer if token is present, but doesn't fail if missing
  * Useful for endpoints that work both for guests and authenticated customers

@@ -304,6 +304,7 @@ export interface LoyaltyConfig {
   BOOKING_COMPLETED: number;
   BOOKING_WITH_REVIEW: number;
   WELCOME_BONUS: number;
+  EMAIL_VERIFIED_BONUS: number;
   POINTS_PER_EURO: number;
 }
 

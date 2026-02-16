@@ -18,6 +18,7 @@ export default function AdminSettingsPage() {
     BOOKING_COMPLETED: 10,
     BOOKING_WITH_REVIEW: 5,
     WELCOME_BONUS: 50,
+    EMAIL_VERIFIED_BONUS: 25,
     POINTS_PER_EURO: 1,
   });
   const [saving, setSaving] = useState(false);
@@ -217,6 +218,25 @@ export default function AdminSettingsPage() {
               />
               <p className="mt-1 text-xs text-[var(--color-muted)]">
                 Einmalige Punkte bei Registrierung eines neuen Kundenkontos
+              </p>
+            </div>
+
+            <div>
+              <Input
+                label="Bonus für E-Mail-Verifizierung"
+                type="number"
+                min="0"
+                value={loyaltyConfig.EMAIL_VERIFIED_BONUS}
+                onChange={(e) =>
+                  setLoyaltyConfig((c) => ({
+                    ...c,
+                    EMAIL_VERIFIED_BONUS: parseInt(e.target.value) || 0,
+                  }))
+                }
+                required
+              />
+              <p className="mt-1 text-xs text-[var(--color-muted)]">
+                Einmalige Punkte nach Bestätigung der E-Mail-Adresse
               </p>
             </div>
 

@@ -27,7 +27,8 @@ export interface CustomerLoginResponse {
 }
 
 /**
- * Register a new customer account
+ * Register a new customer account.
+ * The backend automatically links all past bookings with the same email to the new account.
  */
 export async function register(data: CustomerRegisterRequest) {
     return apiClient<CustomerLoginResponse>('/auth/customer/register', {

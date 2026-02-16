@@ -522,48 +522,25 @@ export async function changePassword(
 }
 
 /**
- * Link an existing booking to a customer account using booking token
+ * Link all past bookings with matching customer_email to the customer account.
+ * Called automatically on registration so all prior guest bookings (same email) appear in the account.
  */
-export async function linkBookingToCustomer(customerId: number, bookingToken: string): Promise<ApiResponse<{ message: string }>> {
+export async function linkAllBookingsByEmail(customerId: number, email: string): Promise<{ linked: number }> {
     let conn = null;
     try {
         conn = await getConnection();
-
-        // Find the booking
-        const bookings = await conn.query(
-            'SELECT id, customer_email FROM bookings WHERE booking_token = ?',
-            [bookingToken]
+        const result = await conn.query(
+            'UPDATE bookings SET customer_id = ? WHERE customer_email = ? AND (customer_id IS NULL OR customer_id = ?)',
+            [customerId, email, customerId]
         );
-
-        if (bookings.length === 0) {
-            return { success: false, message: 'Buchung nicht gefunden' };
+        const linked = typeof result.affectedRows === 'number' ? result.affectedRows : 0;
+        if (linked > 0) {
+            logger.info(`Linked ${linked} booking(s) to customer ${customerId} by email ${email}`);
         }
-
-        const booking = bookings[0];
-
-        // Get customer to verify email matches
-        const customer = await findCustomerById(customerId);
-        if (!customer) {
-            return { success: false, message: 'Kunde nicht gefunden' };
-        }
-
-        // Verify that the booking email matches the customer email
-        if (booking.customer_email !== customer.email) {
-            logger.warn(`Booking link failed: Email mismatch - bookingToken ${bookingToken}, customerId ${customerId}`);
-            return { success: false, message: 'Die E-Mail-Adresse der Buchung stimmt nicht mit Ihrem Konto überein' };
-        }
-
-        // Link the booking
-        await conn.query(
-            'UPDATE bookings SET customer_id = ? WHERE id = ?',
-            [customerId, booking.id]
-        );
-
-        logger.info(`Booking linked successfully: bookingId ${booking.id} to customerId ${customerId}`);
-        return { success: true, data: { message: 'Buchung erfolgreich mit Ihrem Konto verknüpft' } };
+        return { linked };
     } catch (error) {
-        logger.error('Error linking booking to customer', error);
-        return { success: false, message: 'Fehler beim Verknüpfen der Buchung' };
+        logger.error('Error linking bookings by email', error);
+        return { linked: 0 };
     } finally {
         if (conn) conn.release();
     }

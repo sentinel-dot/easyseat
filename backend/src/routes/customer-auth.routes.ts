@@ -6,7 +6,7 @@ import {
     requestPasswordReset, 
     resetPassword,
     changePassword,
-    linkBookingToCustomer,
+    linkAllBookingsByEmail,
     findCustomerById,
     toPublicCustomer
 } from '../services/customer-auth.service';
@@ -18,7 +18,8 @@ const logger = createLogger('customer-auth.routes');
 
 /**
  * POST /auth/customer/register
- * Register a new customer account
+ * Register a new customer account.
+ * All past bookings with the same email are automatically linked to the new account.
  */
 router.post('/register', async (req: Request, res: Response) => {
     try {
@@ -47,6 +48,15 @@ router.post('/register', async (req: Request, res: Response) => {
                 sameSite: 'strict',
                 maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
             });
+        }
+
+        // Auto-link all past bookings with matching email to the new account
+        if (result.data?.customer?.id && result.data.customer?.email) {
+            try {
+                await linkAllBookingsByEmail(result.data.customer.id, result.data.customer.email);
+            } catch (linkErr) {
+                logger.error('Auto-link bookings by email after register failed', linkErr);
+            }
         }
 
         res.status(201).json(result);
@@ -192,7 +202,7 @@ router.post('/resend-verification', requireCustomerAuth, async (req: Request, re
             return;
         }
 
-        // Find customer to get verification token
+        // Find customer and ensure we have a verification token
         const customer = await findCustomerById(req.customer.id);
         if (!customer) {
             res.status(404).json({
@@ -202,12 +212,27 @@ router.post('/resend-verification', requireCustomerAuth, async (req: Request, re
             return;
         }
 
-        // Send verification email
+        let verificationToken = customer.verification_token;
+        if (!verificationToken) {
+            const { generateVerificationToken } = await import('../services/customer-auth.service');
+            const { getConnection } = await import('../config/database');
+            verificationToken = generateVerificationToken();
+            const conn = await getConnection();
+            try {
+                await conn.query(
+                    'UPDATE customers SET verification_token = ? WHERE id = ?',
+                    [verificationToken, customer.id]
+                );
+            } finally {
+                conn.release();
+            }
+        }
+
         const { sendCustomerVerificationEmail } = await import('../services/email.service');
         const emailSent = await sendCustomerVerificationEmail(
             customer.email,
             customer.name,
-            customer.verification_token!
+            verificationToken
         );
 
         if (!emailSent) {
@@ -320,45 +345,6 @@ router.post('/change-password', requireCustomerAuth, async (req: Request, res: R
         res.status(result.success ? 200 : 400).json(result);
     } catch (error) {
         logger.error('Error in change-password route', error);
-        res.status(500).json({
-            success: false,
-            message: 'Ein Fehler ist aufgetreten'
-        });
-    }
-});
-
-/**
- * POST /auth/customer/link-booking
- * Link an existing booking to customer account
- */
-router.post('/link-booking', requireCustomerAuth, async (req: Request, res: Response) => {
-    try {
-        const { bookingToken } = req.body;
-
-        if (!bookingToken) {
-            res.status(400).json({
-                success: false,
-                message: 'Buchungstoken ist erforderlich'
-            });
-            return;
-        }
-
-        if (!req.customerJwtPayload) {
-            res.status(401).json({
-                success: false,
-                message: 'Nicht authentifiziert'
-            });
-            return;
-        }
-
-        const result = await linkBookingToCustomer(
-            req.customerJwtPayload.customerId,
-            bookingToken
-        );
-
-        res.status(result.success ? 200 : 400).json(result);
-    } catch (error) {
-        logger.error('Error in link-booking route', error);
         res.status(500).json({
             success: false,
             message: 'Ein Fehler ist aufgetreten'
