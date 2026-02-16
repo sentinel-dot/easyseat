@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import type { VenueWithStaff, Service, TimeSlot } from "@/lib/types";
 import { getAvailableSlots } from "@/lib/api/availability";
 import { createBooking } from "@/lib/api/bookings";
+import { useCustomerAuthOptional } from "@/contexts/CustomerAuthContext";
 import {
   today,
   addDays,
@@ -36,6 +37,8 @@ type BookingWidgetProps = {
 
 export function BookingWidget({ venue, initialDate, initialTime, initialPartySize }: BookingWidgetProps) {
   const router = useRouter();
+  const auth = useCustomerAuthOptional();
+  const { customer, isAuthenticated } = auth ?? { customer: null, isAuthenticated: false };
   const services = (venue.services ?? []).filter((s) => s.is_active !== false);
 
   const [step, setStep] = useState<Step>("service");
@@ -49,6 +52,15 @@ export function BookingWidget({ venue, initialDate, initialTime, initialPartySiz
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
+
+  // Eingeloggt: Name, E-Mail und Telefon aus Kundenprofil übernehmen
+  useEffect(() => {
+    if (customer) {
+      setName(customer.name ?? "");
+      setEmail(customer.email ?? "");
+      setPhone(customer.phone ?? "");
+    }
+  }, [customer]);
   const [partySize, setPartySize] = useState(
     initialPartySize != null ? Math.min(20, Math.max(1, initialPartySize)) : DEFAULT_PARTY_SIZE
   );
@@ -123,10 +135,12 @@ export function BookingWidget({ venue, initialDate, initialTime, initialPartySiz
 
   const validateDetails = (): boolean => {
     const err: Record<string, string> = {};
-    if (!name.trim()) err.name = "Bitte Namen angeben.";
-    if (!email.trim()) err.email = "Bitte E-Mail angeben.";
-    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
-      err.email = "Bitte gültige E-Mail angeben.";
+    if (!isAuthenticated) {
+      if (!name.trim()) err.name = "Bitte Namen angeben.";
+      if (!email.trim()) err.email = "Bitte E-Mail angeben.";
+      else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
+        err.email = "Bitte gültige E-Mail angeben.";
+    }
     if (venue.require_phone && !phone.trim())
       err.phone = "Bitte Telefonnummer angeben.";
     if (showPartySize && (partySize < 1 || partySize > 20))
@@ -413,29 +427,55 @@ export function BookingWidget({ venue, initialDate, initialTime, initialPartySiz
 
           <div>
             <h3 className="text-sm font-semibold text-[var(--color-text)]">Ihre Angaben</h3>
-            <p className="mt-0.5 text-xs text-[var(--color-muted)]">
-              Mit * markierte Felder sind Pflicht.
-            </p>
+            {isAuthenticated ? (
+              <p className="mt-0.5 text-xs text-[var(--color-muted)]">
+                Es werden Ihre Kontodaten verwendet. Änderungen im Profil möglich.
+              </p>
+            ) : (
+              <p className="mt-0.5 text-xs text-[var(--color-muted)]">
+                Mit * markierte Felder sind Pflicht.
+              </p>
+            )}
           </div>
 
           <div className="space-y-4">
-            <Input
-              label="Name *"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              error={fieldErrors.name}
-              placeholder="Max Mustermann"
-              required
-            />
-            <Input
-              label="E-Mail *"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              error={fieldErrors.email}
-              placeholder="max@beispiel.de"
-              required
-            />
+            {isAuthenticated ? (
+              <>
+                <Input
+                  label="Name"
+                  value={name}
+                  disabled
+                  className="bg-[var(--color-page)] cursor-not-allowed opacity-90"
+                />
+                <Input
+                  label="E-Mail"
+                  type="email"
+                  value={email}
+                  disabled
+                  className="bg-[var(--color-page)] cursor-not-allowed opacity-90"
+                />
+              </>
+            ) : (
+              <>
+                <Input
+                  label="Name *"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  error={fieldErrors.name}
+                  placeholder="Max Mustermann"
+                  required
+                />
+                <Input
+                  label="E-Mail *"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  error={fieldErrors.email}
+                  placeholder="max@beispiel.de"
+                  required
+                />
+              </>
+            )}
             {!!venue.require_phone && (
               <Input
                 label="Telefon *"

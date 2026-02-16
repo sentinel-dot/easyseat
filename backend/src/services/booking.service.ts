@@ -354,7 +354,7 @@ import { randomUUID } from 'crypto';
                     );
                 }
             } catch (emailErr) {
-                logger.error('Review invitation email failed after auto-complete', { booking_id: b.id }, emailErr);
+                logger.error('Review invitation email failed after auto-complete', { booking_id: b.id, err: emailErr });
             }
         }
         return bookings;

@@ -29,6 +29,117 @@ const MAIL_FROM = process.env.MAIL_FROM || process.env.SMTP_USER || 'noreply@eas
 const PUBLIC_APP_URL = process.env.PUBLIC_APP_URL || process.env.FRONTEND_URL || 'http://localhost:3000';
 const REMINDER_HOURS = parseInt(process.env.REMINDER_HOURS ?? '24', 10) || 24;
 
+/** Design-Tokens wie im Frontend (globals.css) – für E-Mail inline verwendet */
+const EMAIL_STYLE = {
+  pageBg: '#f9fafb', // Helleres Grau (slate-50)
+  surface: '#ffffff',
+  border: '#e5e7eb', // gray-200
+  text: '#111827', // gray-900
+  textSoft: '#374151', // gray-700
+  muted: '#6b7280', // gray-500
+  accent: '#c41e3a',
+  accentHover: '#a01930',
+  accentMuted: '#fce8eb',
+  radius: '12px',
+  radiusSm: '8px',
+  radiusBtn: '12px', // rounded-xl
+  fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol"',
+} as const;
+
+/**
+ * E-Mail-Layout wie Frontend: cleaner Look, System-Fonts, hochwertige Typografie.
+ */
+function emailLayout(opts: {
+  title: string;
+  bodyContent: string;
+  cta?: { text: string; url: string };
+  preheader?: string;
+}): string {
+  const { title, bodyContent, cta, preheader = 'easyseat' } = opts;
+  // Bulletproof button: Hintergrund auf der <td>, damit Clients den Button nicht als blauen Link darstellen
+  const ctaBlock = cta
+    ? `
+  <table role="presentation" class="email-cta" border="0" cellpadding="0" cellspacing="0" align="center" style="margin-top: 32px; margin-bottom: 32px;">
+    <tr>
+      <td align="center" style="border-radius: ${EMAIL_STYLE.radiusBtn}; background-color: ${EMAIL_STYLE.accent}; padding: 14px 28px;">
+        <a href="${cta.url}" class="email-cta" style="display: inline-block; color: #ffffff !important; text-decoration: none !important; font-weight: 600; font-size: 14px; font-family: ${EMAIL_STYLE.fontFamily}; mso-line-height-rule: exactly;">${cta.text}</a>
+      </td>
+    </tr>
+  </table>`
+    : '';
+
+  return `<!DOCTYPE html>
+<html lang="de" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="x-apple-disable-message-reformatting">
+  <title>${title.replace(/</g, '&lt;')}</title>
+  <!--[if mso]>
+  <xml>
+    <o:OfficeDocumentSettings>
+      <o:PixelsPerInch>96</o:PixelsPerInch>
+    </o:OfficeDocumentSettings>
+  </xml>
+  <style>
+    table {border-collapse: collapse;}
+    td,th,div,p,a,h1,h2,h3,h4,h5,h6 {font-family: "Segoe UI", sans-serif; mso-line-height-rule: exactly;}
+  </style>
+  <![endif]-->
+  <style>
+    .email-cta, .email-cta a { color: #ffffff !important; text-decoration: none !important; }
+    .email-logo, .email-logo a { color: #111827 !important; text-decoration: none !important; font-size: 18px !important; font-weight: 700 !important; }
+    @media screen and (max-width: 600px) {
+      .content-cell { padding: 24px !important; }
+      .header-cell { padding: 24px 0 !important; }
+    }
+  </style>
+</head>
+<body style="margin: 0; padding: 0; background-color: ${EMAIL_STYLE.pageBg}; font-family: ${EMAIL_STYLE.fontFamily}; font-size: 16px; line-height: 1.6; color: ${EMAIL_STYLE.textSoft}; -webkit-font-smoothing: antialiased; word-spacing: normal;">
+  ${preheader ? `<div style="display: none; max-height: 0; overflow: hidden;">${preheader}</div>` : ''}
+  <div role="article" aria-roledescription="email" lang="de" style="text-size-adjust: 100%; -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; background-color: ${EMAIL_STYLE.pageBg};">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+      <tr>
+        <td align="center" style="padding: 40px 16px;">
+          <!-- Logo: Größe/Farbe auf td + Spans, damit Clients es nicht als blauen Link darstellen -->
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width: 600px; margin: 0 auto;">
+            <tr>
+              <td align="center" class="header-cell email-logo" style="padding-bottom: 32px; font-size: 18px; font-weight: 700; font-family: ${EMAIL_STYLE.fontFamily};">
+                <a href="${PUBLIC_APP_URL.replace(/\/$/, '')}" class="email-logo" style="color: ${EMAIL_STYLE.text} !important; text-decoration: none !important; font-size: 18px !important; font-weight: 700 !important; font-family: ${EMAIL_STYLE.fontFamily};"><span style="color: ${EMAIL_STYLE.accent}; font-weight: 700;">easy</span><span style="color: ${EMAIL_STYLE.text}; font-weight: 700;">seat</span></a>
+              </td>
+            </tr>
+          </table>
+
+          <!-- Card -->
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width: 600px; margin: 0 auto; background-color: ${EMAIL_STYLE.surface}; border-radius: ${EMAIL_STYLE.radius}; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);">
+            <tr>
+              <td class="content-cell" style="padding: 48px;">
+                ${bodyContent}
+                ${ctaBlock}
+                <p style="margin: 32px 0 0 0; font-size: 14px; color: ${EMAIL_STYLE.muted}; text-align: center;">
+                  Haben Sie Fragen? Antworten Sie einfach auf diese E-Mail.
+                </p>
+              </td>
+            </tr>
+          </table>
+
+          <!-- Footer -->
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width: 600px; margin: 0 auto;">
+            <tr>
+              <td align="center" style="padding-top: 32px; font-size: 12px; color: ${EMAIL_STYLE.muted}; text-align: center;">
+                <p style="margin: 0;">&copy; ${new Date().getFullYear()} easyseat. Alle Rechte vorbehalten.</p>
+                <p style="margin: 8px 0 0 0;">Diese E-Mail wurde automatisch generiert.</p>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </div>
+</body>
+</html>`;
+}
+
 function getTransport(): Transporter | null {
   const host = process.env.SMTP_HOST;
   const user = process.env.SMTP_USER;
@@ -73,9 +184,50 @@ function notesBlock(booking: BookingForEmail): { html: string; text: string } {
   if (!booking.special_requests || !String(booking.special_requests).trim()) return { html: '', text: '' };
   const escaped = String(booking.special_requests).replace(/</g, '&lt;').replace(/>/g, '&gt;');
   return {
-    html: `  <p><strong>Ihre Notizen:</strong><br>${escaped}</p>\n`,
+    html: `
+    <div style="margin-top: 24px; padding: 16px; background-color: #fff1f2; border-radius: 8px; border: 1px solid ${EMAIL_STYLE.accentMuted};">
+      <p style="margin: 0; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: ${EMAIL_STYLE.accent};">Ihre Notizen</p>
+      <p style="margin: 8px 0 0 0; font-size: 14px; color: ${EMAIL_STYLE.textSoft}; line-height: 1.5;">${escaped}</p>
+    </div>\n`,
     text: `Ihre Notizen: ${booking.special_requests}\n\n`,
   };
+}
+
+/** Buchungsdetails als moderne Info-Box. */
+function bookingDetailsBlock(booking: BookingForEmail): string {
+  const staff = booking.staff_member_name
+    ? `
+    <tr>
+      <td style="padding-top: 12px; border-top: 1px solid ${EMAIL_STYLE.border}; margin-top: 12px;">
+        <p style="margin: 0; font-size: 13px; color: ${EMAIL_STYLE.muted};">Ansprechpartner</p>
+        <p style="margin: 2px 0 0 0; font-size: 15px; font-weight: 500; color: ${EMAIL_STYLE.text};">${booking.staff_member_name}</p>
+      </td>
+    </tr>`
+    : '';
+
+  return `
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin: 32px 0; background-color: #f9fafb; border-radius: 12px; overflow: hidden;">
+    <tr>
+      <td style="padding: 24px;">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+          <tr>
+            <td style="padding-bottom: 8px;">
+              <p style="margin: 0; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: ${EMAIL_STYLE.muted};">Service</p>
+              <p style="margin: 4px 0 0 0; font-size: 18px; font-weight: 700; color: ${EMAIL_STYLE.text}; line-height: 1.3;">${(booking.service_name || 'Ihre Buchung').replace(/</g, '&lt;')}</p>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding-top: 16px; padding-bottom: ${staff ? '16px' : '0'};">
+              <p style="margin: 0; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: ${EMAIL_STYLE.muted};">Zeitpunkt</p>
+              <p style="margin: 4px 0 0 0; font-size: 16px; color: ${EMAIL_STYLE.text};">${formatDate(booking.booking_date)}</p>
+              <p style="margin: 0; font-size: 16px; color: ${EMAIL_STYLE.text};">${booking.start_time} – ${booking.end_time} Uhr</p>
+            </td>
+          </tr>
+          ${staff}
+        </table>
+      </td>
+    </tr>
+  </table>`;
 }
 
 /**
@@ -116,23 +268,20 @@ export async function sendBookingReceived(booking: BookingForEmail): Promise<boo
   const serviceName = booking.service_name || 'Ihre Buchung';
   const subject = `Vielen Dank für Ihre Buchung bei ${venueName}`;
 
-  const html = `
-<!DOCTYPE html>
-<html>
-<head><meta charset="utf-8"><title>Buchung eingegangen</title></head>
-<body style="font-family: sans-serif; line-height: 1.5; color: #333; max-width: 560px;">
-  <p>Hallo ${booking.customer_name},</p>
-  <p>vielen Dank für Ihre Buchung. Wir haben Ihre Anfrage erhalten und prüfen sie. Sie erhalten in Kürze eine Bestätigung, sobald Ihr Termin freigegeben ist.</p>
-  <p><strong>${serviceName}</strong><br>
-  ${formatDate(booking.booking_date)} · ${booking.start_time}–${booking.end_time} Uhr
-  ${booking.staff_member_name ? `<br>Ansprechpartner: ${booking.staff_member_name}` : ''}
-  </p>
+  const bodyContent = `
+  <h1 style="margin: 0 0 24px 0; font-size: 24px; font-weight: 700; color: ${EMAIL_STYLE.text}; letter-spacing: -0.5px;">Buchung eingegangen</h1>
+  <p style="margin: 0 0 24px 0; font-size: 16px; color: ${EMAIL_STYLE.textSoft};">Hallo ${booking.customer_name.replace(/</g, '&lt;')},</p>
+  <p style="margin: 0 0 24px 0; font-size: 16px; color: ${EMAIL_STYLE.textSoft};">Vielen Dank für Ihre Buchung. Wir haben Ihre Anfrage erhalten und prüfen sie. Sie erhalten in Kürze eine Bestätigung, sobald Ihr Termin freigegeben ist.</p>
+  ${bookingDetailsBlock(booking)}
   ${notesBlock(booking).html}
-  <p>Sie können Ihre Buchung jederzeit einsehen oder ändern:<br>
-  <a href="${manageLink(booking)}">Buchung verwalten</a></p>
-  <p>Mit freundlichen Grüßen<br>${venueName}</p>
-</body>
-</html>`;
+  <p style="margin: 24px 0 0 0; font-size: 14px; color: ${EMAIL_STYLE.muted};">Sie können den Status Ihrer Buchung jederzeit online einsehen.</p>`;
+  
+  const html = emailLayout({
+    title: 'Buchung eingegangen',
+    bodyContent,
+    cta: { text: 'Buchung verwalten', url: manageLink(booking) },
+    preheader: `Ihre Buchung bei ${venueName} ist eingegangen.`,
+  });
 
   const notesT = notesBlock(booking).text;
   const text = `Hallo ${booking.customer_name},\n\nVielen Dank für Ihre Buchung. Wir haben Ihre Anfrage erhalten und prüfen sie. Sie erhalten in Kürze eine Bestätigung, sobald Ihr Termin freigegeben ist.\n\n${serviceName}\n${formatDate(booking.booking_date)} · ${booking.start_time}–${booking.end_time} Uhr${booking.staff_member_name ? `\nAnsprechpartner: ${booking.staff_member_name}` : ''}${notesT}\nBuchung verwalten: ${manageLink(booking)}\n\nMit freundlichen Grüßen\n${venueName}`;
@@ -165,23 +314,20 @@ export async function sendConfirmation(
     ? `Ihre Buchung ist wieder gültig. Sie können wie geplant zu Ihrem Termin kommen.`
     : `Ihre Buchung wurde bestätigt. Wir freuen uns auf Ihren Besuch.`;
 
-  const html = `
-<!DOCTYPE html>
-<html>
-<head><meta charset="utf-8"><title>Buchungsbestätigung</title></head>
-<body style="font-family: sans-serif; line-height: 1.5; color: #333; max-width: 560px;">
-  <p>Hallo ${booking.customer_name},</p>
-  <p>${intro}</p>
-  <p><strong>${serviceName}</strong><br>
-  ${formatDate(booking.booking_date)} · ${booking.start_time}–${booking.end_time} Uhr
-  ${booking.staff_member_name ? `<br>Ansprechpartner: ${booking.staff_member_name}` : ''}
-  </p>
+  const bodyContent = `
+  <h1 style="margin: 0 0 24px 0; font-size: 24px; font-weight: 700; color: ${EMAIL_STYLE.text}; letter-spacing: -0.5px;">Buchung bestätigt</h1>
+  <p style="margin: 0 0 24px 0; font-size: 16px; color: ${EMAIL_STYLE.textSoft};">Hallo ${booking.customer_name.replace(/</g, '&lt;')},</p>
+  <p style="margin: 0 0 24px 0; font-size: 16px; color: ${EMAIL_STYLE.textSoft};">${intro}</p>
+  ${bookingDetailsBlock(booking)}
   ${notesBlock(booking).html}
-  <p>Sie können Ihre Buchung jederzeit einsehen oder ändern:<br>
-  <a href="${manageLink(booking)}">Buchung verwalten</a></p>
-  <p>Mit freundlichen Grüßen<br>${venueName}</p>
-</body>
-</html>`;
+  <p style="margin: 24px 0 0 0; font-size: 14px; color: ${EMAIL_STYLE.muted};">Sie können Ihre Buchung jederzeit online einsehen oder ändern.</p>`;
+  
+  const html = emailLayout({
+    title: 'Buchungsbestätigung',
+    bodyContent,
+    cta: { text: 'Buchung verwalten', url: manageLink(booking) },
+    preheader: isReactivation ? 'Ihre Buchung ist wieder bestätigt.' : 'Ihre Buchung ist bestätigt.',
+  });
 
   const notesT = notesBlock(booking).text;
   const text = `Hallo ${booking.customer_name},\n\n${intro}\n\n${serviceName}\n${formatDate(booking.booking_date)} · ${booking.start_time}–${booking.end_time} Uhr${booking.staff_member_name ? `\nAnsprechpartner: ${booking.staff_member_name}` : ''}${notesT}\nBuchung verwalten: ${manageLink(booking)}\n\nMit freundlichen Grüßen\n${venueName}`;
@@ -205,20 +351,19 @@ export async function sendCancellation(booking: BookingForEmail): Promise<boolea
   const serviceName = booking.service_name || 'Ihre Buchung';
   const subject = `Ihre Buchung bei ${venueName} wurde storniert`;
 
-  const html = `
-<!DOCTYPE html>
-<html>
-<head><meta charset="utf-8"><title>Stornierung</title></head>
-<body style="font-family: sans-serif; line-height: 1.5; color: #333; max-width: 560px;">
-  <p>Hallo ${booking.customer_name},</p>
-  <p>Ihre folgende Buchung wurde storniert:</p>
-  <p><strong>${serviceName}</strong><br>
-  ${formatDate(booking.booking_date)} · ${booking.start_time}–${booking.end_time} Uhr</p>
+  const bodyContent = `
+  <h1 style="margin: 0 0 24px 0; font-size: 24px; font-weight: 700; color: ${EMAIL_STYLE.text}; letter-spacing: -0.5px;">Buchung storniert</h1>
+  <p style="margin: 0 0 24px 0; font-size: 16px; color: ${EMAIL_STYLE.textSoft};">Hallo ${booking.customer_name.replace(/</g, '&lt;')},</p>
+  <p style="margin: 0 0 24px 0; font-size: 16px; color: ${EMAIL_STYLE.textSoft};">Ihre folgende Buchung wurde storniert:</p>
+  ${bookingDetailsBlock(booking)}
   ${notesBlock(booking).html}
-  <p>Bei Fragen wenden Sie sich bitte an ${venueName}.</p>
-  <p>Mit freundlichen Grüßen<br>${venueName}</p>
-</body>
-</html>`;
+  <p style="margin: 24px 0 0 0; font-size: 14px; color: ${EMAIL_STYLE.muted};">Falls Sie Fragen haben, wenden Sie sich bitte direkt an ${venueName.replace(/</g, '&lt;')}.</p>`;
+  
+  const html = emailLayout({
+    title: 'Stornierung',
+    bodyContent,
+    preheader: `Ihre Buchung bei ${venueName} wurde storniert.`,
+  });
 
   const notesT = notesBlock(booking).text;
   const text = `Hallo ${booking.customer_name},\n\nIhre folgende Buchung wurde storniert:\n\n${serviceName}\n${formatDate(booking.booking_date)} · ${booking.start_time}–${booking.end_time} Uhr${notesT}\nBei Fragen wenden Sie sich bitte an ${venueName}.\n\nMit freundlichen Grüßen\n${venueName}`;
@@ -241,22 +386,20 @@ export async function sendReminder(booking: BookingForEmail): Promise<boolean> {
   const serviceName = booking.service_name || 'Ihre Buchung';
   const subject = `Erinnerung: Ihr Termin bei ${venueName} morgen`;
 
-  const html = `
-<!DOCTYPE html>
-<html>
-<head><meta charset="utf-8"><title>Terminerinnerung</title></head>
-<body style="font-family: sans-serif; line-height: 1.5; color: #333; max-width: 560px;">
-  <p>Hallo ${booking.customer_name},</p>
-  <p>wir erinnern Sie an Ihren Termin:</p>
-  <p><strong>${serviceName}</strong><br>
-  ${formatDate(booking.booking_date)} · ${booking.start_time}–${booking.end_time} Uhr
-  ${booking.staff_member_name ? `<br>Ansprechpartner: ${booking.staff_member_name}` : ''}
-  </p>
+  const bodyContent = `
+  <h1 style="margin: 0 0 24px 0; font-size: 24px; font-weight: 700; color: ${EMAIL_STYLE.text}; letter-spacing: -0.5px;">Terminerinnerung</h1>
+  <p style="margin: 0 0 24px 0; font-size: 16px; color: ${EMAIL_STYLE.textSoft};">Hallo ${booking.customer_name.replace(/</g, '&lt;')},</p>
+  <p style="margin: 0 0 24px 0; font-size: 16px; color: ${EMAIL_STYLE.textSoft};">Wir erinnern Sie an Ihren Termin morgen:</p>
+  ${bookingDetailsBlock(booking)}
   ${notesBlock(booking).html}
-  <p><a href="${manageLink(booking)}">Buchung ansehen oder ändern</a></p>
-  <p>Mit freundlichen Grüßen<br>${venueName}</p>
-</body>
-</html>`;
+  <p style="margin: 24px 0 0 0; font-size: 14px; color: ${EMAIL_STYLE.muted};">Falls Sie den Termin nicht wahrnehmen können, ändern oder stornieren Sie ihn bitte rechtzeitig.</p>`;
+  
+  const html = emailLayout({
+    title: 'Terminerinnerung',
+    bodyContent,
+    cta: { text: 'Buchung ansehen oder ändern', url: manageLink(booking) },
+    preheader: `Erinnerung: Ihr Termin bei ${venueName} morgen.`,
+  });
 
   const notesT = notesBlock(booking).text;
   const text = `Hallo ${booking.customer_name},\n\nWir erinnern Sie an Ihren Termin:\n\n${serviceName}\n${formatDate(booking.booking_date)} · ${booking.start_time}–${booking.end_time} Uhr${booking.staff_member_name ? `\nAnsprechpartner: ${booking.staff_member_name}` : ''}${notesT}\nBuchung ansehen oder ändern: ${manageLink(booking)}\n\nMit freundlichen Grüßen\n${venueName}`;
@@ -281,17 +424,18 @@ export async function sendReviewInvitation(booking: BookingForEmail, venueId: nu
   const reviewUrl = `${baseUrl}/venues/${venueId}`;
   const subject = `Wie hat es Ihnen gefallen? Bewerten Sie ${venueName}`;
 
-  const html = `
-<!DOCTYPE html>
-<html>
-<head><meta charset="utf-8"><title>Bewertung</title></head>
-<body style="font-family: sans-serif; line-height: 1.5; color: #333; max-width: 560px;">
-  <p>Hallo ${booking.customer_name},</p>
-  <p>Ihr Termin bei ${venueName} ist abgeschlossen. Wir würden uns freuen, wenn Sie uns Ihre Erfahrung mitteilen – Ihre Bewertung hilft anderen Gästen und uns.</p>
-  <p><a href="${reviewUrl}">Jetzt bewerten</a></p>
-  <p>Mit freundlichen Grüßen<br>${venueName}</p>
-</body>
-</html>`;
+  const bodyContent = `
+  <h1 style="margin: 0 0 24px 0; font-size: 24px; font-weight: 700; color: ${EMAIL_STYLE.text}; letter-spacing: -0.5px;">Wie war es?</h1>
+  <p style="margin: 0 0 24px 0; font-size: 16px; color: ${EMAIL_STYLE.textSoft};">Hallo ${booking.customer_name.replace(/</g, '&lt;')},</p>
+  <p style="margin: 0 0 24px 0; font-size: 16px; color: ${EMAIL_STYLE.textSoft};">Ihr Termin bei <strong style="color: ${EMAIL_STYLE.text};">${venueName.replace(/</g, '&lt;')}</strong> ist abgeschlossen. Wir würden uns sehr freuen, wenn Sie uns Ihre Erfahrung mitteilen.</p>
+  <p style="margin: 0 0 24px 0; font-size: 16px; color: ${EMAIL_STYLE.textSoft};">Ihre Bewertung hilft anderen Gästen und uns, unseren Service zu verbessern.</p>`;
+  
+  const html = emailLayout({
+    title: 'Bewertung',
+    bodyContent,
+    cta: { text: 'Jetzt bewerten', url: reviewUrl },
+    preheader: `Wie hat es Ihnen bei ${venueName} gefallen?`,
+  });
 
   const text = `Hallo ${booking.customer_name},\n\nIhr Termin bei ${venueName} ist abgeschlossen. Wir würden uns freuen, wenn Sie uns Ihre Erfahrung mitteilen.\n\nJetzt bewerten: ${reviewUrl}\n\nMit freundlichen Grüßen\n${venueName}`;
 
@@ -376,13 +520,19 @@ export async function sendCustomerVerificationEmail(email: string, name: string,
   const baseUrl = (PUBLIC_APP_URL || 'http://localhost:3000').replace(/\/$/, '');
   const verifyUrl = `${baseUrl}/auth/verify-email?token=${encodeURIComponent(verificationToken)}`;
   const subject = 'E-Mail-Adresse bestätigen – easyseat';
-  const html = `
-    <h2>Hallo ${name.replace(/</g, '&lt;')},</h2>
-    <p>Bitte bestätigen Sie Ihre E-Mail-Adresse, indem Sie auf den folgenden Link klicken:</p>
-    <p><a href="${verifyUrl}">${verifyUrl}</a></p>
-    <p>Falls Sie sich nicht bei easyseat registriert haben, können Sie diese E-Mail ignorieren.</p>
-    <p>Mit freundlichen Grüßen,<br>Ihr easyseat-Team</p>
-  `;
+  const bodyContent = `
+  <h1 style="margin: 0 0 24px 0; font-size: 24px; font-weight: 700; color: ${EMAIL_STYLE.text}; letter-spacing: -0.5px;">E-Mail bestätigen</h1>
+  <p style="margin: 0 0 24px 0; font-size: 16px; color: ${EMAIL_STYLE.textSoft};">Hallo ${name.replace(/</g, '&lt;')},</p>
+  <p style="margin: 0 0 24px 0; font-size: 16px; color: ${EMAIL_STYLE.textSoft};">Bitte bestätigen Sie Ihre E-Mail-Adresse, um Ihre Registrierung bei easyseat abzuschließen.</p>
+  <p style="margin: 24px 0 0 0; font-size: 13px; color: ${EMAIL_STYLE.muted}; word-break: break-all;">Falls der Button nicht funktioniert, kopieren Sie diesen Link in Ihren Browser:<br><a href="${verifyUrl}" style="color: ${EMAIL_STYLE.accent}; text-decoration: none;">${verifyUrl}</a></p>
+  <p style="margin: 24px 0 0 0; font-size: 14px; color: ${EMAIL_STYLE.textSoft};">Falls Sie sich nicht registriert haben, können Sie diese E-Mail ignorieren.</p>`;
+  
+  const html = emailLayout({
+    title: 'E-Mail bestätigen',
+    bodyContent,
+    cta: { text: 'E-Mail-Adresse bestätigen', url: verifyUrl },
+    preheader: 'Bestätigen Sie Ihre E-Mail-Adresse für easyseat.',
+  });
   const text = `Hallo ${name},\n\nBitte bestätigen Sie Ihre E-Mail-Adresse: ${verifyUrl}\n\nFalls Sie sich nicht registriert haben, ignorieren Sie diese E-Mail.\n\nMit freundlichen Grüßen,\nIhr easyseat-Team`;
   return sendCustomerMail(email, subject, html, text);
 }
@@ -394,13 +544,19 @@ export async function sendCustomerPasswordResetEmail(email: string, name: string
   const baseUrl = (PUBLIC_APP_URL || 'http://localhost:3000').replace(/\/$/, '');
   const resetUrl = `${baseUrl}/auth/reset-password?token=${encodeURIComponent(resetToken)}`;
   const subject = 'Passwort zurücksetzen – easyseat';
-  const html = `
-    <h2>Hallo ${name.replace(/</g, '&lt;')},</h2>
-    <p>Sie haben eine Anfrage zum Zurücksetzen Ihres Passworts gestellt. Klicken Sie auf den folgenden Link:</p>
-    <p><a href="${resetUrl}">${resetUrl}</a></p>
-    <p>Der Link ist begrenzt gültig. Falls Sie die Anfrage nicht gestellt haben, ignorieren Sie diese E-Mail.</p>
-    <p>Mit freundlichen Grüßen,<br>Ihr easyseat-Team</p>
-  `;
+  const bodyContent = `
+  <h1 style="margin: 0 0 24px 0; font-size: 24px; font-weight: 700; color: ${EMAIL_STYLE.text}; letter-spacing: -0.5px;">Passwort zurücksetzen</h1>
+  <p style="margin: 0 0 24px 0; font-size: 16px; color: ${EMAIL_STYLE.textSoft};">Hallo ${name.replace(/</g, '&lt;')},</p>
+  <p style="margin: 0 0 24px 0; font-size: 16px; color: ${EMAIL_STYLE.textSoft};">Sie haben eine Anfrage zum Zurücksetzen Ihres Passworts gestellt. Klicken Sie auf den Button, um ein neues Passwort zu vergeben.</p>
+  <p style="margin: 24px 0 0 0; font-size: 13px; color: ${EMAIL_STYLE.muted}; word-break: break-all;">Falls der Button nicht funktioniert, kopieren Sie diesen Link in Ihren Browser:<br><a href="${resetUrl}" style="color: ${EMAIL_STYLE.accent}; text-decoration: none;">${resetUrl}</a></p>
+  <p style="margin: 24px 0 0 0; font-size: 14px; color: ${EMAIL_STYLE.textSoft};">Der Link ist nur begrenzt gültig. Falls Sie diese Anfrage nicht gestellt haben, können Sie diese E-Mail ignorieren.</p>`;
+  
+  const html = emailLayout({
+    title: 'Passwort zurücksetzen',
+    bodyContent,
+    cta: { text: 'Passwort zurücksetzen', url: resetUrl },
+    preheader: 'Setzen Sie Ihr easyseat-Passwort zurück.',
+  });
   const text = `Hallo ${name},\n\nPasswort zurücksetzen: ${resetUrl}\n\nFalls Sie die Anfrage nicht gestellt haben, ignorieren Sie diese E-Mail.\n\nMit freundlichen Grüßen,\nIhr easyseat-Team`;
   return sendCustomerMail(email, subject, html, text);
 }
