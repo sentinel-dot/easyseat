@@ -50,13 +50,14 @@ export class AvailabilityService
 
     /**
      * Generate time slots between start and end time
+     * MVP: bufferAfter (Pufferzeit nach jedem Slot) nicht genutzt; für spätere Erweiterung vorgesehen.
      */
     // Erstellt eine Liste aller theoretisch möglichen Zeitslots im gegebenen Zeitfenster
     static generateTimeSlots(
         startTime: string,          // Format: "HH:MM"
         endTime: string,            // Format: "HH:MM"
         duration: number            // Dauer eines Slots in Minuten
-        // bufferAfter: number = 0  // Optionale Pufferzeit nach jedem Slot
+        // bufferAfter: number = 0  // MVP: deaktiviert; später optional Puffer nach Slot
     ): TimeSlot[] 
     {
 
@@ -68,7 +69,7 @@ export class AvailabilityService
         const startTotalMinutes = this.timeStringToMinutes(startTime);      // Bei 14:30 Z.B. ist es dann 840 + 30 = 870
         const endTotalMinutes = this.timeStringToMinutes(endTime);          // Bei 15:30 z.B. ist es dann 900 + 30 = 930
 
-        // Berechnet die Gesamtdauer inklusive optionalem Puffer (Slot + Pufferzeit)
+        // Berechnet die Gesamtdauer inklusive optionalem Puffer (MVP: nur duration)
         const slotDuration = duration;// + bufferAfter;
 
 
@@ -272,11 +273,14 @@ export class AvailabilityService
             }
 
 
-            /*  AKTUELL IM MVP NICHT BENÖTIGT
-
-                // Prüfe auf Sonderverfügbarkeit (Schließungen, Feiertage,..)
-                // Findet Ausnahmen für: Geschäft (immer) + Mitarbeiter (falls angegeben)
-                const [specialAvailability] = await conn.query(`
+            /*
+             * MVP: deaktiviert. Für spätere Erweiterung vorgesehen.
+             * Sonderverfügbarkeit (Schließungen, Feiertage, Urlaub) über Tabelle special_availability.
+             * Reaktivieren, sobald Tabelle und UI dafür existieren.
+             *
+             * // Prüfe auf Sonderverfügbarkeit (Schließungen, Feiertage,..)
+             * // Findet Ausnahmen für: Geschäft (immer) + Mitarbeiter (falls angegeben)
+             * const [specialAvailability] = await conn.query(`
                     SELECT start_time, end_time, is_available, reason
                     FROM special_availability
                     WHERE (
@@ -546,11 +550,14 @@ export class AvailabilityService
                 }
             }
 
-            /* AKTUELL IM MVP NICHT BENÖTIGT
-
-                // Wende Sonderverfügbarkeitsregeln an (Schließungen/Feiertage)
-                // Findet Ausnahmen für: Geschäft (immer) + Mitarbeiter (falls angegeben)
-                const [specialAvailability] = await conn.query(`
+            /*
+             * MVP: deaktiviert. Für spätere Erweiterung vorgesehen.
+             * Sonderverfügbarkeit (Schließungen, Feiertage) – Slots in Schließzeiten herausfiltern.
+             * Reaktivieren, sobald Tabelle special_availability und UI existieren.
+             *
+             * // Wende Sonderverfügbarkeitsregeln an (Schließungen/Feiertage)
+             * // Findet Ausnahmen für: Geschäft (immer) + Mitarbeiter (falls angegeben)
+             * const [specialAvailability] = await conn.query(`
                     SELECT start_time, end_time, is_available, reason
                     FROM special_availability
                     WHERE (
