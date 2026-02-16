@@ -140,13 +140,13 @@ export default function OwnerDashboardPage() {
       </div>
 
       {s.bookings.pending > 0 && (
-        <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-amber-800 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-200">
+        <div className="rounded-xl border border-[var(--color-border)] border-l-4 border-l-orange-500 bg-[var(--color-surface)] p-6 text-[var(--color-text)] shadow-[var(--shadow-sm)]">
           <p className="font-medium">
             Sie haben {s.bookings.pending} ausstehende Buchungsanfrage{s.bookings.pending !== 1 ? "n" : ""}.
           </p>
           <Link
             href="/owner/bookings?status=pending"
-            className="mt-2 inline-flex items-center text-sm font-medium underline"
+            className="mt-2 inline-flex items-center text-sm font-medium text-orange-600 underline hover:text-orange-700 dark:text-orange-500 dark:hover:text-orange-400"
           >
             Jetzt bestätigen oder ablehnen
             <svg className="ml-1 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

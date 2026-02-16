@@ -7,6 +7,8 @@ import { getBookings } from "@/lib/api/customers";
 import { getFavorites } from "@/lib/api/favorites";
 import { getLoyaltyBalance } from "@/lib/api/loyalty";
 import { getStatusLabel, getStatusColor } from "@/lib/utils/bookingStatus";
+import { EmailVerificationBanner } from "@/components/customer/EmailVerificationBanner";
+import { VerifiedBadge } from "@/components/customer/VerifiedBadge";
 import type { Booking } from "@/lib/api/customers";
 import type { CustomerFavorite } from "@/lib/api/favorites";
 
@@ -42,12 +44,24 @@ export default function CustomerDashboardPage() {
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 sm:py-10">
-      <h1 className="font-display text-2xl font-semibold text-[var(--color-text)] sm:text-3xl">
-        Hallo, {customer?.name ?? "Gast"}
-      </h1>
-      <p className="mt-1 text-[var(--color-muted)]">
-        Hier ist Ihre Übersicht.
-      </p>
+      <div className="flex items-center justify-between gap-4">
+        <div>
+          <h1 className="font-display text-2xl font-semibold text-[var(--color-text)] sm:text-3xl">
+            Hallo, {customer?.name ?? "Gast"}
+          </h1>
+          <p className="mt-1 text-[var(--color-muted)]">
+            Hier ist Ihre Übersicht.
+          </p>
+        </div>
+        {customer?.email_verified === true && <VerifiedBadge verified={true} />}
+      </div>
+
+      {/* Email Verification Banner */}
+      {customer && !customer.email_verified && (
+        <div className="mt-6">
+          <EmailVerificationBanner email={customer.email} />
+        </div>
+      )}
 
       {loading ? (
         <div className="mt-8 h-32 animate-pulse rounded-xl bg-[var(--color-border)]/50" />

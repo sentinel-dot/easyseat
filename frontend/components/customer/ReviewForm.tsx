@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useCustomerAuthOptional } from "@/contexts/CustomerAuthContext";
 import { canReviewVenue, createReview } from "@/lib/api/reviews";
 import { Button } from "@/components/shared/button";
+import { FeatureLockedTooltip } from "@/components/customer/FeatureLockedTooltip";
 import { toast } from "sonner";
 
 type Props = {
@@ -71,6 +72,13 @@ export function ReviewForm({ venueId, onSuccess }: Props) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!canReview?.canReview || canReview.completedBookingId == null) return;
+    
+    // Check email verification
+    if (auth?.customer && !auth.customer.email_verified) {
+      toast.error("Bitte verifizieren Sie Ihre E-Mail-Adresse, um Bewertungen zu schreiben.");
+      return;
+    }
+    
     setSubmitting(true);
     try {
       const res = await createReview({
@@ -106,11 +114,23 @@ export function ReviewForm({ venueId, onSuccess }: Props) {
     return null;
   }
 
+  const isEmailVerified = auth?.customer?.email_verified ?? false;
+
   return (
     <form onSubmit={handleSubmit} className="mt-6 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4">
-      <h3 className="text-base font-semibold text-[var(--color-text)]">
-        Bewertung schreiben
-      </h3>
+      <div className="flex items-center justify-between gap-4">
+        <h3 className="text-base font-semibold text-[var(--color-text)]">
+          Bewertung schreiben
+        </h3>
+        {!isEmailVerified && (
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-medium text-amber-800 dark:bg-amber-950 dark:text-amber-200">
+            <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+            </svg>
+            E-Mail-Verifizierung erforderlich
+          </span>
+        )}
+      </div>
       <p className="mt-1 text-sm text-[var(--color-muted)]">
         Sie hatten hier einen abgeschlossenen Termin. Wie war Ihr Besuch?
       </p>
@@ -127,13 +147,21 @@ export function ReviewForm({ venueId, onSuccess }: Props) {
           value={comment}
           onChange={(e) => setComment(e.target.value)}
           rows={3}
-          className="w-full rounded-md border border-[var(--color-border)] bg-[var(--color-page)] px-3 py-2 text-sm text-[var(--color-text)] placeholder:text-[var(--color-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
-          placeholder="Ihre Erfahrung in wenigen Worten …"
+          disabled={!isEmailVerified}
+          className="w-full rounded-md border border-[var(--color-border)] bg-[var(--color-page)] px-3 py-2 text-sm text-[var(--color-text)] placeholder:text-[var(--color-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] disabled:cursor-not-allowed disabled:opacity-50"
+          placeholder={isEmailVerified ? "Ihre Erfahrung in wenigen Worten …" : "E-Mail-Verifizierung erforderlich"}
         />
       </div>
-      <Button type="submit" isLoading={submitting} disabled={submitting} className="mt-4">
-        Bewertung absenden
-      </Button>
+      <FeatureLockedTooltip isLocked={!isEmailVerified}>
+        <Button 
+          type="submit" 
+          isLoading={submitting} 
+          disabled={submitting || !isEmailVerified} 
+          className="mt-4"
+        >
+          Bewertung absenden
+        </Button>
+      </FeatureLockedTooltip>
     </form>
   );
 }

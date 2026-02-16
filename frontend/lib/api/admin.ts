@@ -93,6 +93,7 @@ export async function getCurrentUser(): Promise<{
 export interface GlobalStats {
   venues: { total: number; active: number };
   admins: { total: number; active: number };
+  customers: { total: number; active: number };
   /** User-Anzahl pro Rolle (admin = System-Admin, owner, staff); optional für Abwärtskompatibilität */
   usersByRole?: { admin: number; owner: number; staff: number };
   bookings: {
@@ -204,5 +205,125 @@ export async function setAdminPassword(
   return adminApiClient(`/admin/users/${adminId}/password`, {
     method: "PATCH",
     body: JSON.stringify({ newPassword }),
+  });
+}
+
+// --- Customer Management ---
+
+export interface CustomerWithStats {
+  id: number;
+  email: string;
+  name: string;
+  phone?: string;
+  loyalty_points: number;
+  is_active: boolean;
+  email_verified: boolean;
+  last_login?: Date;
+  created_at: Date;
+  total_bookings: number;
+  completed_bookings: number;
+  cancelled_bookings: number;
+  total_spent: number;
+}
+
+export async function listCustomers(params?: {
+  search?: string;
+  active?: boolean;
+  limit?: number;
+  offset?: number;
+}): Promise<{
+  success: boolean;
+  data?: CustomerWithStats[];
+  total?: number;
+  message?: string;
+}> {
+  const query = new URLSearchParams();
+  if (params?.search) query.set("search", params.search);
+  if (params?.active !== undefined) query.set("active", String(params.active));
+  if (params?.limit) query.set("limit", String(params.limit));
+  if (params?.offset) query.set("offset", String(params.offset));
+
+  const endpoint = `/admin/customers${query.toString() ? `?${query.toString()}` : ""}`;
+  return adminApiClient<CustomerWithStats[]>(endpoint);
+}
+
+export async function getCustomer(id: number): Promise<{
+  success: boolean;
+  data?: CustomerWithStats;
+  message?: string;
+}> {
+  return adminApiClient<CustomerWithStats>(`/admin/customers/${id}`);
+}
+
+export async function updateCustomer(
+  id: number,
+  data: {
+    name?: string;
+    phone?: string;
+    email_verified?: boolean;
+    is_active?: boolean;
+  }
+): Promise<{ success: boolean; data?: CustomerWithStats; message?: string }> {
+  return adminApiClient<CustomerWithStats>(`/admin/customers/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function setCustomerPassword(
+  customerId: number,
+  newPassword: string
+): Promise<{ success: boolean; message?: string }> {
+  return adminApiClient(`/admin/customers/${customerId}/password`, {
+    method: "PATCH",
+    body: JSON.stringify({ newPassword }),
+  });
+}
+
+export async function adjustCustomerLoyaltyPoints(
+  customerId: number,
+  pointsChange: number,
+  reason: string
+): Promise<{
+  success: boolean;
+  data?: { newBalance: number };
+  message?: string;
+}> {
+  return adminApiClient<{ newBalance: number }>(
+    `/admin/customers/${customerId}/loyalty-points`,
+    {
+      method: "POST",
+      body: JSON.stringify({ pointsChange, reason }),
+    }
+  );
+}
+
+// --- Loyalty Configuration ---
+
+export interface LoyaltyConfig {
+  BOOKING_COMPLETED: number;
+  BOOKING_WITH_REVIEW: number;
+  WELCOME_BONUS: number;
+  POINTS_PER_EURO: number;
+}
+
+export async function getLoyaltyConfig(): Promise<{
+  success: boolean;
+  data?: LoyaltyConfig;
+  message?: string;
+}> {
+  return adminApiClient<LoyaltyConfig>("/admin/loyalty/config");
+}
+
+export async function updateLoyaltyConfig(
+  config: Partial<LoyaltyConfig>
+): Promise<{
+  success: boolean;
+  data?: LoyaltyConfig;
+  message?: string;
+}> {
+  return adminApiClient<LoyaltyConfig>("/admin/loyalty/config", {
+    method: "PATCH",
+    body: JSON.stringify(config),
   });
 }

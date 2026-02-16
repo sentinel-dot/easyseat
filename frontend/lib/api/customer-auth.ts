@@ -110,12 +110,11 @@ export async function changePassword(currentPassword: string, newPassword: strin
 }
 
 /**
- * Link an existing booking to customer account
+ * Resend verification email
  */
-export async function linkBooking(bookingToken: string) {
-    return apiClient<{ message: string }>('/auth/customer/link-booking', {
+export async function resendVerificationEmail() {
+    return apiClient<{ message: string }>('/auth/customer/resend-verification', {
         method: 'POST',
-        body: JSON.stringify({ bookingToken }),
         credentials: 'include',
     });
 }

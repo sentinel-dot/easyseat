@@ -206,6 +206,21 @@ CREATE TABLE reviews (
     INDEX idx_rating (rating)
 );
 
+-- Loyalty points configuration (single row, admin-editable)
+CREATE TABLE loyalty_config (
+    id INT PRIMARY KEY DEFAULT 1,
+    booking_completed INT NOT NULL DEFAULT 10,
+    booking_with_review INT NOT NULL DEFAULT 5,
+    welcome_bonus INT NOT NULL DEFAULT 50,
+    email_verified_bonus INT NOT NULL DEFAULT 25,
+    points_per_euro DECIMAL(5,2) NOT NULL DEFAULT 1,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    CONSTRAINT chk_loyalty_config_single_row CHECK (id = 1)
+);
+
+INSERT INTO loyalty_config (id, booking_completed, booking_with_review, welcome_bonus, email_verified_bonus, points_per_euro)
+VALUES (1, 10, 5, 50, 25, 1);
+
 -- Loyalty transactions
 CREATE TABLE loyalty_transactions (
     id INT AUTO_INCREMENT PRIMARY KEY,

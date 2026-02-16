@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express';
 import { authenticateAndLoadUser, requireSystemAdmin } from '../middleware/auth.middleware';
 import { AdminService } from '../services/admin.service';
 import { createLogger } from '../config/utils/logger';
+import { getPointsConfig, updatePointsConfig } from '../services/loyalty.service';
 
 const router = Router();
 const logger = createLogger('admin.routes');
@@ -172,6 +173,181 @@ router.patch('/users/:id/password', async (req: Request, res: Response) => {
         const msg = (error as Error).message;
         if (msg.includes('Passwort') || msg === 'Admin nicht gefunden') res.status(400).json({ success: false, message: msg });
         else res.status(500).json({ success: false, message: 'Fehler beim Setzen des Passworts' });
+    }
+});
+
+// ==================== Customer Management ====================
+
+router.get('/customers', async (req: Request, res: Response) => {
+    try {
+        const search = req.query.search as string | undefined;
+        const active = req.query.active === 'true' ? true : req.query.active === 'false' ? false : undefined;
+        const limit = parseInt(req.query.limit as string) || 50;
+        const offset = parseInt(req.query.offset as string) || 0;
+
+        const result = await AdminService.listCustomers({ search, active, limit, offset });
+        res.json({ success: true, data: result.customers, total: result.total });
+    } catch (error) {
+        logger.error('Error listing customers', error);
+        res.status(500).json({ success: false, message: 'Fehler beim Laden der Kunden' });
+    }
+});
+
+router.get('/customers/:id', async (req: Request, res: Response) => {
+    const id = parseInt(req.params.id, 10);
+    if (!Number.isInteger(id) || id < 1) {
+        res.status(400).json({ success: false, message: 'Ungültige Kunden-ID' });
+        return;
+    }
+    try {
+        const customer = await AdminService.getCustomer(id);
+        if (!customer) {
+            res.status(404).json({ success: false, message: 'Kunde nicht gefunden' });
+            return;
+        }
+        res.json({ success: true, data: customer });
+    } catch (error) {
+        logger.error('Error fetching customer', error);
+        res.status(500).json({ success: false, message: 'Fehler beim Laden des Kunden' });
+    }
+});
+
+router.patch('/customers/:id', async (req: Request, res: Response) => {
+    const id = parseInt(req.params.id, 10);
+    if (!Number.isInteger(id) || id < 1) {
+        res.status(400).json({ success: false, message: 'Ungültige Kunden-ID' });
+        return;
+    }
+
+    const { name, phone, email_verified, is_active } = req.body;
+    const updates: any = {};
+
+    if (name !== undefined) updates.name = String(name).trim();
+    if (phone !== undefined) updates.phone = phone ? String(phone).trim() : null;
+    if (email_verified !== undefined) updates.email_verified = Boolean(email_verified);
+    if (is_active !== undefined) updates.is_active = Boolean(is_active);
+
+    if (Object.keys(updates).length === 0) {
+        res.status(400).json({ success: false, message: 'Keine gültigen Felder zum Aktualisieren' });
+        return;
+    }
+
+    try {
+        const customer = await AdminService.updateCustomer(id, updates);
+        res.json({ success: true, data: customer, message: 'Kunde aktualisiert' });
+    } catch (error) {
+        if ((error as Error).message === 'Kunde nicht gefunden') {
+            res.status(404).json({ success: false, message: 'Kunde nicht gefunden' });
+        } else {
+            res.status(500).json({ success: false, message: (error as Error).message || 'Fehler beim Aktualisieren' });
+        }
+    }
+});
+
+router.patch('/customers/:id/password', async (req: Request, res: Response) => {
+    const id = parseInt(req.params.id, 10);
+    if (!Number.isInteger(id) || id < 1) {
+        res.status(400).json({ success: false, message: 'Ungültige Kunden-ID' });
+        return;
+    }
+
+    const { newPassword } = req.body;
+    if (!newPassword) {
+        res.status(400).json({ success: false, message: 'newPassword ist erforderlich' });
+        return;
+    }
+    if (String(newPassword).length < 8) {
+        res.status(400).json({ success: false, message: 'Passwort muss mindestens 8 Zeichen haben' });
+        return;
+    }
+
+    try {
+        await AdminService.setCustomerPassword(id, newPassword);
+        res.json({ success: true, message: 'Kundenpasswort geändert' });
+    } catch (error) {
+        const msg = (error as Error).message;
+        if (msg.includes('Passwort') || msg === 'Kunde nicht gefunden') {
+            res.status(400).json({ success: false, message: msg });
+        } else {
+            res.status(500).json({ success: false, message: 'Fehler beim Setzen des Passworts' });
+        }
+    }
+});
+
+router.post('/customers/:id/loyalty-points', async (req: Request, res: Response) => {
+    const id = parseInt(req.params.id, 10);
+    if (!Number.isInteger(id) || id < 1) {
+        res.status(400).json({ success: false, message: 'Ungültige Kunden-ID' });
+        return;
+    }
+
+    const { pointsChange, reason } = req.body;
+
+    if (pointsChange === undefined || !Number.isInteger(pointsChange)) {
+        res.status(400).json({ success: false, message: 'pointsChange muss eine Ganzzahl sein' });
+        return;
+    }
+
+    if (!reason || String(reason).trim().length === 0) {
+        res.status(400).json({ success: false, message: 'reason ist erforderlich' });
+        return;
+    }
+
+    try {
+        const result = await AdminService.adjustCustomerLoyaltyPoints(id, pointsChange, reason);
+        res.json({ 
+            success: true, 
+            data: result, 
+            message: `Bonuspunkte ${pointsChange > 0 ? 'hinzugefügt' : 'abgezogen'}` 
+        });
+    } catch (error) {
+        const msg = (error as Error).message;
+        if (msg === 'Kunde nicht gefunden' || msg.includes('negativ')) {
+            res.status(400).json({ success: false, message: msg });
+        } else {
+            res.status(500).json({ success: false, message: 'Fehler beim Anpassen der Bonuspunkte' });
+        }
+    }
+});
+
+// ==================== Loyalty Configuration ====================
+
+router.get('/loyalty/config', async (req: Request, res: Response) => {
+    try {
+        const config = await getPointsConfig();
+        res.json({ success: true, data: config });
+    } catch (error) {
+        logger.error('Error getting loyalty config', error);
+        res.status(500).json({ success: false, message: 'Fehler beim Laden der Konfiguration' });
+    }
+});
+
+router.patch('/loyalty/config', async (req: Request, res: Response) => {
+    try {
+        const { BOOKING_COMPLETED, BOOKING_WITH_REVIEW, WELCOME_BONUS, EMAIL_VERIFIED_BONUS, POINTS_PER_EURO } = req.body;
+        const updates: Record<string, number> = {};
+
+        if (BOOKING_COMPLETED !== undefined) updates.BOOKING_COMPLETED = parseInt(BOOKING_COMPLETED);
+        if (BOOKING_WITH_REVIEW !== undefined) updates.BOOKING_WITH_REVIEW = parseInt(BOOKING_WITH_REVIEW);
+        if (WELCOME_BONUS !== undefined) updates.WELCOME_BONUS = parseInt(WELCOME_BONUS);
+        if (EMAIL_VERIFIED_BONUS !== undefined) updates.EMAIL_VERIFIED_BONUS = parseInt(EMAIL_VERIFIED_BONUS);
+        if (POINTS_PER_EURO !== undefined) updates.POINTS_PER_EURO = parseFloat(POINTS_PER_EURO);
+
+        if (Object.keys(updates).length === 0) {
+            res.status(400).json({ success: false, message: 'Keine gültigen Felder zum Aktualisieren' });
+            return;
+        }
+
+        const result = await updatePointsConfig(updates);
+        
+        if (result.success) {
+            res.json({ success: true, data: result.data, message: 'Bonuspunkte-Konfiguration aktualisiert' });
+        } else {
+            res.status(500).json(result);
+        }
+    } catch (error) {
+        logger.error('Error updating loyalty config', error);
+        res.status(500).json({ success: false, message: 'Fehler beim Aktualisieren der Konfiguration' });
     }
 });
 

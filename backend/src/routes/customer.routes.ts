@@ -1,5 +1,5 @@
 import { Router, Request, Response } from 'express';
-import { requireCustomerAuth } from '../middleware/customer-auth.middleware';
+import { requireCustomerAuth, requireEmailVerified } from '../middleware/customer-auth.middleware';
 import { 
     getCustomerProfile, 
     updateCustomerProfile,
@@ -186,9 +186,9 @@ router.get('/bookings', async (req: Request, res: Response) => {
 
 /**
  * POST /customer/bookings/:id/quick-rebook
- * Quickly rebook a previous booking (creates a new booking with same details)
+ * Quickly rebook a previous booking (creates a new booking with same details, requires verified email)
  */
-router.post('/bookings/:id/quick-rebook', async (req: Request, res: Response) => {
+router.post('/bookings/:id/quick-rebook', requireEmailVerified, async (req: Request, res: Response) => {
     try {
         if (!req.customerJwtPayload) {
             res.status(401).json({

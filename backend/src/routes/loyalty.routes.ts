@@ -97,10 +97,10 @@ router.get('/transactions', async (req: Request, res: Response) => {
  * GET /customer/loyalty/config
  * Get points configuration (how many points for what actions)
  */
-router.get('/config', (req: Request, res: Response) => {
+router.get('/config', async (req: Request, res: Response) => {
     try {
-        const config = getPointsConfig();
-        
+        const config = await getPointsConfig();
+
         res.json({
             success: true,
             data: config

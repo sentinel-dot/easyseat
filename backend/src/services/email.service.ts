@@ -560,3 +560,42 @@ export async function sendCustomerPasswordResetEmail(email: string, name: string
   const text = `Hallo ${name},\n\nPasswort zurücksetzen: ${resetUrl}\n\nFalls Sie die Anfrage nicht gestellt haben, ignorieren Sie diese E-Mail.\n\nMit freundlichen Grüßen,\nIhr easyseat-Team`;
   return sendCustomerMail(email, subject, html, text);
 }
+
+/**
+ * Send welcome email after email verification
+ */
+export async function sendWelcomeEmail(email: string, name: string, loyaltyPoints?: number): Promise<boolean> {
+  const baseUrl = (PUBLIC_APP_URL || 'http://localhost:3000').replace(/\/$/, '');
+  const dashboardUrl = `${baseUrl}/customer/dashboard`;
+  const subject = 'Willkommen bei easyseat! 🎉';
+  
+  const pointsMessage = loyaltyPoints 
+    ? `<p style="margin: 0 0 24px 0; font-size: 16px; color: ${EMAIL_STYLE.textSoft};">Als kleines Dankeschön haben wir Ihrem Konto <strong>${loyaltyPoints} Bonuspunkte</strong> gutgeschrieben! Diese können Sie bei Ihrer nächsten Buchung einlösen.</p>`
+    : '';
+  
+  const bodyContent = `
+  <h1 style="margin: 0 0 24px 0; font-size: 24px; font-weight: 700; color: ${EMAIL_STYLE.text}; letter-spacing: -0.5px;">Willkommen bei easyseat!</h1>
+  <p style="margin: 0 0 24px 0; font-size: 16px; color: ${EMAIL_STYLE.textSoft};">Hallo ${name.replace(/</g, '&lt;')},</p>
+  <p style="margin: 0 0 24px 0; font-size: 16px; color: ${EMAIL_STYLE.textSoft};">Vielen Dank für die Bestätigung Ihrer E-Mail-Adresse! Ihr Konto ist jetzt vollständig aktiviert.</p>
+  ${pointsMessage}
+  <p style="margin: 0 0 24px 0; font-size: 16px; color: ${EMAIL_STYLE.textSoft};">Mit Ihrem verifizierten Konto können Sie jetzt:</p>
+  <ul style="margin: 0 0 24px 0; padding-left: 20px; font-size: 16px; color: ${EMAIL_STYLE.textSoft};">
+    <li style="margin-bottom: 8px;">Bewertungen schreiben und Ihre Erfahrungen teilen</li>
+    <li style="margin-bottom: 8px;">Treuepunkte sammeln und einlösen</li>
+    <li style="margin-bottom: 8px;">Einfach frühere Buchungen wiederholen</li>
+    <li style="margin-bottom: 8px;">Ihre Lieblingsorte als Favoriten speichern</li>
+  </ul>
+  <p style="margin: 0 0 24px 0; font-size: 16px; color: ${EMAIL_STYLE.textSoft};">Wir freuen uns, Sie bei easyseat begrüßen zu dürfen!</p>`;
+  
+  const html = emailLayout({
+    title: 'Willkommen bei easyseat',
+    bodyContent,
+    cta: { text: 'Zu meinem Dashboard', url: dashboardUrl },
+    preheader: 'Vielen Dank für die Bestätigung Ihrer E-Mail-Adresse!',
+  });
+  
+  const pointsText = loyaltyPoints ? `\n\nAls Dankeschön haben wir Ihrem Konto ${loyaltyPoints} Bonuspunkte gutgeschrieben!\n` : '';
+  const text = `Hallo ${name},\n\nVielen Dank für die Bestätigung Ihrer E-Mail-Adresse! Ihr Konto ist jetzt vollständig aktiviert.${pointsText}\n\nMit Ihrem verifizierten Konto können Sie:\n- Bewertungen schreiben\n- Treuepunkte sammeln und einlösen\n- Frühere Buchungen wiederholen\n- Lieblingsorte als Favoriten speichern\n\nWir freuen uns, Sie bei easyseat begrüßen zu dürfen!\n\nMit freundlichen Grüßen,\nIhr easyseat-Team`;
+  
+  return sendCustomerMail(email, subject, html, text);
+}

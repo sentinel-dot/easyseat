@@ -371,6 +371,24 @@ export async function verifyEmail(token: string): Promise<ApiResponse<{ message:
         }
 
         logger.info(`Email verified successfully for customer: ${customer.email}`);
+
+        // Award bonus points for email verification
+        const { awardPointsForEmailVerification } = await import('./loyalty.service');
+        const pointsResult = await awardPointsForEmailVerification(customer.id);
+        const pointsAwarded = pointsResult.success ? pointsResult.data?.points : undefined;
+
+        if (pointsResult.success) {
+            logger.info(`Awarded ${pointsAwarded} loyalty points for email verification: customer ${customer.id}`);
+        }
+
+        // Send welcome email
+        const { sendWelcomeEmail } = await import('./email.service');
+        const emailSent = await sendWelcomeEmail(customer.email, customer.name, pointsAwarded);
+        
+        if (!emailSent) {
+            logger.warn(`Failed to send welcome email to ${customer.email}`);
+        }
+
         return { success: true, data: { message: 'E-Mail erfolgreich verifiziert' } };
     } catch (error) {
         logger.error('Email verification error', error);

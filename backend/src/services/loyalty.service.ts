@@ -4,13 +4,60 @@ import { LoyaltyTransaction, LoyaltyTransactionType, ApiResponse } from '../conf
 
 const logger = createLogger('loyalty.service');
 
-// Points configuration
-const POINTS_CONFIG = {
-    BOOKING_COMPLETED: 10,          // Points earned per completed booking
-    BOOKING_WITH_REVIEW: 5,         // Bonus points for leaving a review
-    WELCOME_BONUS: 50,              // Welcome bonus for new customers
-    POINTS_PER_EURO: 1,             // Points per euro spent
+export type PointsConfig = {
+    BOOKING_COMPLETED: number;
+    BOOKING_WITH_REVIEW: number;
+    WELCOME_BONUS: number;
+    EMAIL_VERIFIED_BONUS: number;
+    POINTS_PER_EURO: number;
 };
+
+const DEFAULT_POINTS_CONFIG: PointsConfig = {
+    BOOKING_COMPLETED: 10,
+    BOOKING_WITH_REVIEW: 5,
+    WELCOME_BONUS: 50,
+    EMAIL_VERIFIED_BONUS: 25,
+    POINTS_PER_EURO: 1,
+};
+
+let POINTS_CONFIG: PointsConfig = { ...DEFAULT_POINTS_CONFIG };
+let configLoaded = false;
+
+/** Load points config from DB into in-memory cache (idempotent). */
+async function loadPointsConfigFromDb(): Promise<void> {
+    if (configLoaded) return;
+    let conn = null;
+    try {
+        conn = await getConnection();
+        const rows = await conn.query('SELECT * FROM loyalty_config WHERE id = 1');
+        if (rows.length > 0) {
+            const r = rows[0];
+            const num = (val: unknown, def: number): number => {
+                const n = Number(val);
+                return Number.isFinite(n) ? n : def;
+            };
+            POINTS_CONFIG = {
+                BOOKING_COMPLETED: num(r.booking_completed, DEFAULT_POINTS_CONFIG.BOOKING_COMPLETED),
+                BOOKING_WITH_REVIEW: num(r.booking_with_review, DEFAULT_POINTS_CONFIG.BOOKING_WITH_REVIEW),
+                WELCOME_BONUS: num(r.welcome_bonus, DEFAULT_POINTS_CONFIG.WELCOME_BONUS),
+                EMAIL_VERIFIED_BONUS: num(r.email_verified_bonus, DEFAULT_POINTS_CONFIG.EMAIL_VERIFIED_BONUS),
+                POINTS_PER_EURO: num(r.points_per_euro, DEFAULT_POINTS_CONFIG.POINTS_PER_EURO),
+            };
+        }
+        configLoaded = true;
+    } catch (err) {
+        logger.warn('Could not load loyalty_config from DB, using defaults', err);
+        POINTS_CONFIG = { ...DEFAULT_POINTS_CONFIG };
+        configLoaded = true;
+    } finally {
+        if (conn) conn.release();
+    }
+}
+
+/** Ensure config is loaded (from DB or defaults); call before reading POINTS_CONFIG. */
+async function ensureConfigLoaded(): Promise<void> {
+    await loadPointsConfigFromDb();
+}
 
 /**
  * Get customer's current loyalty points balance
@@ -31,7 +78,7 @@ export async function getLoyaltyBalance(customerId: number): Promise<ApiResponse
 
         return {
             success: true,
-            data: { points: rows[0].loyalty_points || 0 }
+            data: { points: Number(rows[0].loyalty_points) || 0 }
         };
     } catch (error) {
         logger.error('Error getting loyalty balance', error);
@@ -60,9 +107,16 @@ export async function getLoyaltyTransactions(
             LIMIT ?
         `, [customerId, limit]);
 
+        // Coerce BigInt to number so JSON serialization works (MySQL may return BigInt for id columns)
+        const data = rows.map((row: Record<string, unknown>) =>
+            Object.fromEntries(
+                Object.entries(row).map(([k, v]) => [k, typeof v === 'bigint' ? Number(v) : v])
+            )
+        ) as LoyaltyTransaction[];
+
         return {
             success: true,
-            data: rows as LoyaltyTransaction[]
+            data
         };
     } catch (error) {
         logger.error('Error getting loyalty transactions', error);
@@ -144,6 +198,7 @@ export async function awardPointsForBooking(
 ): Promise<ApiResponse<{ points: number }>> {
     let conn = null;
     try {
+        await ensureConfigLoaded();
         conn = await getConnection();
 
         // Check if points already awarded for this booking
@@ -194,6 +249,7 @@ export async function awardPointsForReview(
 ): Promise<ApiResponse<{ points: number }>> {
     let conn = null;
     try {
+        await ensureConfigLoaded();
         conn = await getConnection();
 
         // Check if bonus already awarded for this booking
@@ -235,6 +291,7 @@ export async function awardPointsForReview(
 export async function awardWelcomeBonus(customerId: number): Promise<ApiResponse<{ points: number }>> {
     let conn = null;
     try {
+        await ensureConfigLoaded();
         conn = await getConnection();
 
         // Check if welcome bonus already awarded
@@ -325,7 +382,8 @@ export async function getLoyaltyStats(customerId: number): Promise<ApiResponse<{
             [customerId]
         );
 
-        const totalPoints = balanceRows[0]?.loyalty_points || 0;
+        // Coerce to Number so JSON serialization works (MySQL may return BigInt for SUM/COUNT)
+        const totalPoints = Number(balanceRows[0]?.loyalty_points) || 0;
 
         // Get total earned
         const earnedRows = await conn.query(`
@@ -334,7 +392,7 @@ export async function getLoyaltyStats(customerId: number): Promise<ApiResponse<{
             WHERE customer_id = ? AND type IN ('earned', 'bonus')
         `, [customerId]);
 
-        const totalEarned = earnedRows[0]?.total || 0;
+        const totalEarned = Number(earnedRows[0]?.total) || 0;
 
         // Get total redeemed
         const redeemedRows = await conn.query(`
@@ -343,7 +401,7 @@ export async function getLoyaltyStats(customerId: number): Promise<ApiResponse<{
             WHERE customer_id = ? AND type = 'redeemed'
         `, [customerId]);
 
-        const totalRedeemed = redeemedRows[0]?.total || 0;
+        const totalRedeemed = Number(redeemedRows[0]?.total) || 0;
 
         // Get completed bookings count
         const bookingsRows = await conn.query(
@@ -351,7 +409,7 @@ export async function getLoyaltyStats(customerId: number): Promise<ApiResponse<{
             [customerId, 'completed']
         );
 
-        const completedBookings = bookingsRows[0]?.count || 0;
+        const completedBookings = Number(bookingsRows[0]?.count) || 0;
 
         // Get reviews count
         const reviewsRows = await conn.query(
@@ -359,7 +417,7 @@ export async function getLoyaltyStats(customerId: number): Promise<ApiResponse<{
             [customerId]
         );
 
-        const reviewsWritten = reviewsRows[0]?.count || 0;
+        const reviewsWritten = Number(reviewsRows[0]?.count) || 0;
 
         return {
             success: true,
@@ -380,8 +438,109 @@ export async function getLoyaltyStats(customerId: number): Promise<ApiResponse<{
 }
 
 /**
- * Export points configuration (for frontend display)
+ * Export points configuration (for frontend display). Loads from DB on first call.
  */
-export function getPointsConfig() {
-    return POINTS_CONFIG;
+export async function getPointsConfig(): Promise<PointsConfig> {
+    await ensureConfigLoaded();
+    return { ...POINTS_CONFIG };
+}
+
+/**
+ * Update points configuration (Admin only). Persists to DB.
+ */
+export async function updatePointsConfig(updates: Partial<PointsConfig>): Promise<ApiResponse<PointsConfig>> {
+    let conn = null;
+    try {
+        await ensureConfigLoaded();
+        if (updates.BOOKING_COMPLETED !== undefined) {
+            POINTS_CONFIG.BOOKING_COMPLETED = Math.max(0, updates.BOOKING_COMPLETED);
+        }
+        if (updates.BOOKING_WITH_REVIEW !== undefined) {
+            POINTS_CONFIG.BOOKING_WITH_REVIEW = Math.max(0, updates.BOOKING_WITH_REVIEW);
+        }
+        if (updates.WELCOME_BONUS !== undefined) {
+            POINTS_CONFIG.WELCOME_BONUS = Math.max(0, updates.WELCOME_BONUS);
+        }
+        if (updates.EMAIL_VERIFIED_BONUS !== undefined) {
+            POINTS_CONFIG.EMAIL_VERIFIED_BONUS = Math.max(0, updates.EMAIL_VERIFIED_BONUS);
+        }
+        if (updates.POINTS_PER_EURO !== undefined) {
+            POINTS_CONFIG.POINTS_PER_EURO = Math.max(0, updates.POINTS_PER_EURO);
+        }
+
+        conn = await getConnection();
+        await conn.query(
+            `INSERT INTO loyalty_config (id, booking_completed, booking_with_review, welcome_bonus, email_verified_bonus, points_per_euro)
+             VALUES (1, ?, ?, ?, ?, ?)
+             ON DUPLICATE KEY UPDATE
+               booking_completed = VALUES(booking_completed),
+               booking_with_review = VALUES(booking_with_review),
+               welcome_bonus = VALUES(welcome_bonus),
+               email_verified_bonus = VALUES(email_verified_bonus),
+               points_per_euro = VALUES(points_per_euro)`,
+            [
+                POINTS_CONFIG.BOOKING_COMPLETED,
+                POINTS_CONFIG.BOOKING_WITH_REVIEW,
+                POINTS_CONFIG.WELCOME_BONUS,
+                POINTS_CONFIG.EMAIL_VERIFIED_BONUS,
+                POINTS_CONFIG.POINTS_PER_EURO,
+            ]
+        );
+
+        logger.info('Points configuration updated', POINTS_CONFIG);
+
+        return {
+            success: true,
+            data: { ...POINTS_CONFIG }
+        };
+    } catch (error) {
+        logger.error('Error updating points configuration', error);
+        return { success: false, message: 'Fehler beim Aktualisieren der Konfiguration' };
+    } finally {
+        if (conn) conn.release();
+    }
+}
+
+/**
+ * Award bonus points for email verification
+ * Called after customer verifies their email
+ */
+export async function awardPointsForEmailVerification(customerId: number): Promise<ApiResponse<{ points: number }>> {
+    let conn = null;
+    try {
+        await ensureConfigLoaded();
+        conn = await getConnection();
+
+        // Check if points already awarded for email verification
+        const existing = await conn.query(
+            'SELECT id FROM loyalty_transactions WHERE customer_id = ? AND type = ? AND description LIKE ?',
+            [customerId, 'earned', '%E-Mail-Verifizierung%']
+        );
+
+        if (existing.length > 0) {
+            return { success: false, message: 'Punkte für E-Mail-Verifizierung wurden bereits vergeben' };
+        }
+
+        const points = POINTS_CONFIG.EMAIL_VERIFIED_BONUS;
+
+        await addPoints(
+            conn,
+            customerId,
+            points,
+            'earned',
+            'Bonus für E-Mail-Verifizierung'
+        );
+
+        logger.info(`Email verification bonus awarded: customerId ${customerId}, points ${points}`);
+
+        return {
+            success: true,
+            data: { points }
+        };
+    } catch (error) {
+        logger.error('Error awarding points for email verification', error);
+        return { success: false, message: 'Fehler beim Vergeben der Punkte' };
+    } finally {
+        if (conn) conn.release();
+    }
 }

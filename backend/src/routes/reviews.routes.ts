@@ -1,5 +1,5 @@
 import { Router, Request, Response } from 'express';
-import { requireCustomerAuth, optionalCustomerAuth } from '../middleware/customer-auth.middleware';
+import { requireCustomerAuth, optionalCustomerAuth, requireEmailVerified } from '../middleware/customer-auth.middleware';
 import {
     getVenueReviews,
     getCustomerReviews,
@@ -139,9 +139,9 @@ router.get('/customer/reviews', requireCustomerAuth, async (req: Request, res: R
 
 /**
  * POST /customer/reviews
- * Create a new review (requires auth)
+ * Create a new review (requires auth and verified email)
  */
-router.post('/customer/reviews', requireCustomerAuth, async (req: Request, res: Response) => {
+router.post('/customer/reviews', requireCustomerAuth, requireEmailVerified, async (req: Request, res: Response) => {
     try {
         if (!req.customerJwtPayload) {
             res.status(401).json({
@@ -190,9 +190,9 @@ router.post('/customer/reviews', requireCustomerAuth, async (req: Request, res: 
 
 /**
  * PATCH /customer/reviews/:reviewId
- * Update a review (requires auth)
+ * Update a review (requires auth and verified email)
  */
-router.patch('/customer/reviews/:reviewId', requireCustomerAuth, async (req: Request, res: Response) => {
+router.patch('/customer/reviews/:reviewId', requireCustomerAuth, requireEmailVerified, async (req: Request, res: Response) => {
     try {
         if (!req.customerJwtPayload) {
             res.status(401).json({

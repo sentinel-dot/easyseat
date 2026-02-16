@@ -15,9 +15,9 @@ export default async function ConfirmationPage({ searchParams }: Props) {
   return (
     <SiteLayout>
       <div className="mx-auto max-w-xl px-4 py-20 text-center sm:px-6">
-        <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-[var(--color-success-muted)] text-[var(--color-success)]" aria-hidden>
-          <svg className="h-8 w-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+        <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-emerald-500 text-white dark:bg-emerald-400 dark:text-emerald-950" aria-hidden>
+          <svg className="h-8 w-8" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
           </svg>
         </div>
         <h1 className="mt-6 font-display text-3xl font-semibold text-[var(--color-text)] sm:text-4xl">

@@ -170,6 +170,68 @@ router.post('/verify-email', async (req: Request, res: Response) => {
 });
 
 /**
+ * POST /auth/customer/resend-verification
+ * Resend verification email to customer
+ */
+router.post('/resend-verification', requireCustomerAuth, async (req: Request, res: Response) => {
+    try {
+        if (!req.customer) {
+            res.status(401).json({
+                success: false,
+                message: 'Nicht authentifiziert'
+            });
+            return;
+        }
+
+        // Check if already verified
+        if (req.customer.email_verified) {
+            res.status(400).json({
+                success: false,
+                message: 'E-Mail ist bereits verifiziert'
+            });
+            return;
+        }
+
+        // Find customer to get verification token
+        const customer = await findCustomerById(req.customer.id);
+        if (!customer) {
+            res.status(404).json({
+                success: false,
+                message: 'Kunde nicht gefunden'
+            });
+            return;
+        }
+
+        // Send verification email
+        const { sendCustomerVerificationEmail } = await import('../services/email.service');
+        const emailSent = await sendCustomerVerificationEmail(
+            customer.email,
+            customer.name,
+            customer.verification_token!
+        );
+
+        if (!emailSent) {
+            res.status(500).json({
+                success: false,
+                message: 'Fehler beim Versenden der E-Mail'
+            });
+            return;
+        }
+
+        res.json({
+            success: true,
+            message: 'Verifizierungs-E-Mail wurde erneut gesendet'
+        });
+    } catch (error) {
+        logger.error('Error in resend-verification route', error);
+        res.status(500).json({
+            success: false,
+            message: 'Ein Fehler ist aufgetreten'
+        });
+    }
+});
+
+/**
  * POST /auth/customer/forgot-password
  * Request password reset
  */

@@ -66,6 +66,11 @@ export default function AdminDashboardPage() {
             User verwalten
           </Button>
         </Link>
+        <Link href="/admin/customers">
+          <Button variant="outline" size="sm">
+            Kunden verwalten
+          </Button>
+        </Link>
         <Link href="/admin/settings">
           <Button variant="outline" size="sm">
             Einstellungen
@@ -73,7 +78,7 @@ export default function AdminDashboardPage() {
         </Link>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <Link href="/admin/venues" className="block transition-opacity hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] focus:ring-offset-2 focus:ring-offset-[var(--color-page)] rounded-xl">
           <Card className="h-full border-l-4 border-l-[var(--color-accent)] cursor-pointer">
             <CardTitle className="text-base font-medium text-[var(--color-muted)]">
@@ -110,6 +115,17 @@ export default function AdminDashboardPage() {
               </div>
             )}
             <p className="mt-3 text-xs text-[var(--color-muted)]">Anklicken zum Verwalten</p>
+          </Card>
+        </Link>
+        <Link href="/admin/customers" className="block transition-opacity hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] focus:ring-offset-2 focus:ring-offset-[var(--color-page)] rounded-xl">
+          <Card className="h-full cursor-pointer">
+            <CardTitle className="text-base font-medium text-[var(--color-muted)]">
+              Kunden
+            </CardTitle>
+            <p className="mt-1 text-2xl font-semibold text-[var(--color-text)]">
+              {stats.customers?.active || 0} / {stats.customers?.total || 0} aktiv
+            </p>
+            <p className="mt-1 text-xs text-[var(--color-muted)]">Anklicken zum Verwalten</p>
           </Card>
         </Link>
         <Card>
