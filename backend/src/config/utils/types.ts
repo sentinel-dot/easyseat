@@ -101,6 +101,7 @@ export interface DayAvailability {
 export interface Booking 
 {
   id: number;
+  customer_id?: number | null;                  // Optional: Link to customer account
   booking_token: string;
   venue_id: number;
   service_id: number;
@@ -131,6 +132,7 @@ export interface Booking
  */
 export interface CreateBookingData
 {
+    customer_id?: number;                       // Optional: If user is authenticated
     venue_id: number;
     service_id: number;
     staff_member_id?: number;
@@ -201,4 +203,101 @@ export interface LoginRequest {
 export interface LoginResponse {
     token: string;
     user: AdminUserPublic;
+}
+
+// Customer User Types
+export interface Customer {
+    id: number;
+    email: string;
+    password_hash: string;
+    name: string;
+    phone: string | null;
+    loyalty_points: number;
+    is_active: boolean;
+    email_verified: boolean;
+    verification_token: string | null;
+    last_login: Date | null;
+    created_at: Date;
+    updated_at: Date;
+}
+
+export interface CustomerPublic {
+    id: number;
+    email: string;
+    name: string;
+    phone: string | null;
+    loyalty_points: number;
+    email_verified: boolean;
+}
+
+export interface CustomerJwtPayload {
+    customerId: number;
+    email: string;
+}
+
+export interface CustomerRegisterRequest {
+    email: string;
+    password: string;
+    name: string;
+    phone?: string;
+}
+
+export interface CustomerLoginResponse {
+    token: string;
+    customer: CustomerPublic;
+}
+
+// Customer Preferences
+export interface CustomerPreferences {
+    customer_id: number;
+    default_party_size: number;
+    preferred_time_slot: string | null;
+    notification_email: boolean;
+    notification_sms: boolean;
+    language: string;
+    created_at: Date;
+    updated_at: Date;
+}
+
+// Customer Favorites
+export interface CustomerFavorite {
+    id: number;
+    customer_id: number;
+    venue_id: number;
+    created_at: Date;
+}
+
+// Reviews
+export interface Review {
+    id: number;
+    customer_id: number;
+    venue_id: number;
+    booking_id: number;
+    rating: number;
+    comment: string | null;
+    is_verified: boolean;
+    response: string | null;
+    response_at: Date | null;
+    created_at: Date;
+    updated_at: Date;
+}
+
+export interface CreateReviewRequest {
+    venue_id: number;
+    booking_id: number;
+    rating: number;
+    comment?: string;
+}
+
+// Loyalty Transactions
+export type LoyaltyTransactionType = 'earned' | 'redeemed' | 'expired' | 'bonus';
+
+export interface LoyaltyTransaction {
+    id: number;
+    customer_id: number;
+    booking_id: number | null;
+    points: number;
+    type: LoyaltyTransactionType;
+    description: string | null;
+    created_at: Date;
 }

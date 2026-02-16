@@ -4,6 +4,8 @@ import { getVenueById } from "@/lib/api/venues";
 import { getVenueTypeLabel } from "@/lib/utils/venueType";
 import { SiteLayout } from "@/components/layout/site-layout";
 import { BookingWidget } from "./booking-widget";
+import { FavoriteButton } from "@/components/customer/FavoriteButton";
+import { ReviewsList } from "@/components/customer/ReviewsList";
 
 type Props = {
   params: Promise<{ id: string }>;
@@ -85,12 +87,17 @@ export default async function VenuePage({ params, searchParams }: Props) {
       {/* Header: Name, Kategorie, Adresse */}
       <header className="border-b border-[var(--color-border)] bg-[var(--color-surface)]">
         <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-8">
-          <span className="text-xs font-medium uppercase tracking-wide text-[var(--color-muted)]">
-            {getVenueTypeLabel(venue.type)}
-          </span>
-          <h1 className="mt-1 text-2xl font-bold text-[var(--color-text)] sm:text-3xl">
-            {venue.name}
-          </h1>
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <span className="text-xs font-medium uppercase tracking-wide text-[var(--color-muted)]">
+                {getVenueTypeLabel(venue.type)}
+              </span>
+              <h1 className="mt-1 text-2xl font-bold text-[var(--color-text)] sm:text-3xl">
+                {venue.name}
+              </h1>
+            </div>
+            <FavoriteButton venueId={venue.id} className="shrink-0" />
+          </div>
           {(venue.address || venue.city) && (
             <p className="mt-2 flex items-center gap-2 text-sm text-[var(--color-muted)]">
               <svg className="h-4 w-4 shrink-0 text-[var(--color-accent)]" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
@@ -155,6 +162,8 @@ export default async function VenuePage({ params, searchParams }: Props) {
                 </div>
               </section>
             )}
+
+            <ReviewsList venueId={venue.id} />
           </div>
 
           <div className="lg:col-span-1">

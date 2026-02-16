@@ -89,9 +89,28 @@ CREATE TABLE availability_rules (
 
 
 
+-- Customer accounts (separate from admin/owner users)
+CREATE TABLE customers (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    email VARCHAR(255) UNIQUE NOT NULL,
+    password_hash VARCHAR(255) NOT NULL,
+    name VARCHAR(255) NOT NULL,
+    phone VARCHAR(20),
+    loyalty_points INT DEFAULT 0,
+    is_active BOOLEAN DEFAULT TRUE,
+    email_verified BOOLEAN DEFAULT FALSE,
+    verification_token VARCHAR(255),
+    last_login DATETIME,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX idx_email (email),
+    INDEX idx_verification_token (verification_token)
+);
+
 -- Bookings table (booking_token wird von der Anwendung beim Anlegen gesetzt)
 CREATE TABLE bookings (
   id INT AUTO_INCREMENT PRIMARY KEY,
+  customer_id INT NULL,
   booking_token VARCHAR(36) UNIQUE NOT NULL,
   venue_id INT NOT NULL,
   service_id INT NOT NULL,
@@ -114,9 +133,14 @@ CREATE TABLE bookings (
   cancellation_reason VARCHAR(255),
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE SET NULL,
   FOREIGN KEY (venue_id) REFERENCES venues(id) ON DELETE CASCADE,
   FOREIGN KEY (service_id) REFERENCES services(id) ON DELETE CASCADE,
-  FOREIGN KEY (staff_member_id) REFERENCES staff_members(id) ON DELETE SET NULL
+  FOREIGN KEY (staff_member_id) REFERENCES staff_members(id) ON DELETE SET NULL,
+  INDEX idx_customer_id (customer_id),
+  INDEX idx_customer_email (customer_email),
+  INDEX idx_booking_date (booking_date),
+  INDEX idx_status (status)
 );
 
 -- Users table (Dashboard-Login: Owner/Staff/System-Admin)
@@ -132,6 +156,69 @@ CREATE TABLE users (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (venue_id) REFERENCES venues(id) ON DELETE SET NULL
+);
+
+-- Customer preferences
+CREATE TABLE customer_preferences (
+    customer_id INT PRIMARY KEY,
+    default_party_size INT DEFAULT 2,
+    preferred_time_slot VARCHAR(50),
+    notification_email BOOLEAN DEFAULT TRUE,
+    notification_sms BOOLEAN DEFAULT FALSE,
+    language VARCHAR(10) DEFAULT 'de',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE CASCADE
+);
+
+-- Customer favorites
+CREATE TABLE customer_favorites (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    customer_id INT NOT NULL,
+    venue_id INT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE CASCADE,
+    FOREIGN KEY (venue_id) REFERENCES venues(id) ON DELETE CASCADE,
+    UNIQUE KEY unique_customer_venue (customer_id, venue_id),
+    INDEX idx_customer (customer_id),
+    INDEX idx_venue (venue_id)
+);
+
+-- Reviews
+CREATE TABLE reviews (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    customer_id INT NOT NULL,
+    venue_id INT NOT NULL,
+    booking_id INT NOT NULL,
+    rating INT NOT NULL CHECK (rating BETWEEN 1 AND 5),
+    comment TEXT,
+    is_verified BOOLEAN DEFAULT FALSE,
+    response TEXT,
+    response_at DATETIME,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE CASCADE,
+    FOREIGN KEY (venue_id) REFERENCES venues(id) ON DELETE CASCADE,
+    FOREIGN KEY (booking_id) REFERENCES bookings(id) ON DELETE CASCADE,
+    UNIQUE KEY unique_customer_booking (customer_id, booking_id),
+    INDEX idx_venue (venue_id),
+    INDEX idx_customer (customer_id),
+    INDEX idx_rating (rating)
+);
+
+-- Loyalty transactions
+CREATE TABLE loyalty_transactions (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    customer_id INT NOT NULL,
+    booking_id INT,
+    points INT NOT NULL,
+    type ENUM('earned', 'redeemed', 'expired', 'bonus') NOT NULL,
+    description VARCHAR(255),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE CASCADE,
+    FOREIGN KEY (booking_id) REFERENCES bookings(id) ON DELETE SET NULL,
+    INDEX idx_customer (customer_id),
+    INDEX idx_type (type)
 );
 
 -- Booking audit log: wer wann welche Buchungsänderung (Admin/Owner/Staff/Kunde)

@@ -272,13 +272,46 @@ export async function sendReminder(booking: BookingForEmail): Promise<boolean> {
   });
 }
 
+/**
+ * Einladung zur Bewertung nach abgeschlossener Buchung (completed).
+ */
+export async function sendReviewInvitation(booking: BookingForEmail, venueId: number): Promise<boolean> {
+  const venueName = booking.venue_name || 'Unser Betrieb';
+  const baseUrl = PUBLIC_APP_URL.replace(/\/$/, '');
+  const reviewUrl = `${baseUrl}/venues/${venueId}`;
+  const subject = `Wie hat es Ihnen gefallen? Bewerten Sie ${venueName}`;
+
+  const html = `
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><title>Bewertung</title></head>
+<body style="font-family: sans-serif; line-height: 1.5; color: #333; max-width: 560px;">
+  <p>Hallo ${booking.customer_name},</p>
+  <p>Ihr Termin bei ${venueName} ist abgeschlossen. Wir würden uns freuen, wenn Sie uns Ihre Erfahrung mitteilen – Ihre Bewertung hilft anderen Gästen und uns.</p>
+  <p><a href="${reviewUrl}">Jetzt bewerten</a></p>
+  <p>Mit freundlichen Grüßen<br>${venueName}</p>
+</body>
+</html>`;
+
+  const text = `Hallo ${booking.customer_name},\n\nIhr Termin bei ${venueName} ist abgeschlossen. Wir würden uns freuen, wenn Sie uns Ihre Erfahrung mitteilen.\n\nJetzt bewerten: ${reviewUrl}\n\nMit freundlichen Grüßen\n${venueName}`;
+
+  return sendMail({
+    to: booking.customer_email,
+    subject,
+    html,
+    text,
+    bookingId: booking.id,
+    type: 'review_invitation',
+  });
+}
+
 interface SendMailOptions {
   to: string;
   subject: string;
   html: string;
   text: string;
   bookingId: number;
-  type: 'confirmation' | 'cancellation' | 'reminder' | 'booking_received';
+  type: 'confirmation' | 'cancellation' | 'reminder' | 'booking_received' | 'review_invitation';
   onSuccess?: () => Promise<void>;
 }
 
@@ -311,4 +344,63 @@ async function sendMail(opts: SendMailOptions): Promise<boolean> {
  */
 export function getReminderHours(): number {
   return REMINDER_HOURS;
+}
+
+/** Send a generic email (customer verification, password reset). */
+async function sendCustomerMail(to: string, subject: string, html: string, text: string): Promise<boolean> {
+  const trans = transport();
+  if (!trans) {
+    logger.info(`[DEV] Customer email would be sent to ${to}: ${subject}`);
+    return true;
+  }
+  try {
+    await trans.sendMail({
+      from: MAIL_FROM,
+      to,
+      subject,
+      html,
+      text,
+    });
+    logger.info(`Customer email sent to ${to}: ${subject}`);
+    return true;
+  } catch (err) {
+    logger.error('Failed to send customer email', err);
+    return false;
+  }
+}
+
+/**
+ * Send customer email verification link.
+ */
+export async function sendCustomerVerificationEmail(email: string, name: string, verificationToken: string): Promise<boolean> {
+  const baseUrl = (PUBLIC_APP_URL || 'http://localhost:3000').replace(/\/$/, '');
+  const verifyUrl = `${baseUrl}/auth/verify-email?token=${encodeURIComponent(verificationToken)}`;
+  const subject = 'E-Mail-Adresse bestätigen – easyseat';
+  const html = `
+    <h2>Hallo ${name.replace(/</g, '&lt;')},</h2>
+    <p>Bitte bestätigen Sie Ihre E-Mail-Adresse, indem Sie auf den folgenden Link klicken:</p>
+    <p><a href="${verifyUrl}">${verifyUrl}</a></p>
+    <p>Falls Sie sich nicht bei easyseat registriert haben, können Sie diese E-Mail ignorieren.</p>
+    <p>Mit freundlichen Grüßen,<br>Ihr easyseat-Team</p>
+  `;
+  const text = `Hallo ${name},\n\nBitte bestätigen Sie Ihre E-Mail-Adresse: ${verifyUrl}\n\nFalls Sie sich nicht registriert haben, ignorieren Sie diese E-Mail.\n\nMit freundlichen Grüßen,\nIhr easyseat-Team`;
+  return sendCustomerMail(email, subject, html, text);
+}
+
+/**
+ * Send customer password reset link.
+ */
+export async function sendCustomerPasswordResetEmail(email: string, name: string, resetToken: string): Promise<boolean> {
+  const baseUrl = (PUBLIC_APP_URL || 'http://localhost:3000').replace(/\/$/, '');
+  const resetUrl = `${baseUrl}/auth/reset-password?token=${encodeURIComponent(resetToken)}`;
+  const subject = 'Passwort zurücksetzen – easyseat';
+  const html = `
+    <h2>Hallo ${name.replace(/</g, '&lt;')},</h2>
+    <p>Sie haben eine Anfrage zum Zurücksetzen Ihres Passworts gestellt. Klicken Sie auf den folgenden Link:</p>
+    <p><a href="${resetUrl}">${resetUrl}</a></p>
+    <p>Der Link ist begrenzt gültig. Falls Sie die Anfrage nicht gestellt haben, ignorieren Sie diese E-Mail.</p>
+    <p>Mit freundlichen Grüßen,<br>Ihr easyseat-Team</p>
+  `;
+  const text = `Hallo ${name},\n\nPasswort zurücksetzen: ${resetUrl}\n\nFalls Sie die Anfrage nicht gestellt haben, ignorieren Sie diese E-Mail.\n\nMit freundlichen Grüßen,\nIhr easyseat-Team`;
+  return sendCustomerMail(email, subject, html, text);
 }

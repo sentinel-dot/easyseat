@@ -29,6 +29,7 @@ import {
 } from '../config/utils/types';
 import { getTokenPrefix, validateBookingToken } from '../config/utils/helper';
 import { authenticateToken, requireRole } from '../middleware/auth.middleware';
+import { optionalCustomerAuth } from '../middleware/customer-auth.middleware';
 
 const router = express.Router();
 const logger = createLogger('booking.routes');
@@ -80,7 +81,7 @@ const MAX_SPECIAL_REQUESTS = 500;
  * - 409: Slot nicht verfügbar (Konflikt mit existierender Buchung)
  * - 500: Serverfehler
  */
-router.post('/', async (req: Request, res: Response) => 
+router.post('/', optionalCustomerAuth, async (req: Request, res: Response) => 
 {
     if (!req.body || Object.keys(req.body).length === 0)
     {
@@ -194,7 +195,13 @@ router.post('/', async (req: Request, res: Response) =>
         } as ApiResponse<void>);
     }
 
-    // SCHRITT 6: BUCHUNG ERSTELLEN
+    // SCHRITT 6: ADD CUSTOMER ID IF AUTHENTICATED
+    if (req.customerJwtPayload) {
+        bookingData.customer_id = req.customerJwtPayload.customerId;
+        logger.info('Booking created by authenticated customer', { customer_id: req.customerJwtPayload.customerId });
+    }
+
+    // SCHRITT 7: BUCHUNG ERSTELLEN
     try 
     {
         const newBooking = await BookingService.createBooking(bookingData);

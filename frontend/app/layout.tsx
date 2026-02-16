@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { DM_Sans } from "next/font/google";
 import { Toaster } from "sonner";
+import { CustomerAuthProvider } from "@/contexts/CustomerAuthContext";
 import "./globals.css";
 
 const dmSans = DM_Sans({
@@ -23,8 +24,10 @@ export default function RootLayout({
   return (
     <html lang="de" className={dmSans.variable}>
       <body className="min-h-screen flex flex-col">
-        {children}
-        <Toaster position="top-center" richColors closeButton />
+        <CustomerAuthProvider>
+          {children}
+          <Toaster position="top-center" richColors closeButton />
+        </CustomerAuthProvider>
       </body>
     </html>
   );

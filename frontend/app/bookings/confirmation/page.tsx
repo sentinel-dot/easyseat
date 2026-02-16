@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { SiteLayout } from "@/components/layout/site-layout";
+import { PostBookingRegisterPrompt } from "@/components/customer/PostBookingRegisterPrompt";
 
-type Props = { searchParams: Promise<{ token?: string }> };
+type Props = { searchParams: Promise<{ token?: string; email?: string }> };
 
 export const metadata = {
   title: "Buchungsanfrage gesendet – easyseat",
@@ -9,7 +10,7 @@ export const metadata = {
 };
 
 export default async function ConfirmationPage({ searchParams }: Props) {
-  const { token } = await searchParams;
+  const { token, email } = await searchParams;
 
   return (
     <SiteLayout>
@@ -41,6 +42,7 @@ export default async function ConfirmationPage({ searchParams }: Props) {
             </Link>
           </div>
         )}
+        <PostBookingRegisterPrompt customerEmail={email ?? ""} bookingToken={token} />
         <div className="mt-10 space-y-3 text-center">
           <Link
             href="/bookings/my-bookings"

@@ -1,5 +1,5 @@
 import { SiteLayout } from "@/components/layout/site-layout";
-import { MyBookingsContent } from "./my-bookings-content";
+import { MyBookingsWrapper } from "./my-bookings-wrapper";
 
 export const metadata = {
   title: "Meine Buchungen – easyseat",
@@ -14,9 +14,9 @@ export default function MyBookingsPage() {
           Meine Buchungen
         </h1>
         <p className="mt-2 text-[var(--color-muted)]">
-          Geben Sie Ihre E-Mail-Adresse ein, um alle Ihre Buchungen zu sehen.
+          Geben Sie Ihre E-Mail-Adresse ein, um alle Ihre Buchungen zu sehen. Oder melden Sie sich an, um Ihre Buchungen sicher in Ihrem Konto zu sehen.
         </p>
-        <MyBookingsContent />
+        <MyBookingsWrapper />
       </div>
     </SiteLayout>
   );

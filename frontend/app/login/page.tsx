@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { toast } from "sonner";
@@ -8,7 +8,7 @@ import { login } from "@/lib/api/admin";
 import { Button } from "@/components/shared/button";
 import { Input } from "@/components/shared/input";
 
-export default function LoginPage() {
+function LoginForm() {
   const searchParams = useSearchParams();
   const redirectParam = searchParams.get("redirect");
 
@@ -99,5 +99,17 @@ export default function LoginPage() {
         </p>
       </div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex min-h-screen flex-col items-center justify-center bg-[var(--color-page)] px-4">
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-[var(--color-accent)] border-t-transparent" aria-hidden />
+      </div>
+    }>
+      <LoginForm />
+    </Suspense>
   );
 }

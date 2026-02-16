@@ -16,7 +16,13 @@ import bookingRoutes from './routes/booking.routes';
 import authRoutes from './routes/auth.routes';
 import adminRoutes from './routes/admin.routes';
 import ownerRoutes from './routes/owner.routes';
+import customerAuthRoutes from './routes/customer-auth.routes';
+import customerRoutes from './routes/customer.routes';
+import favoritesRoutes from './routes/favorites.routes';
+import reviewsRoutes from './routes/reviews.routes';
+import loyaltyRoutes from './routes/loyalty.routes';
 import { assertSecureJwtSecret } from './services/auth.service';
+import { assertSecureJwtSecret as assertSecureCustomerJwtSecret } from './services/customer-auth.service';
 import { startReminderCron } from './jobs/reminder.job';
 
 dotenv.config();
@@ -91,8 +97,23 @@ app.get('/health', (req, res) => {
 });
 
 
-// Auth routes
+// Auth routes (admin/owner/staff)
 app.use('/auth', authRoutes);
+
+// Customer auth routes
+app.use('/auth/customer', authLimiter, customerAuthRoutes);
+
+// Customer routes (profile, bookings, preferences)
+app.use('/customer', customerRoutes);
+
+// Customer favorites
+app.use('/customer/favorites', favoritesRoutes);
+
+// Reviews routes (both public and customer-specific)
+app.use('/', reviewsRoutes);
+
+// Customer loyalty
+app.use('/customer/loyalty', loyaltyRoutes);
 
 // Venue routes
 app.use('/venues', venueRoutes);
@@ -130,6 +151,7 @@ const startServer = async() => {
     try 
     {
         assertSecureJwtSecret();
+        assertSecureCustomerJwtSecret();
         // Teste Datenbankverbindung VOR dem Start
         const dbConnected = await testConnection();
         

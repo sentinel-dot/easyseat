@@ -157,7 +157,9 @@ export function BookingWidget({ venue, initialDate, initialTime, initialPartySiz
 
       if (res.success && res.data?.booking_token) {
         toast.success("Buchungsanfrage wurde gesendet.");
-        router.push(`/bookings/confirmation?token=${res.data.booking_token}`);
+        const params = new URLSearchParams({ token: res.data.booking_token });
+        if (email.trim()) params.set("email", email.trim());
+        router.push(`/bookings/confirmation?${params.toString()}`);
         return;
       }
       toast.error(res.message ?? "Buchung fehlgeschlagen.");

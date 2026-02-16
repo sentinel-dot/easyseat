@@ -200,10 +200,25 @@ export class OwnerService {
                         await sendConfirmation(bookingForEmail, currentStatus === 'cancelled');
                     } else if (status === 'cancelled') {
                         await sendCancellation(bookingForEmail);
+                    } else if (status === 'completed') {
+                        const { sendReviewInvitation } = await import('./email.service');
+                        await sendReviewInvitation(bookingForEmail, forEmail.venue_id);
                     }
                 }
             } catch (emailErr) {
                 logger.error('Owner: Email after status update failed (booking updated)', emailErr);
+            }
+            if (status === 'completed' && booking.customer_id) {
+                try {
+                    const { awardPointsForBooking } = await import('./loyalty.service');
+                    await awardPointsForBooking(
+                        booking.customer_id,
+                        bookingId,
+                        booking.total_amount ?? undefined
+                    );
+                } catch (loyaltyErr) {
+                    logger.error('Owner: Loyalty points award failed (booking updated)', loyaltyErr);
+                }
             }
             return updated[0];
         } catch (error) {

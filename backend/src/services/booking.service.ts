@@ -81,6 +81,7 @@ import { randomUUID } from 'crypto';
             // SCHRITT 2: Füge die Buchung in die Datenbank ein
             const result = await conn.query(`
                 INSERT INTO bookings (
+                    customer_id,
                     booking_token,
                     venue_id,
                     service_id,
@@ -97,8 +98,9 @@ import { randomUUID } from 'crypto';
                     status
                 ) 
                 VALUES
-                (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')`,
+                (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')`,
                 [
+                    bookingData.customer_id || null,
                     bookingToken,
                     bookingData.venue_id,
                     bookingData.service_id,
@@ -330,6 +332,30 @@ import { randomUUID } from 'crypto';
             );
             (b as { status: string }).status = 'completed';
             logger.info('Booking auto-marked as completed (appointment time passed)', { booking_id: b.id });
+            try {
+                const withDetails = await BookingService.getBookingByIdWithDetails(b.id);
+                if (withDetails?.customer_email && withDetails.venue_id) {
+                    const { sendReviewInvitation } = await import('./email.service');
+                    await sendReviewInvitation(
+                        {
+                            id: withDetails.id,
+                            customer_name: withDetails.customer_name,
+                            customer_email: withDetails.customer_email,
+                            booking_date: withDetails.booking_date,
+                            start_time: withDetails.start_time,
+                            end_time: withDetails.end_time,
+                            special_requests: withDetails.special_requests,
+                            venue_name: withDetails.venue_name,
+                            service_name: withDetails.service_name,
+                            staff_member_name: withDetails.staff_member_name,
+                            booking_token: withDetails.booking_token,
+                        },
+                        withDetails.venue_id
+                    );
+                }
+            } catch (emailErr) {
+                logger.error('Review invitation email failed after auto-complete', { booking_id: b.id }, emailErr);
+            }
         }
         return bookings;
     }
@@ -493,6 +519,74 @@ import { randomUUID } from 'crypto';
             await this.markPastBookingsCompleted(conn, bookings);
 
             logger.info(`Found ${bookings.length} bookings for customer`);
+            
+            return bookings;
+        } 
+        catch (error) 
+        {
+            logger.error('Error fetching bookings by email', error);
+            throw error;
+        }
+        finally
+        {
+            if (conn)
+            {
+                conn.release();
+                logger.debug('Database connection released');
+            }
+        }
+    }
+
+
+    /**
+     * HOLE ALLE BUCHUNGEN EINES KUNDEN (via customer_id)
+     * Sicher und authentifiziert - nur für eingeloggte Kunden
+     * 
+     * @param customerId - ID des eingeloggten Kunden
+     * @param onlyFuture - Optional: Nur zukünftige Buchungen (default: false)
+     * @returns Array von Buchungen mit Details
+     */
+    static async getBookingsByCustomerId(
+        customerId: number,
+        onlyFuture: boolean = false
+    ): Promise<Booking[]>
+    {
+        logger.info(`Fetching bookings for customer ID: ${customerId}`, {
+            only_future: onlyFuture
+        });
+
+        let conn;
+        try 
+        {
+            conn = await getConnection();
+            
+            let query = `
+                SELECT b.*,
+                    v.name as venue_name,
+                    s.name as service_name,
+                    sm.name as staff_member_name
+                FROM bookings b
+                LEFT JOIN venues v ON b.venue_id = v.id
+                LEFT JOIN services s ON b.service_id = s.id
+                LEFT JOIN staff_members sm ON b.staff_member_id = sm.id
+                WHERE b.customer_id = ?
+            `;
+
+            const params: (string | number)[] = [customerId];
+
+            // Wenn nur zukünftige Buchungen gewünscht, füge Datumsfilter hinzu
+            if (onlyFuture)
+            {
+                query += ' AND b.booking_date >= CURDATE()';
+            }
+
+            query += ' ORDER BY b.booking_date DESC, b.start_time DESC';
+
+            const bookings = await conn.query(query, params) as Booking[];
+
+            await this.markPastBookingsCompleted(conn, bookings);
+
+            logger.info(`Found ${bookings.length} bookings for customer ID ${customerId}`);
             
             return bookings;
         } 
