@@ -100,8 +100,8 @@ app.get('/health', (req, res) => {
 // Auth routes (admin/owner/staff)
 app.use('/auth', authRoutes);
 
-// Customer auth routes
-app.use('/auth/customer', authLimiter, customerAuthRoutes);
+// Customer auth routes (authLimiter already applied via /auth prefix above)
+app.use('/auth/customer', customerAuthRoutes);
 
 // Customer routes (profile, bookings, preferences)
 app.use('/customer', customerRoutes);

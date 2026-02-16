@@ -954,8 +954,16 @@ router.delete('/:id', authenticateToken, requireRole('owner', 'admin'), async (r
     } 
     catch (error) 
     {
-        // Fehler beim Löschen (z.B. Foreign Key Constraints)
         logger.error('Error deleting booking', error);
+
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        if (errorMessage.includes('Booking not found') || errorMessage.includes('not found')) {
+            return res.status(404).json({
+                success: false,
+                message: 'Booking not found',
+                error: process.env.NODE_ENV === 'development' ? String(error) : undefined
+            } as ApiResponse<void>);
+        }
 
         res.status(500).json({
             success: false,

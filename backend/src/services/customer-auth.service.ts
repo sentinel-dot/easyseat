@@ -397,13 +397,21 @@ export async function verifyEmail(token: string): Promise<ApiResponse<{ message:
 }
 
 /**
- * Request password reset
+ * Request password reset.
+ * Only verified accounts receive a reset link (no info leak: same response either way).
  */
 export async function requestPasswordReset(email: string): Promise<ApiResponse<{ message: string }>> {
     try {
         const customer = await findCustomerByEmail(email);
         if (!customer) {
-            // Don't reveal if email exists or not
+            return { 
+                success: true, 
+                data: { message: 'Falls die E-Mail-Adresse registriert ist, wurde ein Passwort-Reset-Link gesendet' } 
+            };
+        }
+
+        if (!customer.email_verified) {
+            // Only verified accounts can reset password; same response as "not found" to avoid info leak
             return { 
                 success: true, 
                 data: { message: 'Falls die E-Mail-Adresse registriert ist, wurde ein Passwort-Reset-Link gesendet' } 
