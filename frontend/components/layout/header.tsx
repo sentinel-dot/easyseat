@@ -29,6 +29,16 @@ export function Header() {
             Orte finden
           </Link>
           <Link
+            href="/bookings/my-bookings"
+            className={`rounded px-3 py-2 text-sm font-medium transition-colors ${
+              isActive("/bookings/my-bookings")
+                ? "text-[var(--color-accent)]"
+                : "text-[var(--color-muted)] hover:text-[var(--color-text)]"
+            }`}
+          >
+            Meine Buchungen
+          </Link>
+          <Link
             href="/impressum"
             className="hidden rounded px-3 py-2 text-sm text-[var(--color-muted)] transition-colors hover:text-[var(--color-text)] sm:block"
           >

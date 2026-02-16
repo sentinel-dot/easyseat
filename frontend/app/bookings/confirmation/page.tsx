@@ -32,7 +32,7 @@ export default async function ConfirmationPage({ searchParams }: Props) {
           </p>
         )}
         {token && (
-          <div className="mt-4">
+          <div className="mt-4 space-y-2">
             <Link
               href={`/bookings/manage/${token}`}
               className="btn-primary inline-flex h-11 items-center justify-center rounded-xl bg-[var(--color-accent)] px-6 text-sm font-semibold text-white hover:bg-[var(--color-accent-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent)] focus-visible:ring-offset-2"
@@ -41,7 +41,13 @@ export default async function ConfirmationPage({ searchParams }: Props) {
             </Link>
           </div>
         )}
-        <div className="mt-10">
+        <div className="mt-10 space-y-3 text-center">
+          <Link
+            href="/bookings/my-bookings"
+            className="block text-sm font-medium text-[var(--color-accent)] transition-colors hover:text-[var(--color-accent-hover)]"
+          >
+            Alle meine Buchungen ansehen
+          </Link>
           <Link
             href="/venues"
             className="inline-flex items-center gap-2 text-sm font-semibold text-[var(--color-accent)] transition-colors hover:text-[var(--color-accent-hover)]"

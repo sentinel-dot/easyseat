@@ -1,10 +1,12 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getBookingByToken } from "@/lib/api/bookings";
+import { getVenueById } from "@/lib/api/venues";
 import { SiteLayout } from "@/components/layout/site-layout";
 import { ManageBookingActions } from "./manage-actions";
 import { ManageBookingNotes } from "./manage-notes";
-import { getStatusLabel } from "@/lib/utils/bookingStatus";
+import { ManageRescheduleModal } from "./manage-reschedule";
+import { getStatusLabel, getStatusColor } from "@/lib/utils/bookingStatus";
 
 type Props = { params: Promise<{ token: string }> };
 
@@ -24,6 +26,10 @@ export default async function ManageBookingPage({ params }: Props) {
 
   if (!res.success || !res.data) notFound();
   const b = res.data;
+
+  // Venue-Details für Reschedule laden
+  const venueRes = await getVenueById(b.venue_id);
+  const venue = venueRes.success ? venueRes.data : null;
 
   const dateDisplay = b.booking_date
     ? new Date(b.booking_date + "T12:00:00").toLocaleDateString("de-DE", {
@@ -68,17 +74,7 @@ export default async function ManageBookingPage({ params }: Props) {
           </p>
           <p className="mt-3">
             <span
-              className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold ${
-                b.status === "confirmed"
-                  ? "bg-[var(--color-success-muted)] text-[var(--color-success)]"
-                  : b.status === "pending"
-                    ? "bg-[var(--color-accent-muted)] text-[var(--color-accent-strong)]"
-                    : b.status === "cancelled"
-                      ? "bg-[var(--color-error-muted)] text-[var(--color-error)]"
-                      : b.status === "completed"
-                        ? "bg-[var(--color-accent-muted)] text-[var(--color-accent-strong)]"
-                        : "bg-[var(--color-border)] text-[var(--color-muted)]"
-              }`}
+              className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold ${getStatusColor(b.status)}`}
             >
               {getStatusLabel(b.status)}
             </span>
@@ -90,6 +86,24 @@ export default async function ManageBookingPage({ params }: Props) {
           specialRequests={b.special_requests ?? ""}
           status={b.status}
         />
+
+        {venue && (
+          <ManageRescheduleModal
+            token={token}
+            bookingId={b.id}
+            venueId={b.venue_id}
+            serviceId={b.service_id}
+            currentDate={b.booking_date}
+            currentStartTime={b.start_time}
+            currentEndTime={b.end_time}
+            partySize={b.party_size}
+            status={b.status}
+            bookingAdvanceDays={venue.booking_advance_days}
+            venueName={b.venue_name ?? undefined}
+            serviceName={b.service_name ?? undefined}
+          />
+        )}
+
         <ManageBookingActions
           token={token}
           status={b.status}

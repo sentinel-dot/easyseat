@@ -18,7 +18,7 @@ const logger = createLogger('availability.routes');
  */
 router.get('/slots', async (req, res) =>     
 {
-    const { venueId, serviceId, date, partySize, timeWindowStart, timeWindowEnd } = req.query;  
+    const { venueId, serviceId, date, partySize, timeWindowStart, timeWindowEnd, excludeBookingId } = req.query;  
 
     if (!venueId || !serviceId || !date)
     {
@@ -30,12 +30,14 @@ router.get('/slots', async (req, res) =>
     }
 
     const partySizeNum = partySize != null && partySize !== '' ? parseInt(String(partySize), 10) : undefined;
-    const opts: { partySize?: number; timeWindowStart?: string; timeWindowEnd?: string } = {};
+    const excludeBookingIdNum = excludeBookingId != null && excludeBookingId !== '' ? parseInt(String(excludeBookingId), 10) : undefined;
+    const opts: { partySize?: number; timeWindowStart?: string; timeWindowEnd?: string; excludeBookingId?: number } = {};
     if (partySizeNum != null && !isNaN(partySizeNum) && partySizeNum >= 1) opts.partySize = partySizeNum;
     if (timeWindowStart && timeWindowEnd) {
         opts.timeWindowStart = timeWindowStart as string;
         opts.timeWindowEnd = timeWindowEnd as string;
     }
+    if (excludeBookingIdNum != null && !isNaN(excludeBookingIdNum)) opts.excludeBookingId = excludeBookingIdNum;
     const options = Object.keys(opts).length > 0 ? opts : undefined;
 
     try {

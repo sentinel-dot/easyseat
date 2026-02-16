@@ -164,10 +164,12 @@ export default async function VenuePage({ params, searchParams }: Props) {
             >
               <div className="border-b border-[var(--color-border)] px-4 py-3">
                 <h2 className="text-lg font-semibold text-[var(--color-text)]">
-                  Tisch reservieren
+                  {venue.type === "restaurant" ? "Tisch reservieren" : "Termin buchen"}
                 </h2>
                 <p className="mt-0.5 text-sm text-[var(--color-muted)]">
-                  Datum, Uhrzeit und Gästeanzahl wählen.
+                  {venue.type === "restaurant"
+                    ? "Datum, Uhrzeit und Gästeanzahl wählen."
+                    : "Leistung, Datum und Uhrzeit wählen."}
                 </p>
               </div>
               <div className="p-4">

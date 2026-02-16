@@ -11,7 +11,7 @@ export async function getAvailableSlots(
   venueId: number,
   serviceId: number,
   date: string,
-  options?: { staffMemberId?: number; partySize?: number; timeWindowStart?: string; timeWindowEnd?: string }
+  options?: { staffMemberId?: number; partySize?: number; timeWindowStart?: string; timeWindowEnd?: string; excludeBookingId?: number }
 ): Promise<DayAvailability> {
   const params = new URLSearchParams({
     venueId: venueId.toString(),
@@ -26,6 +26,9 @@ export async function getAvailableSlots(
   }
   if (options?.timeWindowStart) params.append('timeWindowStart', options.timeWindowStart);
   if (options?.timeWindowEnd) params.append('timeWindowEnd', options.timeWindowEnd);
+  if (options?.excludeBookingId != null) {
+    params.append('excludeBookingId', options.excludeBookingId.toString());
+  }
   const result = await apiClient<DayAvailability>(
     `/availability/slots?${params.toString()}`
   );

@@ -423,13 +423,14 @@ export class AvailabilityService
     /** 
      * Holt alle verfügbaren Zeitslots für einen Service an einem bestimmten Datum.
      * Optional: partySize (nur Slots mit remaining_capacity >= partySize),
-     * timeWindowStart/timeWindowEnd (nur Slots in diesem Zeitfenster).
+     * timeWindowStart/timeWindowEnd (nur Slots in diesem Zeitfenster),
+     * excludeBookingId (für Reschedule – eigene Buchung nicht als "blockiert" zählen).
      */
     static async getAvailableSlots(
         venueId: number,
         serviceId: number,
         date: string,
-        options?: { partySize?: number; timeWindowStart?: string; timeWindowEnd?: string }
+        options?: { partySize?: number; timeWindowStart?: string; timeWindowEnd?: string; excludeBookingId?: number }
     ): Promise<DayAvailability>
     {
         const partySize = options?.partySize ?? 1;
@@ -438,6 +439,7 @@ export class AvailabilityService
             service_id: serviceId,
             date,
             partySize,
+            excludeBookingId: options?.excludeBookingId,
             timeWindow: options?.timeWindowStart && options?.timeWindowEnd
                 ? `${options.timeWindowStart}-${options.timeWindowEnd}`
                 : undefined
@@ -606,6 +608,7 @@ export class AvailabilityService
             // Hole existierende Buchungen
             // Bei Mitarbeiter-Services: alle Buchungen mit Mitarbeiter an dem Tag (jeder Service),
             // damit Slots blockiert werden, wenn der Mitarbeiter schon einen anderen Service hat.
+            // excludeBookingId: Für Reschedule – eigene Buchung nicht als "blockiert" zählen
             const existingBookings = service.requires_staff
                 ? (await conn.query(`
                     SELECT start_time, end_time, staff_member_id, party_size
@@ -613,8 +616,11 @@ export class AvailabilityService
                     WHERE venue_id = ?
                     AND booking_date = ?
                     AND staff_member_id IS NOT NULL
-                    AND status = 'confirmed'`,
-                    [venueId, date]
+                    AND status = 'confirmed'
+                    ${options?.excludeBookingId ? 'AND id != ?' : ''}`,
+                    options?.excludeBookingId 
+                        ? [venueId, date, options.excludeBookingId]
+                        : [venueId, date]
                 ) as { start_time: string; end_time: string; staff_member_id: number | null; party_size: number }[])
                 : (await conn.query(`
                     SELECT start_time, end_time, staff_member_id, party_size
@@ -622,8 +628,11 @@ export class AvailabilityService
                     WHERE venue_id = ?
                     AND service_id = ?
                     AND booking_date = ?
-                    AND status = 'confirmed'`,
-                    [venueId, serviceId, date]
+                    AND status = 'confirmed'
+                    ${options?.excludeBookingId ? 'AND id != ?' : ''}`,
+                    options?.excludeBookingId 
+                        ? [venueId, serviceId, date, options.excludeBookingId]
+                        : [venueId, serviceId, date]
                 ) as { start_time: string; end_time: string; staff_member_id: number | null; party_size: number }[]);
 
             // Markiere konfliktbehaften Slots als nicht verfügbar

@@ -627,11 +627,14 @@ import { randomUUID } from 'crypto';
             }
 
 
-            // WICHTIG: Wenn Datum/Zeit geändert -> Reminder zurücksetzen
+            // WICHTIG: Wenn Datum/Zeit geändert -> Reminder zurücksetzen und Status auf "ausstehend"
+            // Owner muss den neuen Termin erneut bestätigen
             if (dateTimeChanged)
             {
                 updateFields.push('reminder_sent_at = NULL');
-                logger.info('Resetting reminder_sent_at due to date/time change');
+                updateFields.push("status = 'pending'");
+                updateFields.push('confirmation_sent_at = NULL');
+                logger.info('Resetting reminder_sent_at and status to pending due to date/time change');
             }
 
             // Falls keine Änderungen
@@ -655,12 +658,13 @@ import { randomUUID } from 'crypto';
             logger.info('Booking updated successfully');
 
             // Audit: Kunde hat über Manage-Link Datum/Zeit/Details geändert
+            const newStatusAfterUpdate = dateTimeChanged ? 'pending' : currentBooking.status;
             await logBookingAction({
                 bookingId: currentBooking.id,
                 venueId: currentBooking.venue_id,
                 action: 'update',
                 oldStatus: currentBooking.status,
-                newStatus: currentBooking.status,
+                newStatus: newStatusAfterUpdate,
                 reason: null,
                 actorType: 'customer',
                 customerIdentifier: 'manage_link',
