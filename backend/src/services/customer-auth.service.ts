@@ -241,7 +241,7 @@ export async function register(data: CustomerRegisterRequest): Promise<ApiRespon
                 [data.email, passwordHash, data.name.trim(), data.phone || null, verificationToken, false]
             );
 
-            const customerId = result.insertId;
+            const customerId = Number((result as { insertId: number }).insertId);
 
             // Create default preferences
             await conn.query(

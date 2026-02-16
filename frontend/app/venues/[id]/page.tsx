@@ -29,7 +29,7 @@ export default async function VenuePage({ params, searchParams }: Props) {
   const initialTime = typeof search.time === "string" ? search.time : undefined;
   const initialPartySize =
     typeof search.party_size === "string" && /^\d+$/.test(search.party_size)
-      ? Math.min(20, Math.max(1, Number(search.party_size)))
+      ? Math.min(8, Math.max(1, Number(search.party_size)))
       : undefined;
   const venueId = Number(id);
   if (Number.isNaN(venueId)) notFound();

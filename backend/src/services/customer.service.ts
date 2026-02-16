@@ -141,6 +141,13 @@ export async function updateCustomerPreferences(
 ): Promise<ApiResponse<CustomerPreferences>> {
     let conn = null;
     try {
+        if (updates.default_party_size !== undefined) {
+            const n = updates.default_party_size;
+            if (n < 1 || n > 8) {
+                return { success: false, message: 'Standard-Gästeanzahl muss zwischen 1 und 8 liegen.' };
+            }
+        }
+
         conn = await getConnection();
 
         // Ensure preferences exist

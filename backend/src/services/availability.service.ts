@@ -1047,6 +1047,11 @@ export class AvailabilityService
                 logger.warn('Party size must be at least 1');
                 errors.push('Party size must be at least 1');
             }
+            if (partySize > 8)
+            {
+                logger.warn('Party size must be at most 8 (for larger groups please call)');
+                errors.push('Party size must be between 1 and 8. For larger groups please call.');
+            }
 
             // Validiere Zeitformat mit Regex (HH:MM)
             if (!/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/.test(startTime) || 

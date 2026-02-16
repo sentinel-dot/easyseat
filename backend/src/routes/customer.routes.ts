@@ -231,6 +231,15 @@ router.post('/bookings/:id/quick-rebook', requireEmailVerified, async (req: Requ
         // Get new booking details from request body
         const { booking_date, start_time, end_time, party_size } = req.body;
 
+        const finalPartySize = party_size ?? originalBooking.party_size;
+        if (finalPartySize < 1 || finalPartySize > 8) {
+            res.status(400).json({
+                success: false,
+                message: 'Anzahl Personen muss zwischen 1 und 8 liegen. Für mehr Gäste bitte anrufen.'
+            });
+            return;
+        }
+
         if (!booking_date || !start_time || !end_time) {
             res.status(400).json({
                 success: false,
@@ -251,7 +260,7 @@ router.post('/bookings/:id/quick-rebook', requireEmailVerified, async (req: Requ
             booking_date,
             start_time,
             end_time,
-            party_size: party_size || originalBooking.party_size,
+            party_size: finalPartySize,
             special_requests: originalBooking.special_requests ?? undefined,
             total_amount: originalBooking.total_amount ?? undefined
         });

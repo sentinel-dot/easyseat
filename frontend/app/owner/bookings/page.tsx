@@ -59,7 +59,7 @@ export default function OwnerBookingsPage() {
     customer_name: "",
     customer_email: "",
     customer_phone: "",
-    party_size: 0,
+    party_size: 2,
   });
 
   const loadServices = useCallback(() => {
@@ -147,6 +147,11 @@ export default function OwnerBookingsPage() {
       toast.error("Service, Name und E-Mail sind Pflicht.");
       return;
     }
+    const partySize = manualForm.party_size || 2;
+    if (partySize < 1 || partySize > 8) {
+      toast.error("Anzahl Personen muss zwischen 1 und 8 liegen. Für mehr Gäste bitte anrufen.");
+      return;
+    }
     const service = services.find((s) => s.id === manualForm.service_id);
     if (!service) return;
     setManualSaving(true);
@@ -159,7 +164,7 @@ export default function OwnerBookingsPage() {
         customer_name: manualForm.customer_name.trim(),
         customer_email: manualForm.customer_email.trim(),
         customer_phone: manualForm.customer_phone.trim() || undefined,
-        party_size: manualForm.party_size || 0,
+        party_size: partySize,
       });
       if (res.success) {
         toast.success("Buchung angelegt.");
@@ -172,7 +177,7 @@ export default function OwnerBookingsPage() {
           customer_name: "",
           customer_email: "",
           customer_phone: "",
-          party_size: 0,
+          party_size: 2,
         });
         loadBookings();
       } else {
@@ -527,13 +532,20 @@ export default function OwnerBookingsPage() {
                 onChange={(e) => setManualForm((f) => ({ ...f, customer_phone: e.target.value }))}
                 placeholder="+49 …"
               />
-              <Input
-                label="Anzahl Personen"
-                type="number"
-                min={0}
-                value={manualForm.party_size || ""}
-                onChange={(e) => setManualForm((f) => ({ ...f, party_size: parseInt(e.target.value, 10) || 0 }))}
-              />
+              <div>
+                <label className="mb-1.5 block text-sm font-medium text-[var(--color-text)]">
+                  Anzahl Personen (1–8)
+                </label>
+                <input
+                  type="number"
+                  min={1}
+                  max={8}
+                  value={manualForm.party_size}
+                  onChange={(e) => setManualForm((f) => ({ ...f, party_size: Math.min(8, Math.max(1, parseInt(e.target.value, 10) || 1)) }))}
+                  className="w-full rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-[var(--color-text)]"
+                />
+                <p className="mt-1 text-xs text-[var(--color-muted)]">Für mehr als 8 Personen bitte anrufen.</p>
+              </div>
               <div className="flex gap-3 pt-2">
                 <Button type="submit" isLoading={manualSaving} className="flex-1">
                   Buchung anlegen

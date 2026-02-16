@@ -62,7 +62,7 @@ export function BookingWidget({ venue, initialDate, initialTime, initialPartySiz
     }
   }, [customer]);
   const [partySize, setPartySize] = useState(
-    initialPartySize != null ? Math.min(20, Math.max(1, initialPartySize)) : DEFAULT_PARTY_SIZE
+    initialPartySize != null ? Math.min(8, Math.max(1, initialPartySize)) : DEFAULT_PARTY_SIZE
   );
   const [specialRequests, setSpecialRequests] = useState("");
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
@@ -143,8 +143,8 @@ export function BookingWidget({ venue, initialDate, initialTime, initialPartySiz
     }
     if (venue.require_phone && !phone.trim())
       err.phone = "Bitte Telefonnummer angeben.";
-    if (showPartySize && (partySize < 1 || partySize > 20))
-      err.partySize = "Anzahl zwischen 1 und 20 wählen.";
+    if (showPartySize && (partySize < 1 || partySize > 8))
+      err.partySize = "Anzahl zwischen 1 und 8 wählen. Für mehr Gäste bitte anrufen.";
     setFieldErrors(err);
     return Object.keys(err).length === 0;
   };
@@ -236,23 +236,21 @@ export function BookingWidget({ venue, initialDate, initialTime, initialPartySiz
         })}
       </nav>
 
-      {/* Zusammenfassung ab Schritt 2 */}
-      {(step !== "service" && service) && (
-        <div className="rounded-md bg-[var(--color-page)] px-4 py-3 text-sm">
-          <span className="font-medium text-[var(--color-text)]">{service.name}</span>
-          {service.duration_minutes > 0 && (
-            <span className="text-[var(--color-muted)]"> · {service.duration_minutes} Min.</span>
-          )}
-          {service.price != null && Number(service.price) > 0 && (
-            <span className="font-medium text-[var(--color-accent)]">
-              {" "}· {Number(service.price).toFixed(2)} €
-            </span>
-          )}
+      {/* Ihre Auswahl (rosa Box) – immer oben, füllt sich schrittweise */}
+      {step !== "service" && service && (
+        <div className="rounded-md border border-[var(--color-accent-muted)] bg-[var(--color-accent-muted)]/40 px-4 py-3">
+          <p className="text-xs font-semibold uppercase tracking-wide text-[var(--color-accent-strong)]">
+            Ihre Auswahl
+          </p>
+          <p className="mt-1 font-semibold text-[var(--color-text)]">
+            {service.name}
+            {service.duration_minutes > 0 && ` · ${service.duration_minutes} Min.`}
+          </p>
           {date && step !== "date" && (
-            <span className="block mt-1 text-[var(--color-muted)]">
+            <p className="mt-0.5 text-sm text-[var(--color-text-soft)]">
               {formatDateDisplay(date)}
-              {selectedSlot && ` · ${formatTimeDisplay(selectedSlot.start_time)}`}
-            </span>
+              {selectedSlot && `, ${formatTimeDisplay(selectedSlot.start_time)}`}
+            </p>
           )}
         </div>
       )}
@@ -411,20 +409,6 @@ export function BookingWidget({ venue, initialDate, initialTime, initialPartySiz
       {/* Schritt: Ihre Daten */}
       {step === "details" && service && selectedSlot && (
         <div className="space-y-5">
-          {/* Zusammenfassung der Auswahl */}
-          <div className="rounded-md border border-[var(--color-accent-muted)] bg-[var(--color-accent-muted)]/40 px-4 py-3">
-            <p className="text-xs font-semibold uppercase tracking-wide text-[var(--color-accent-strong)]">
-              Ihre Auswahl
-            </p>
-            <p className="mt-1 font-semibold text-[var(--color-text)]">
-              {service.name}
-              {service.duration_minutes > 0 && ` · ${service.duration_minutes} Min.`}
-            </p>
-            <p className="mt-0.5 text-sm text-[var(--color-text-soft)]">
-              {date && formatDateDisplay(date)}, {formatTimeDisplay(selectedSlot.start_time)}
-            </p>
-          </div>
-
           <div>
             <h3 className="text-sm font-semibold text-[var(--color-text)]">Ihre Angaben</h3>
             {isAuthenticated ? (
@@ -496,12 +480,15 @@ export function BookingWidget({ venue, initialDate, initialTime, initialPartySiz
                   onChange={(e) => setPartySize(Number(e.target.value))}
                   className="w-full h-11 rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-3.5 text-[var(--color-text)] focus:border-[var(--color-accent)] focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] focus:ring-offset-0"
                 >
-                  {Array.from({ length: 20 }, (_, i) => i + 1).map((n) => (
+                  {Array.from({ length: 8 }, (_, i) => i + 1).map((n) => (
                     <option key={n} value={n}>
                       {n} {n === 1 ? "Gast" : "Gäste"}
                     </option>
                   ))}
                 </select>
+                <p className="mt-1 text-xs text-[var(--color-muted)]">
+                  Für mehr als 8 Gäste bitte anrufen.
+                </p>
                 {fieldErrors.partySize && (
                   <p className="mt-1.5 text-sm text-[var(--color-error)]">
                     {fieldErrors.partySize}

@@ -239,6 +239,10 @@ router.post('/bookings', async (req: Request, res: Response) => {
         res.status(400).json({ success: false, message: `special_requests darf maximal ${MAX_SPECIAL_REQUESTS} Zeichen haben` });
         return;
     }
+    if (bookingData.party_size < 1 || bookingData.party_size > 8) {
+        res.status(400).json({ success: false, message: 'Anzahl Personen muss zwischen 1 und 8 liegen. Für mehr Gäste bitte anrufen.' });
+        return;
+    }
     try {
         const booking = await BookingService.createBooking(bookingData, true);
         res.status(201).json({ success: true, data: booking, message: 'Buchung erfolgreich erstellt' });

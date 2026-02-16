@@ -75,7 +75,7 @@ export function VenuesContent() {
   const partySizeParam = searchParams.get("party_size");
   const partySizeNum =
     partySizeParam != null && partySizeParam !== "" && /^\d+$/.test(partySizeParam)
-      ? Math.min(20, Math.max(1, parseInt(partySizeParam, 10)))
+      ? Math.min(8, Math.max(1, parseInt(partySizeParam, 10)))
       : undefined;
 
   const hasDateOrTimeFilter = !!(dateParam || timeParam);

@@ -127,15 +127,16 @@ export default function CustomerProfilePage() {
           <div className="mt-4 flex items-center justify-between gap-4">
             <span className="text-sm text-[var(--color-text)]">Standard-Gästeanzahl</span>
             <select
-              value={prefs.default_party_size}
+              value={Math.min(8, Math.max(1, prefs.default_party_size))}
               onChange={(e) => handleSavePrefs({ default_party_size: Number(e.target.value) })}
               className="rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-sm text-[var(--color-text)]"
             >
-              {[1, 2, 3, 4, 5, 6, 8, 10].map((n) => (
+              {[1, 2, 3, 4, 5, 6, 7, 8].map((n) => (
                 <option key={n} value={n}>{n}</option>
               ))}
             </select>
           </div>
+          <p className="mt-1 text-xs text-[var(--color-muted)]">Für mehr als 8 Gäste bitte anrufen.</p>
           <div className="mt-4 flex items-center justify-between gap-4">
             <span className="text-sm text-[var(--color-text)]">E-Mail-Benachrichtigungen</span>
             <button

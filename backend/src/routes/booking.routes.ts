@@ -64,7 +64,7 @@ const MAX_SPECIAL_REQUESTS = 500;
  *   booking_date: string,          // Format: "YYYY-MM-DD" (z.B. "2025-10-25")
  *   start_time: string,            // Format: "HH:MM" (z.B. "14:00")
  *   end_time: string,              // Format: "HH:MM" (z.B. "15:30")
- *   party_size: number,            // Anzahl Personen (1-50)
+ *   party_size: number,            // Anzahl Personen (1-8; für mehr bitte anrufen)
  *   special_requests?: string,     // Optional: Besondere Wünsche
  *   total_amount?: number          // Optional: Gesamtpreis
  * }
@@ -162,15 +162,13 @@ router.post('/', optionalCustomerAuth, async (req: Request, res: Response) =>
         } as ApiResponse<void>);
     }
 
-    // SCHRITT 5: PARTY SIZE VALIDIERUNG
-    // Sinnvolle Grenzen: Minimum 1 Person, Maximum 50 Personen
-    // Verhindert absurde Werte wie 0 oder 1000
-    if (bookingData.party_size < 1 || bookingData.party_size > 50)
+    // SCHRITT 5: PARTY SIZE VALIDIERUNG (1-8; für mehr Personen bitte anrufen)
+    if (bookingData.party_size < 1 || bookingData.party_size > 8)
     {
         logger.warn('Invalid party size', { party_size: bookingData.party_size });
         return res.status(400).json({
             success: false,
-            message: 'Party size must be between 1 and 50'
+            message: 'Party size must be between 1 and 8. For larger groups please call.'
         } as ApiResponse<void>);
     }
 
@@ -245,19 +243,29 @@ router.post('/', optionalCustomerAuth, async (req: Request, res: Response) =>
 
 /**
  * GET /bookings/customer/:email - muss vor GET /:id stehen (Route-Reihenfolge!)
+ * Optional: Wenn Kunde eingeloggt ist, dürfen nur Buchungen der eigenen E-Mail abgefragt werden (Datenschutz).
  */
-router.get('/customer/:email', async (req: Request<{ email: string }>, res: Response) => 
+router.get('/customer/:email', optionalCustomerAuth, async (req: Request<{ email: string }>, res: Response) =>
 {
     const customerEmail = req.params.email;
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    
+
     if (!emailRegex.test(customerEmail))
     {
         logger.warn('Invalid email format', { email: customerEmail });
         return res.status(400).json({
             success: false,
             message: 'Invalid email format'
+        } as ApiResponse<void>);
+    }
+
+    // Eingeloggte Kunden dürfen nur die eigene E-Mail abfragen
+    if (req.customer && req.customer.email !== customerEmail) {
+        logger.warn('Authenticated customer tried to fetch bookings for another email');
+        return res.status(403).json({
+            success: false,
+            message: 'Kein Zugriff auf Buchungen dieser E-Mail-Adresse'
         } as ApiResponse<void>);
     }
 
@@ -418,7 +426,7 @@ router.get('/:id', authenticateToken, async (req: Request<{ id: string }>, res: 
  *   booking_date?: string,          // Optional: Neues Datum
  *   start_time?: string,            // Optional: Neue Startzeit
  *   end_time?: string,              // Optional: Neue Endzeit
- *   party_size?: number,            // Optional: Neue Personenzahl
+ *   party_size?: number,            // Optional: Neue Personenzahl (1-8)
  *   staff_member_id?: number,       // Optional: Anderer Mitarbeiter
  *   special_requests?: string       // Optional: Neue Wünsche
  * }
@@ -511,6 +519,14 @@ router.patch('/manage/:token', async (req: Request<{ token: string }>, res: Resp
         return res.status(400).json({
             success: false,
             message: `special_requests darf maximal ${MAX_SPECIAL_REQUESTS} Zeichen haben`
+        } as ApiResponse<void>);
+    }
+
+    // party_size 1–8 (wie bei POST /bookings)
+    if (updates.party_size !== undefined && (updates.party_size < 1 || updates.party_size > 8)) {
+        return res.status(400).json({
+            success: false,
+            message: 'Party size must be between 1 and 8. For larger groups please call.'
         } as ApiResponse<void>);
     }
 
